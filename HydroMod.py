@@ -5,9 +5,9 @@ from YachtMod import Yacht
 
 class HydroMod(object):
 
-    def __init__(self, Yacht):
+    def __init__(self, yacht):
 
-        self.yacht = Yacht
+        self.yacht = yacht
 
         # measure yacht to get dimensions
         self.l,self.vol,self.bwl,self.tc,self.wsa = self.yacht.measure()
@@ -28,6 +28,11 @@ class HydroMod(object):
 
         self.update(1.,10.)
 
+    
+    def _set(self, vb, phi):
+        self.yacht.vb = vb
+        self.yacht.phi = phi
+
 
     def __load_data(self):
         '''
@@ -47,7 +52,8 @@ class HydroMod(object):
         """
         Get residuary resistance at this froude number
         """
-        return self._interp_Rr((self.fn,self.btr,self.lvr))*self.vol*self.rho
+        fn = max(0.125,(min(self.fn,0.7)))
+        return self._interp_Rr((fn,self.btr,self.lvr))*self.vol*self.rho
     
 
     def _get_Rv(self):
@@ -59,7 +65,7 @@ class HydroMod(object):
 
     def _cf(self):
         self.Re = 0.85*self.vb*self.lsm/self.nu
-        return 0.066*(np.log10(self.Re-2.03)**(-2))
+        return 0.066*(np.log10(self.Re)-2.03)**(-2)
 
 
     def _get_fn(self):
@@ -77,8 +83,9 @@ class HydroMod(object):
         self.Fx = self._get_Rr() + self._get_Rv()
         self.Fy = 0.
 
-        # measure righting moment
-        self.Mx = self.yacht._get_rm(self.phi)*self.vol*self.rho
+        # measure righting moment, bounded to 45 degrees of heel
+        phi = max(0,min(self.phi,45))
+        self.Mx = self.yacht._get_rm(phi)*self.vol*self.rho*self.g
 
         return self.Fx, self.Fy, self.Mx
 
@@ -104,16 +111,16 @@ class HydroMod(object):
 
     def print_state(self):
         print('HydroMod state:')
-        print(' Lwl is:   %.2f' % self.l)
-        print(' Bwl is:   %.2f' % self.bwl)
-        print(' Tc  is:   %.2f' % self.tc)
-        print(' Vb  is:   %.2f' % self.vb)
-        print(' Fn  is:   %.2f' % self.fn)
-        print(' BTR is:   %.2f' % self.btr)
-        print(' LVR is:   %.2f' % self.lvr)
-        print(' Resistance is: %.2f' % self.Fx)
-        print(' KSF is:   %.2f' % self.Fy)
-        print(' RightM is: %.2f' % self.Mx)
+        print(' Lwl is:   %.2f (m)'   % self.l)
+        print(' Bwl is:   %.2f (m)'   % self.bwl)
+        print(' Tc  is:   %.2f (m)'   % self.tc)
+        print(' Vb  is:   %.2f (m/s)' % self.vb)
+        print(' Fn  is:   %.2f (-)'   % self.fn)
+        print(' BTR is:   %.2f (-)'   % self.btr)
+        print(' LVR is:   %.2f (-)'   % self.lvr)
+        print(' Rtot is:  %.2f (N)'   % self.Fx)
+        print(' KSF is:   %.2f (N)'   % self.Fy)
+        print(' RM is:    %.2f (Nm)'  % self.Mx)
 
 
 # if __name__ == "__main__":

@@ -15,10 +15,12 @@ class Sail(object):
 
 
     def cl(self, awa):
+        awa = max(0, min(awa, 180))
         return self.interp_cl(awa)
 
 
     def cd(self, awa):
+        awa = max(0, min(awa, 180))
         return self.interp_cd(awa)
 
 

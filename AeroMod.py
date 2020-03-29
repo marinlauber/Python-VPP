@@ -61,6 +61,13 @@ class AeroMod(object):
         return self.Fx, self.Fy, self.Mx
 
 
+    def _set(self, tws, twa, vb, phi):
+        self.tws = tws
+        self.twa = twa
+        self.vb = vb
+        self.phi = phi
+
+
     def _compute_forces(self):
         '''
         Computes forces for equilibrium.
@@ -94,7 +101,8 @@ class AeroMod(object):
         self.cl /= self.area; self.cd /= self.area
 
         # viscous quadratic parasitic drag and induced drag
-        self.CE = par/(self.area * self.cl**2) + self.area / (np.pi * self.heff(self.awa)**2)
+        cl2 = max(0.1,self.cl**2)
+        self.CE = par/(self.area * cl2) + self.area / (np.pi * self._heff(self.awa)**2)
 
         # fraction of parasitic drag due to jib
         for sail in self.sails:
@@ -146,7 +154,8 @@ class AeroMod(object):
         return 0.5*(self.phi+10*(self.phi/30.)**2)
 
 
-    def heff(self, awa):
+    def _heff(self, awa):
+        awa = max(0, min(awa, 180))
         return (self.b + self.HBI) * self.eff_span_corr * self.kheff(awa)
 #
 # -- utility functions
@@ -176,17 +185,17 @@ class AeroMod(object):
 
     def print_state(self):
         print('AeroMod state:')
-        print(' TWA is:   %.2f' % self.twa)
-        print(' TWS is:   %.2f' % self.tws)
-        print(' AWA is:   %.2f' % self.awa)
-        print(' AWS is:   %.2f' % self.aws)
-        print(' VB is :   %.2f' % self.vb)
-        print(' Heel is   %.2f' % self.phi)
-        print(' Drive is: %.2f' % self.Fx)
-        print(' SSF is:   %.2f' % self.Fy)
-        print(' HeelM is: %.2f' % self.Mx)
-        print(' Lift is : %.2f' % self.cl)
-        print(' Drag is : %.2f' % self.cd)
+        print(' TWA is:   %.2f (deg)' % self.twa)
+        print(' TWS is:   %.2f (m/s)' % self.tws)
+        print(' AWA is:   %.2f (deg)' % self.awa)
+        print(' AWS is:   %.2f (m/s)' % self.aws)
+        print(' Vb is :   %.2f (m/s)' % self.vb)
+        print(' Heel is   %.2f (deg)' % self.phi)
+        print(' Drive is: %.2f (N)'   % self.Fx)
+        print(' SSF is:   %.2f (N)'   % self.Fy)
+        print(' HM is:    %.2f (Nm)'  % self.Mx)
+        print(' Cl is :   %.2f (-)'   % self.cl)
+        print(' Cd is :   %.2f (-)'   % self.cd)
 
 
 if __name__ == "__main__":
