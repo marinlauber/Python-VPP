@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+__author__ = "Marin Lauber"
+__copyright__ = "Copyright 2020, Marin Lauber"
+__license__ = "GPL"
+__version__ = "1.0.1"
+__email__  = "M.Lauber@soton.ac.uk"
+
 import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
@@ -14,21 +23,15 @@ class AeroMod(object):
         self.twa = 40.
         self.vb = 5.06*0.5144
         self.phi = 20.
+
         self.flat = 1.
-        self.b = 11.53
-        self.HBI = 1.
 
         # are we upwind?
         self.up = True
 
-        # set sails
+        # set sails and measure what is need once
         self.sails = sails
-
-        fractionality = 0.92 #I_current / (P + BAS)
-        overlap = 0.93 #LGP_current / J
-        roach = 0.94
-        self.eff_span_corr = 1.1*0.8*(roach-0.2)+0.5*(0.68+0.31*fractionality+0.0075*overlap-1.1)
-
+        self._measure_sails()
 
         # coeffs interp function
         self.fcdmult = self._build_interp_func('fcdmult')
@@ -42,6 +45,31 @@ class AeroMod(object):
         self._update_windTriangle()
         self._area()
         self._compute_forces()
+
+
+    def _measure_sails(self):
+        self.fractionality = 1.
+        for sail in self.sails:
+            if sail.type=='main':
+                self.fractionality /= (sail.P + sail.BAD)
+                b1 = sail.P + sail.BAD
+                self.roach = sail.roach
+            if sail.type=='jib':
+                self.fractionality *= sail.I
+                b2 = sail.I
+                self.overlap = sail.LPG / sail.J
+                self.HBI = sail.HBI
+        self.eff_span_corr = 1.1 + 0.08*(self.roach-0.2) + \
+                             0.5*(0.68+0.31*self.fractionality+0.0075*self.overlap-1.1)
+        self.b = max(b1,b2)
+        self.heff_height_max_spi = self.b
+
+
+    def _init(self, tws, twa, vb, phi):
+        self.tws = tws
+        self.twa = twa
+        self.vb = vb
+        self.phi = phi
 
 
     # prototype top function in hydro mod
@@ -61,13 +89,6 @@ class AeroMod(object):
         return self.Fx, self.Fy, self.Mx
 
 
-    def _set(self, tws, twa, vb, phi):
-        self.tws = tws
-        self.twa = twa
-        self.vb = vb
-        self.phi = phi
-
-
     def _compute_forces(self):
         '''
         Computes forces for equilibrium.
@@ -85,7 +106,7 @@ class AeroMod(object):
         self.Fx = self.lift*np.sin(twa) - self.drag*np.cos(twa)
         self.Fy = self.lift*np.cos(twa) + self.drag*np.sin(twa)
         # heeling moment
-        self.Mx = self.Fy * self._vce() * np.cos(np.deg2rad(self.phi_up()))
+        self.Mx = self.Fy * self._vce() * np.cos(np.deg2rad(self.phi))
 
     
     def _get_coeffs(self):
@@ -93,17 +114,20 @@ class AeroMod(object):
         generate sail-set total lift and drag coefficient.
         '''
         # lift (Clmax) and parasitic drag (Cd0max)
-        self.cl = 0.; self.cd = 0.; par = 0.
+        self.cl = 0.; self.cd = 0.; kpp = 0.
+
         for sail in self.sails:
+
             self.cl += sail.cl(self.awa) * sail.area * sail.bk
             self.cd += sail.cd(self.awa) * sail.area * sail.bk
-            par += sail.cl(self.awa)**2 * sail.area * sail.bk * sail.kp
-        self.cl /= self.area; self.cd /= self.area
+            kpp += sail.cl(self.awa)**2 * sail.area * sail.bk * sail.kp
+
+        self.cl /= self.area
+        self.cd /= self.area
 
         # viscous quadratic parasitic drag and induced drag
-        cl2 = max(0.1,self.cl**2)
-        self.CE = par/(self.area * cl2) + self.area / (np.pi * self._heff(self.awa)**2)
-
+        self.CE = kpp/(self.area * self.cl**2) + self.area / (np.pi * self._heff(self.awa)**2)
+ 
         # fraction of parasitic drag due to jib
         for sail in self.sails:
             if sail.type=='jib':
@@ -144,7 +168,7 @@ class AeroMod(object):
             if(sail.up==self.up):
                 sum += sail.area*sail.vce*sail.bk
         self._area()
-        return sum / self.area
+        return sum/self.area*(1-0.203*(1-self.flat)-0.451*(1-self.flat)*(1-self.fractionality))
 
 
     def phi_up(self):
@@ -156,7 +180,12 @@ class AeroMod(object):
 
     def _heff(self, awa):
         awa = max(0, min(awa, 180))
-        return (self.b + self.HBI) * self.eff_span_corr * self.kheff(awa)
+        if self.up:
+            cheff =  self.eff_span_corr * self.kheff(awa)
+        else:
+            cheff =  1./self.b * self.reef * self.heff_height_max_spi
+        return (self.b + self.HBI) * cheff
+        
 #
 # -- utility functions
 #

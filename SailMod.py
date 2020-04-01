@@ -1,3 +1,12 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+__author__ = "Marin Lauber"
+__copyright__ = "Copyright 2020, Marin Lauber"
+__license__ = "GPL"
+__version__ = "1.0.1"
+__email__  = "M.Lauber@soton.ac.uk"
+
 import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
@@ -5,6 +14,7 @@ import matplotlib.pyplot as plt
 class Sail(object):
 
     def __init__(self, type, area, vce, up=True):
+        
         self.type = type
         self.area = area
         self.vce  = vce
@@ -47,19 +57,26 @@ class Sail(object):
 
 
 class Main(Sail):
-    def __init__(self, area, vce, P=0):
+    def __init__(self, P, E, Roach, BAD):
         self.type = 'main'
-        self.area = area
-        self.roach = 0.
-        self.vce =  vce + 0.024*P # (5.7)
+        self.P = P
+        self.E = E
+        self.roach = Roach
+        self.BAD = BAD
+        self.area = P*E*(1+self.roach)
+        self.vce =  P/3.*(1+self.roach) + BAD
         super().__init__(self.type, self.area, self.vce)
 
 
 class Jib(Sail):
-    def __init__(self, area, vce):
+    def __init__(self, I, J, LPG, HBI):
         self.type = 'jib'
-        self.area = area
-        self.vce = vce
+        self.I = I
+        self.J = J
+        self.LPG = LPG
+        self.HBI = HBI
+        self.area = 0.5 * I * max(J, LPG)
+        self.vce = I/3. + HBI
         super().__init__(self.type, self.area, self.vce)
 
 
