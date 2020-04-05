@@ -24,16 +24,18 @@ class HydroMod(object):
 
         # store yacht data
         self.yacht = yacht
+        self.yacht.rho = self.rho
+        self.yacht.g = self.g
+
+        # maximum allows heel angle
+        self.phi_max = 30.0
 
         # measure yacht to get dimensions
-        self.l,self.vol,self.bwl,self.tc,self.wsa = self.yacht.measure()
+        self.l,self.vol,self.mass,self.bwl,self.tc,self.wsa = self.yacht.measure()
         self.lms,self.lvr,self.btr = self.yacht.measureLSM()
 
         # get resistance surfaces from ORC
         self.__load_data()
-
-        # populate once
-        _, _, _ = self.update(0.,0.)
 
 
     def __load_data(self):
@@ -51,10 +53,11 @@ class HydroMod(object):
         self._interp_Rr = interpolate.RegularGridInterpolator((fn, btr, lvr), data)
     
 
-    def _init(self, vb0, phi0):
-        self.vb = vb0
-        self.phi = phi0
-        
+    def _set(self, vb, phi, leeway):
+        self.vb = vb
+        self.phi = phi
+        self.leeway = leeway
+
 
     def _get_Rr(self):
         """
@@ -62,12 +65,13 @@ class HydroMod(object):
         """
         fn = max(0.0, (min(self.fn, 0.7)))
         # Note:  To convert to drag in Newtons multiply the values by displacement and 9.81 then divide by 1000.
-        Rr = self._interp_Rr((fn,self.btr,self.lvr)) * self.vol * self.rho * self.g * 1e-3
-        # for appendages in self.yacht.appendages:
-        #     btr = appendages.btr
-        #     lvr = appendages.lvr
-        #     # for now appendages have no volume (no Rr_app)
-        #     Rr += self._interp_Rr((fn,btr,lvr)) * appendages.vol * self.rho * self.g * 1e-3
+        Rr = self._interp_Rr((fn,self.btr,self.lvr))*self.mass*self.g*1e-3
+        for appendage in self.yacht.appendages:
+            # for now appendages have no volume (no Rr_app)
+            Rr += appendage._cr(fn)*appendage.vol*self.rho*self.g*1e-3
+        # correct for immersed rail 
+        if self.phi >= 30.:
+            Rr *= (1+0.0004*(self.phi-30.0)**2)
         return Rr
     
 
@@ -78,8 +82,51 @@ class HydroMod(object):
         # length correction and form factor of 1.05
         Rv = 0.5*self.rho*self.wsa*self.vb**2*self._cf(0.85*self.lsm) * 1.05
         for appendages in self.yacht.appendages:
-            Rv += 0.5*self.rho*appendages.wsa*self.vb**2*self._cf(appendages.chord)
+            Rv += 0.5*self.rho*appendages.wsa*self.vb**2*self._cf(appendages.chord)*appendages.cof
         return Rv
+
+
+    def _get_Ri(self):
+
+        self.Ksf = self._get_Ksf()
+
+        # prevent code from crashing
+        if self.vb == 0.0: return 0.0
+
+        # required total coeff of lift area
+        tcla = self.Ksf / (0.5*self.rho*self.vb**2)
+
+        # actual coeff of list area
+        cla = []; teff = []
+        cla.append(self.yacht.cla)
+        teff.append(self.yacht.teff)
+        for app in self.yacht.appendages:
+            ff = 1.
+            if app.type=='rudder':
+                # rudder influence gradually ramped up to twice its area
+                ff = np.where(self.phi<=30,1+0.5*(1-np.cos(self.phi/30.*np.pi)),1.)
+            #  no buld contribution to side force
+            if app.type == 'buld': ff = 0.
+            cla.append(app.cla*ff)
+            teff.append(app.teff)
+
+        # resulting leeway angle
+        self.leeway = tcla / sum(cla)
+        self.Teff = np.array(teff)
+
+        # contribution of each
+        self.Ksfj = self.Ksf * (np.array(cla) / sum(cla))
+        Ri = self.Ksfj**2 / (0.5*self.rho*self.vb**2*np.pi*self.Teff**2)
+
+        return sum(Ri)
+    
+
+    def _get_Ksf(self):
+        Ksf = 0.
+        for app in self.yacht.appendages:
+            if app.type=='keel':
+                Ksf += 0.5*self.rho*self.vb**2*app.area*app._cl(self.leeway)
+        return Ksf
 
 
     def _cf(self, L):
@@ -87,36 +134,42 @@ class HydroMod(object):
         Flate plate turbulent boudnary layer friction coefficient.
         Take a length scale, such that it can be used for appendags as well
         """
-        self.Re = max(1., self.vb*L/self.nu) # prevents dividing by zero
+        self.Re = max(1e4, self.vb*L/self.nu) # prevents dividing by zero, lowest for turbulence on plate
         return 0.066*(np.log10(self.Re)-2.03)**(-2)
 
 
-    def update(self, vb, phi):
+    def update(self, vb, phi, leeway):
 
-        self.vb = vb
-        self.phi = phi
+        self.vb = max(0, vb)
+        self.phi = max(0, phi)
+        self.leeway = leeway
         self.lsm, self.lvr, self.btr = self.yacht.measureLSM()
         self.fn = self.vb / (np.sqrt(self.g*self.lsm))
 
         # resistance
-        self.Fx = self._get_Rr() + self._get_Rv()
-        self.Fy = self._get_Ksf()
+        self.Fx = self._get_Rr() + self._get_Rv() + self._get_Ri() 
 
-        # measure righting moment, bounded to 45 degrees of heel
-        phi = max(0,min(self.phi,45))
-        self.Mx = self.yacht._get_gz(phi)*self.vol*self.rho*self.g + self._rmv(self.vb)
+        # keel side force, calculated when _get_Ri() is called
+        self.Fy = self.Ksf
+
+        # measure righting moment
+        self._limit_heel()
+        self.Mx = self.yacht._get_RmH(self.phi) + self._get_RmV(self.vb)
+        # add crew and keel (lift) contribution
+        self.Mx += self.yacht._get_RmC(self.phi) - self.Ksf*self.yacht.Rm4
+        self.Fy *= np.cos(self.phi/180.*np.pi)
 
         return self.Fx, self.Fy, self.Mx
 
     
-    def _get_Ksf(self):
-        return 0.
+    def _limit_heel(self):
+        self.phi = max(0,min(self.phi,self.phi_max))
 
-
+    
      # dynamic RM
-    def _rmv(self, vb):
-        return (5.955e-5/3.) * self.vol*self.lsm*(1-6.25*(self.bwl/np.sqrt(self.yacht.amax))) \
-               *self.phi*self.vb/self.lsm
+    def _get_RmV(self, vb):
+        return (5.955e-5/3.)*self.vol*self.lsm*(1-6.25*(self.bwl/np.sqrt(self.yacht.amax))) \
+               *self.vb/self.lsm*self.phi
 
 
     # old Delft Method
@@ -176,17 +229,19 @@ class HydroMod(object):
 
 
     def print_state(self):
-        print('HydroMod state:')
-        print(' Lwl is:   %.2f (m)'   % self.l)
-        print(' Bwl is:   %.2f (m)'   % self.bwl)
-        print(' Tc  is:   %.2f (m)'   % self.tc)
-        print(' Vb  is:   %.2f (m/s)' % self.vb)
-        print(' Fn  is:   %.2f (-)'   % self.fn)
-        print(' BTR is:   %.2f (-)'   % self.btr)
-        print(' LVR is:   %.2f (-)'   % self.lvr)
-        print(' Rtot is:  %.2f (N)'   % self.Fx)
-        print(' KSF is:   %.2f (N)'   % self.Fy)
-        print(' RM is:    %.2f (Nm)'  % self.Mx)
+        self.update(self.vb,self.phi,self.leeway)
+        print('HydroMod state :')
+        print(' Lwl is :   %.2f (m)'   % self.l)
+        print(' Bwl is :   %.2f (m)'   % self.bwl)
+        print(' Tc  is :   %.2f (m)'   % self.tc)
+        print(' Vb  is :   %.2f (m/s)' % self.vb)
+        print(' Fn  is :   %.2f (-)'   % self.fn)
+        print(' Lway is :  %.2f (-)'   % self.leeway)
+        print(' BTR is :   %.2f (-)'   % self.btr)
+        print(' LVR is :   %.2f (-)'   % self.lvr)
+        print(' Rtot is :  %.2f (N)'   % self.Fx)
+        print(' KSF is :   %.2f (N)'   % self.Fy)
+        print(' RM is :    %.2f (Nm)'  % self.Mx)
 
 
 if __name__ == "__main__":

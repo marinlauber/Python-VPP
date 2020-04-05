@@ -8,22 +8,17 @@ __version__ = "1.0.1"
 __email__  = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from scipy import interpolate
+from scipy.interpolate import interp1d
+from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
-from SailMod import Main,Jib
+from SailMod import Main, Jib
 
 class AeroMod(object):
 
-    def __init__(self, sails):
+    def __init__(self, sails, Ff=1.5, Fa=1.5, B=4.2, L=12.5):
         '''
         Initializes an Aero Model, given a set of sails
         '''
-        # minimal init ALL units in m/s, kg, degrees
-        self.tws = 12.*0.5144
-        self.twa = 40.
-        self.vb = 5.06*0.5144
-        self.phi = 20.
-
         self.flat = 1.
 
         # are we upwind?
@@ -41,10 +36,10 @@ class AeroMod(object):
         self.rho = 1.225
         self.mu = 0.0000181
 
-        # basic forces
-        self._update_windTriangle()
-        self._area()
-        self._compute_forces()
+        # this must be wrapped into a boat!
+        self.B = B
+        self.L = L
+        self.FBAV = 0.625*Ff+0.375*Fa
 
 
     def _measure_sails(self):
@@ -65,11 +60,13 @@ class AeroMod(object):
         self.heff_height_max_spi = self.b
 
 
-    def _init(self, tws, twa, vb, phi):
+    def _set(self, vb, phi, tws, twa):
         self.tws = tws
         self.twa = twa
         self.vb = vb
         self.phi = phi
+        
+        self._update_windTriangle()
 
 
     # prototype top function in hydro mod
@@ -77,8 +74,8 @@ class AeroMod(object):
         '''
         Update the aero model for current iter
         '''
-        self.vb = vb
-        self.phi = phi
+        self.vb = max(0, vb)
+        self.phi = max(0, phi)
         self.tws = tws
         self.twa = twa
 
@@ -96,17 +93,33 @@ class AeroMod(object):
         # get new coeffs
         self._get_coeffs()
 
+        # instead of writing many time
+        awa = self.awa/180.*np.pi
+
         # lift and drag
         self.lift = 0.5*self.rho*self.aws**2*self.area*self.cl
-        self.drag = 0.5*self.rho*self.aws**2*self.area*self.cd
+        self.drag = 0.5*self.rho*self.aws**2*self.area*self.cd + self._get_Rw(awa)
 
-        # instead of writing many time
-        twa = np.deg2rad(self.twa)
         # project into yacht coordinate system
-        self.Fx = self.lift*np.sin(twa) - self.drag*np.cos(twa)
-        self.Fy = self.lift*np.cos(twa) + self.drag*np.sin(twa)
+        self.Fx = self.lift*np.sin(awa) - self.drag*np.cos(awa)
+        self.Fy = self.lift*np.cos(awa) + self.drag*np.sin(awa)
+
         # heeling moment
-        self.Mx = self.Fy * self._vce() * np.cos(np.deg2rad(self.phi))
+        self.Mx = self.Fy * self._vce() * np.cos(self.phi/180.*np.pi)
+
+        # side-force is horizontal component of Fh
+        self.Fy *= np.cos(np.deg2rad(self.phi))
+
+    
+    def _get_Rw(self, awa):
+        Rw = 0.5*self.rho*self.aws**2*self._get_Aref(awa)*0.816
+        return Rw * np.cos(awa/180.*np.pi)
+
+    
+    def _get_Aref(self, awa):
+        # only hull part
+        d = 0.5*(1-np.cos(awa/90.*np.pi))
+        return self.FBAV*((1-d)*self.B + d*self.L)
 
     
     def _get_coeffs(self):
@@ -143,10 +156,10 @@ class AeroMod(object):
         '''
         find AWS and AWA for a given TWS, TWA and VB
         '''
-        a = self.tws*np.sin(np.deg2rad(self.twa))*np.cos(np.deg2rad(self.phi_up()))
-        b = self.tws*np.cos(np.deg2rad(self.twa))+self.vb
-        self.awa = np.rad2deg(np.arctan(a/b))
-        self.aws = np.sqrt(a**2 + b**2)
+        _awa_ = lambda awa : self.vb*np.sin(awa/180.*np.pi)-self.tws*np.sin((self.twa-awa)/180.*np.pi)
+        self.awa = fsolve(_awa_, self.twa)[0]
+        self.aws = np.sqrt((self.tws*np.sin(self.twa/180.*np.pi))**2 + \
+                           (self.tws*np.cos(self.twa/180.*np.pi) + self.vb)**2)
 
 
     def _area(self):
@@ -173,13 +186,13 @@ class AeroMod(object):
 
     def phi_up(self):
         '''
-        heel angle correction for AWA and AWS (5.51)
+        heel angle correction for AWA and AWS (5.51), this is in Radians!
         '''
-        return 0.5*(self.phi+10*(self.phi/30.)**2)
+        return 0.5*(self.phi+10*(self.phi/30.)**2)/180.*np.pi
 
 
     def _heff(self, awa):
-        awa = max(0, min(awa, 180))
+        awa = max(0,min(awa, 90))
         if self.up:
             cheff =  self.eff_span_corr * self.kheff(awa)
         else:
@@ -195,7 +208,8 @@ class AeroMod(object):
         '''
         a = np.genfromtxt('dat/'+fname+'.dat',delimiter=',',skip_header=1)
         # linear for now, this is not good, might need to polish data outside
-        return interpolate.interp1d(a[0,:],a[1,:],kind=kind)
+        return interp1d(a[0,:],a[1,:],kind=kind)
+
 
     def debbug(self):
         for sail in self.sails:
@@ -212,23 +226,28 @@ class AeroMod(object):
         plt.plot(awa,res2)
         plt.show()
 
+
     def print_state(self):
+        self.update(self.vb,self.phi,self.tws,self.twa)
         print('AeroMod state:')
-        print(' TWA is:   %.2f (deg)' % self.twa)
-        print(' TWS is:   %.2f (m/s)' % self.tws)
-        print(' AWA is:   %.2f (deg)' % self.awa)
-        print(' AWS is:   %.2f (m/s)' % self.aws)
+        print(' TWA is :  %.2f (deg)' % self.twa)
+        print(' TWS is :  %.2f (m/s)' % self.tws)
+        print(' AWA is :  %.2f (deg)' % self.awa)
+        print(' AWS is :  %.2f (m/s)' % self.aws)
         print(' Vb is :   %.2f (m/s)' % self.vb)
-        print(' Heel is   %.2f (deg)' % self.phi)
+        print(' Heel is : %.2f (deg)' % self.phi)
         print(' Drive is: %.2f (N)'   % self.Fx)
-        print(' SSF is:   %.2f (N)'   % self.Fy)
-        print(' HM is:    %.2f (Nm)'  % self.Mx)
+        print(' SSF is :  %.2f (N)'   % self.Fy)
+        print(' HM is :   %.2f (Nm)'  % self.Mx)
         print(' Cl is :   %.2f (-)'   % self.cl)
         print(' Cd is :   %.2f (-)'   % self.cd)
+        print(' Sail area:')
+        for sail in self.sails:
+            print(' - '+sail.type+' : %.2f (m^2)' % sail.area)
 
 
-if __name__ == "__main__":
-    aero = AeroMod(sails=[Main(24.5, 5.5),
-                          Jib(17.3, 4.4)])
-    aero.debbug()
-    aero.print_state()
+# if __name__ == "__main__":
+    # aero = AeroMod(sails=[Main(24.5, 5.5),
+    #                       Jib(17.3, 4.4)])
+    # aero.debbug()
+    # aero.print_state()

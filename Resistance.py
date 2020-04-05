@@ -9,13 +9,18 @@ __email__  = "M.Lauber@soton.ac.uk"
 
 import numpy as np
 from HydroMod import HydroMod
-from YachtMod import Yacht
+from YachtMod import Yacht, Keel, Rudder
 
 if __name__ == "__main__":
-    
-    Vismara = HydroMod(Yacht(Lwl=12.91, Vol=5.521,
-                             Bwl=3.050, Tc=0.393,
-                             WSA=27.387, Tmax=2.44,
-                             Amax=0.831))
 
-    Vismara.show_resistance(np.linspace(0, 12, 24))
+    # test with YD-41 from Larsson
+    Keel  =  Keel(Cu=1.00,Cl=0.78,Span=1.90)
+    Rudder = Rudder(Cu=0.48,Cl=0.22,Span=1.15)
+    
+    YD41 = HydroMod(Yacht(Lwl=11.90,Vol=6.05,
+                          Bwl=3.18,Tc=0.4,
+                          WSA=28.20,Tmax=2.30,
+                          Amax=1.051,Mass=6500,
+                          App=[Keel,Rudder]))
+
+    YD41.show_resistance(vb=np.linspace(0, 12, 24))

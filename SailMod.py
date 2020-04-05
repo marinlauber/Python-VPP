@@ -63,7 +63,7 @@ class Main(Sail):
         self.E = E
         self.roach = Roach
         self.BAD = BAD
-        self.area = P*E*(1+self.roach)
+        self.area = 0.5*P*E*(1+self.roach)
         self.vce =  P/3.*(1+self.roach) + BAD
         super().__init__(self.type, self.area, self.vce)
 
