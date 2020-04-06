@@ -10,7 +10,7 @@ __email__  = "M.Lauber@soton.ac.uk"
 import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
-from YachtMod import Yacht, Appendage
+from src.YachtMod import Yacht, Appendage
 
 class HydroMod(object):
 

@@ -11,7 +11,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
-from SailMod import Main, Jib
+from src.SailMod import Main, Jib
 
 class AeroMod(object):
 

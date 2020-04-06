@@ -8,8 +8,8 @@ __version__ = "1.0.1"
 __email__  = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from HydroMod import HydroMod
-from YachtMod import Yacht, Keel, Rudder
+from src.HydroMod import HydroMod
+from src.YachtMod import Yacht, Keel, Rudder
 
 if __name__ == "__main__":
 
