@@ -81,9 +81,17 @@ class Jib(Sail):
 
 
 class Kite(Sail):
-    def __init__(self, SLU, SLE, SFL, SHW, ISP, J, SPL):
+    def __init__(self, area, vce):
         self.type = 'kite'
-        area_d = 1.14*np.sqrt(ISP**2+J**2)*max(SPL,J) # only for symm kite
-        self.area = max(area_d, 0.5*(SLU+SLE)*(SFL+4*SHW)/6.)
-        self.vce = 0.565*ISP # above base of I
+        self.area = area
+        self.vce = vce
         super().__init__(self.type, self.area, self.vce, up=False)
+
+
+# class Kite(Sail):
+#     def __init__(self, SLU, SLE, SFL, SHW, ISP, J, SPL):
+#         self.type = 'kite'
+#         area_d = 1.14*np.sqrt(ISP**2+J**2)*max(SPL,J) # only for symm kite
+#         self.area = max(area_d, 0.5*(SLU+SLE)*(SFL+4*SHW)/6.)
+#         self.vce = 0.565*ISP # above base of I
+#         super().__init__(self.type, self.area, self.vce, up=False)

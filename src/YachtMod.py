@@ -43,7 +43,10 @@ class Appendage(object):
 
 
     def _cr(self, fn):
-        return self._interp_cr(fn)
+        return self._interp_cr(max(0.0,min(fn,0.6)))
+
+    def _Ksff(self, phi):
+        return 1.0
 
 
     def _build_interp_func(self, fname, i=1, kind='linear'):
@@ -64,9 +67,6 @@ class Appendage(object):
         print('CE : ', self.ce)
 
     
-
-
-
 class Keel(Appendage):
     def __init__(self, Cu=1, Cl=1, Span=0):
         self.type = 'keel'
@@ -92,6 +92,10 @@ class Rudder(Appendage):
         self.cof = 1.21 # correction coeff for t/c 10%
         self.vol = 0.666*self.chord*1.1*self.span
         super().__init__(self.type, self.chord, self.area, self.span, self.vol, self.ce)
+
+    def _Ksff(self, phi):
+        # rudder influence gradually ramped up to twice its area
+        return np.where(phi<=30,1+0.5*(1-np.cos(phi/30.*np.pi)),1.)
 
 class Bulb(Appendage):
     def __init__(self, Chord, area, vol, CG):
@@ -177,7 +181,7 @@ class Yacht(object):
     
     def _get_RmC(self, phi):
         RmC =  self.carm*(self.cw+0.7*self.bmax*self.bdwt)*np.cos(np.deg2rad(phi))
-        # grdually ramp-up crew Rm from 2.5 to 7.5 degrees of heel.
+        # gradually ramp-up crew Rm from 2.5 to 7.5 degrees of heel.
         return RmC*np.where(phi<=7.5,0.5*(1-np.cos(np.maximum(0,phi-2.5)/5.*np.pi)),1.)
 
 

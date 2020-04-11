@@ -27,9 +27,6 @@ class HydroMod(object):
         self.yacht.rho = self.rho
         self.yacht.g = self.g
 
-        # maximum allows heel angle
-        self.phi_max = 30.0
-
         # measure yacht to get dimensions
         self.l,self.vol,self.mass,self.bwl,self.tc,self.wsa = self.yacht.measure()
         self.lms,self.lvr,self.btr = self.yacht.measureLSM()
@@ -51,12 +48,6 @@ class HydroMod(object):
         # build interpolation function for 3D data
         data = np.zeros(((25,41,41))); data[1:,:,:] = surf[:,2:,1:]
         self._interp_Rr = interpolate.RegularGridInterpolator((fn, btr, lvr), data)
-    
-
-    def _set(self, vb, phi, leeway):
-        self.vb = vb
-        self.phi = phi
-        self.leeway = leeway
 
 
     def _get_Rr(self):
@@ -88,45 +79,24 @@ class HydroMod(object):
 
     def _get_Ri(self):
 
-        self.Ksf = self._get_Ksf()
-
-        # prevent code from crashing
+        # prevent from crashing
         if self.vb == 0.0: return 0.0
 
-        # required total coeff of lift area
-        tcla = self.Ksf / (0.5*self.rho*self.vb**2)
+        # reset each time
+        self.cla = self.yacht.cla
+        self.Teff = self.yacht.teff
 
-        # actual coeff of list area
-        cla = []; teff = []
-        cla.append(self.yacht.cla)
-        teff.append(self.yacht.teff)
-        for app in self.yacht.appendages:
-            ff = 1.
-            if app.type=='rudder':
-                # rudder influence gradually ramped up to twice its area
-                ff = np.where(self.phi<=30,1+0.5*(1-np.cos(self.phi/30.*np.pi)),1.)
-            #  no buld contribution to side force
-            if app.type == 'buld': ff = 0.
-            cla.append(app.cla*ff)
-            teff.append(app.teff)
+        for appendage in self.yacht.appendages:
+            self.cla =  np.hstack((self.cla, appendage.cla*appendage._Ksff(self.phi)))
+            self.Teff = np.hstack((self.Teff,appendage.teff))
 
-        # resulting leeway angle
-        self.leeway = tcla / sum(cla)
-        self.Teff = np.array(teff)
+        self.Ksfj = 0.5*self.rho*self.vb**2*self.cla*self.leeway/180.0*np.pi
+        self.Ksf = np.sum(self.Ksfj)
 
         # contribution of each
-        self.Ksfj = self.Ksf * (np.array(cla) / sum(cla))
         Ri = self.Ksfj**2 / (0.5*self.rho*self.vb**2*np.pi*self.Teff**2)
 
         return sum(Ri)
-    
-
-    def _get_Ksf(self):
-        Ksf = 0.
-        for app in self.yacht.appendages:
-            if app.type=='keel':
-                Ksf += 0.5*self.rho*self.vb**2*app.area*app._cl(self.leeway)
-        return Ksf
 
 
     def _cf(self, L):
@@ -153,7 +123,7 @@ class HydroMod(object):
         self.Fy = self.Ksf
 
         # measure righting moment
-        self._limit_heel()
+        # self._limit_heel()
         self.Mx = self.yacht._get_RmH(self.phi) + self._get_RmV(self.vb)
         # add crew and keel (lift) contribution
         self.Mx += self.yacht._get_RmC(self.phi) - self.Ksf*self.yacht.Rm4
@@ -162,8 +132,8 @@ class HydroMod(object):
         return self.Fx, self.Fy, self.Mx
 
     
-    def _limit_heel(self):
-        self.phi = max(0,min(self.phi,self.phi_max))
+    # def _limit_heel(self):
+    #     self.phi = max(0,min(self.phi,self.phi_max))
 
     
      # dynamic RM

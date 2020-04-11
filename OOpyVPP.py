@@ -12,7 +12,7 @@ import numpy as np
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
 from src.YachtMod import Yacht, Keel, Rudder
-from src.SailMod import Main, Jib
+from src.SailMod import Main, Jib, Kite
 from src.VPPMod import VPP
 
 if __name__ == "__main__":
@@ -26,12 +26,13 @@ if __name__ == "__main__":
                                 WSA=28.20,Tmax=2.30,
                                 Amax=1.051,Mass=6500,
                                 App=[Keel,Rudder]))
-    aero = AeroMod(sails=[Main(P=16.60,E=5.60,Roach=0.1,BAD=1.),
-                          Jib(I=16.20,J=5.10,LPG=5.40,HBI=1.8)],
+    aero = AeroMod(sail_quiver=[Main(P=16.60,E=5.60,Roach=0.1,BAD=1.),
+                                Jib(I=16.20,J=5.10,LPG=5.40,HBI=1.8),
+                                Kite(area=115.6,vce=9.55)],
                 Ff=1.5, Fa=1.5, B=4.20, L=12.50)
 
     vpp = VPP(AeroMod=aero, HydroMod=hydro)
-    vpp.set_analysis(tws_range=np.array([5.0, 7.0]),
-                     twa_range=np.linspace(30.0,140.0,23))
+    vpp.set_analysis(tws_range=np.array([8.0,10.0]),
+                    twa_range=np.linspace(30.0,180.0,34))
     vpp.run(verbose=True)
     vpp.polar()

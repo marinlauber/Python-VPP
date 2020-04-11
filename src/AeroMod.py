@@ -15,17 +15,19 @@ from src.SailMod import Main, Jib
 
 class AeroMod(object):
 
-    def __init__(self, sails, Ff=1.5, Fa=1.5, B=4.2, L=12.5):
+    def __init__(self, sail_quiver, Ff=1.5, Fa=1.5, B=4.2, L=12.5):
         '''
         Initializes an Aero Model, given a set of sails
         '''
         self.flat = 1.
+        self.reef = 1.
 
         # are we upwind?
         self.up = True
 
         # set sails and measure what is need once
-        self.sails = sails
+        self.sail_quiver = sail_quiver
+        self.sails = sail_quiver[:2]
         self._measure_sails()
 
         # coeffs interp function
@@ -60,15 +62,6 @@ class AeroMod(object):
         self.heff_height_max_spi = self.b
 
 
-    def _set(self, vb, phi, tws, twa):
-        self.tws = tws
-        self.twa = twa
-        self.vb = vb
-        self.phi = phi
-        
-        self._update_windTriangle()
-
-
     # prototype top function in hydro mod
     def update(self, vb, phi, tws, twa):
         '''
@@ -78,6 +71,8 @@ class AeroMod(object):
         self.phi = max(0, phi)
         self.tws = tws
         self.twa = twa
+        # gradual flatening of the sails with tws increase
+        self.flat = np.where(tws>0.0,0.6+0.4*np.cos(tws/35.*np.pi),1.0)
 
         self._update_windTriangle()
         self._area()
@@ -142,6 +137,7 @@ class AeroMod(object):
         self.CE = kpp/(self.area * self.cl**2) + self.area / (np.pi * self._heff(self.awa)**2)
  
         # fraction of parasitic drag due to jib
+        self.fcdj = 0.
         for sail in self.sails:
             if sail.type=='jib':
                 self.fcdj = sail.bk * sail.cd(self.awa) * sail.area/(self.cd * self.area)
@@ -168,8 +164,7 @@ class AeroMod(object):
         '''
         self.area = 0.
         for sail in self.sails:
-            if(sail.up==self.up):
-                self.area += sail.area
+            self.area += sail.area
 
 
     def _vce(self):
@@ -178,8 +173,8 @@ class AeroMod(object):
         '''
         sum = 0.
         for sail in self.sails:
-            if(sail.up==self.up):
-                sum += sail.area*sail.vce*sail.bk
+            # if(sail.up==self.up):
+            sum += sail.area*sail.vce*sail.bk
         self._area()
         return sum/self.area*(1-0.203*(1-self.flat)-0.451*(1-self.flat)*(1-self.fractionality))
 
@@ -212,7 +207,7 @@ class AeroMod(object):
 
 
     def debbug(self):
-        for sail in self.sails:
+        for sail in self.sail_quiver:
             sail.debbug_coeffs()
         flat = np.linspace(0,1,64)
         awa = np.linspace(0,90,64)
