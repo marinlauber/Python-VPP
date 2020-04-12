@@ -32,7 +32,9 @@ if __name__ == "__main__":
                 Ff=1.5, Fa=1.5, B=4.20, L=12.50)
 
     vpp = VPP(AeroMod=aero, HydroMod=hydro)
-    vpp.set_analysis(tws_range=np.array([8.0,10.0]),
-                    twa_range=np.linspace(30.0,180.0,34))
-    vpp.run(verbose=True)
+
+    vpp.set_analysis(tws_range=np.array([8.0,10.0,12.0,14.0]),
+                     twa_range=np.linspace(30.0,180.0,34))
+
+    vpp.run(verbose=False)
     vpp.polar()
