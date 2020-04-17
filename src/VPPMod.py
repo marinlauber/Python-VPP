@@ -24,11 +24,12 @@ from src.SailMod import Main, Jib
 
 class VPP(object):
 
-    def __init__(self, AeroMod, HydroMod):
+    def __init__(self, Yacht):
 
         # build model
-        self.aero = AeroMod
-        self.hydro = HydroMod
+        self.yacht = Yacht
+        self.aero = AeroMod(self.yacht)
+        self.hydro = HydroMod(self.yacht)
 
         # maximum allows heel angle
         self.phi_max = 100.0
@@ -54,7 +55,7 @@ class VPP(object):
             print('Anaylis only valid for TWA range : 0. < TWA < 180. degrees.')
         
         # prepare storage array
-        self.Nsails = len(self.aero.sail_quiver) - 1  # main not counted
+        self.Nsails = len(self.yacht.sails) - 1  # main not counted
         self.store = np.zeros((len(self.tws_range),len(self.twa_range),3*self.Nsails))
 
         if(self.debbug==True):
@@ -75,7 +76,7 @@ class VPP(object):
             
             for n in range(self.Nsails):
 
-                self.aero.sails[1] = self.aero.sail_quiver[n+1]
+                self.aero.sails[1] = self.yacht.sails[n+1]
 
                 print('Sail Config : ', self.aero.sails[0].type+' + '+self.aero.sails[1].type)
 
@@ -107,7 +108,7 @@ class VPP(object):
                         print()       
                     
                     self.hydro.update(res[0], res[1], res[2])
-                    self.aero.update(res[0], res[1], tws, twa)
+                    self.aero.update(res[0], res[1], tws, twa, 1.0)
 
                     # prepare next iteration
                     self.vb0 = self.hydro.vb
@@ -123,28 +124,12 @@ class VPP(object):
         vb0=x0[0]; phi0=x0[1]; leeway=x0[2] #; flat=x0[3]
 
         Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
-        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa)
+        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, 1.0)
 
         # heel angle penalty
         # dphi = np.where(phi0>=self.phi_max, phi0-self.phi_max, 0.0)
 
         return [(Fxh - Fxa)**2, (Mxh - Mxa)**2, (Fyh - Fya)**2]
-
-
-    # This is the cost function we want to minimize
-    # def _func(self, X, twa, tws):
-    #     vb   = X[0]; phi  = X[1]
-    #     lam1 = X[2]; lam2 = X[3]
-    #     return vb + lam1* + lam2*R + lam2*ResMx
-    # # numercial derivative of the cost function, what we actually solve
-    # def _dfunc(self, X, twa, tws):
-    #     dLambda = np.zeros(len(X))
-    #     h = 1e-3 # this is the step size used in the finite difference.
-    #     for i in range(len(X)):
-    #         dX = np.zeros(len(X))
-    #         dX[i] = h
-    #         dLambda[i] = (self._func(X+dX,twa,tws)-self._func(X-dX,twa,tws))/(2*h)
-    #     return dLambda
 
     
     def _get_VMG(self, vb):
@@ -247,87 +232,3 @@ if __name__ == "__main__":
                      twa_range=np.linspace(30.0,140.0,23))
     vpp.run(verbose=True)
     vpp.polar()
-
-
-
-
-      # def _set(self, tws, twa):
-    #     vb = 0.35*np.sqrt(self.hydro.l*self.hydro.g)
-    #     self.aero._set(vb, 0.0, self.tws, self.twa)
-    #     self.hydro._set(vb, 0.0, 0.0)
-
-
-    # def _find_equlibrium(self, twa, tws):
-        
-    #     # initial guess is current values
-    #     vec0 = [0.35*np.sqrt(self.hydro.l*self.hydro.g),
-    #             0.0, 0.0]
-
-    #     # initil gues as previous values
-    #     print('Running case: (%.2f, %.2f)' % (twa, tws))
-    #     print('Initial Guess for boat velocity: %.3f' % vec0[0])
-
-    #     # solve
-    #     res = fsolve(self._residuals,x0=vec0, args=(twa, tws))
-
-    #     self.aero.update(res[0],res[1],tws,twa)
-    #     self.hydro.update(res[0],res[1],res[2])
-
-    #     print('     Boat velocity : %.3f' % self.hydro.vb)
-    #     print('     Heel angle : %.3f' % self.hydro.phi)
-    #     print('     Leeway angle : %.3f' % self.hydro.leeway)
-    #     print()
-
-
-    # This is the cost function we want to minimize
-    # def _func(self, X, twa, tws):
-    #     vb   = X[0]; phi  = X[1]
-    #     lam1 = X[2]; lam2 = X[3]
-    #     return vb + lam1*self._res_Fx(vb,phi,twa,tws) + lam2*self._res_Mx(phi,vb,twa,tws)
-    # # numercial derivative of the cost function, what we actually solve
-    # def _dfunc(self, X, twa, tws):
-    #     dLambda = np.zeros(len(X))
-    #     h = 1e-3 # this is the step size used in the finite difference.
-    #     for i in range(len(X)):
-    #         dX = np.zeros(len(X))
-    #         dX[i] = h
-    #         dLambda[i] = (self._func(X+dX,twa,tws)-self._func(X-dX,twa,tws))/(2*h)
-    #     return dLambda
-    # def _res_Fx(self, vb, phi, twa, tws):
-    #     # update forces for current config
-    #     FxA, _, _ = self.aero.update(vb=vb, phi=phi, tws=tws, twa=twa)
-    #     FxH, _, _ = self.hydro.update(vb=vb, phi=phi)
-    #     # L-2 residuals
-    #     return (FxA - FxH)**2
-    # def _res_Mx(self, phi, vb, twa, tws):
-    #     # update forces for current config
-    #     _, _, MxA = self.aero.update(vb=vb, phi=phi, tws=tws, twa=twa)
-    #     _, _, MxH = self.hydro.update(vb=vb, phi=phi)
-    #     # L-2 residuals
-    #     return (MxA - MxH)**2
-
-
-    # def polar(self):
-    #     fig,(ax1,ax2) = plt.subplots(1,2,subplot_kw=dict(projection='polar'))
-    #     for i in range(self.store.shape[0]):
-    #         ax1.plot(np.deg2rad(self.twa_range),self.store[i,:,0]/0.5144,'-',lw=1)
-    #         ax2.plot(np.deg2rad(self.twa_range),self.store[i,:,1],'-',lw=1)
-
-    #     ax1.set_xticks(np.linspace(0,np.pi,7))  
-    #     ax1.set_theta_direction(-1)
-    #     ax1.set_theta_offset(np.pi/2.0)    
-    #     ax1.set_thetamin(0); ax1.set_thetamax(180)
-    #     ax1.set_xlabel(r'TWA ($^\circ$)')
-    #     ax1.set_ylabel(r'$V_B$ (knots)')
-
-    #     ax2.set_xticks(np.linspace(0,np.pi,7))  
-    #     ax2.set_theta_direction(-1)
-    #     ax2.set_theta_offset(np.pi/2.0)    
-    #     ax2.set_thetamin(0); ax2.set_thetamax(180)
-    #     ax2.set_xlabel(r'TWA ($^\circ$)')
-    #     ax2.set_ylabel(r'Heel ($\phi$) ($^\circ$)')
-    #     plt.tight_layout()
-    #     plt.show()
-
-
-

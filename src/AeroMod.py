@@ -15,33 +15,33 @@ from src.SailMod import Main, Jib
 
 class AeroMod(object):
 
-    def __init__(self, sail_quiver, Ff=1.5, Fa=1.5, B=4.2, L=12.5):
+    def __init__(self, Yacht, rho=1.225, mu=0.0000181):
         '''
         Initializes an Aero Model, given a set of sails
         '''
+        # physical params
+        self.rho = rho
+        self.mu = mu
         self.flat = 1.
         self.reef = 1.
 
-        # are we upwind?
-        self.up = True
-
         # set sails and measure what is need once
-        self.sail_quiver = sail_quiver
-        self.sails = sail_quiver[:2]
+        self.yacht = Yacht
+        self.sails = self.yacht.sails[:2]
+        # are we upwind?
+        self.up = self.sails[1].up
         self._measure_sails()
+        self._measure_windage()
 
         # coeffs interp function
         self.fcdmult = self._build_interp_func('fcdmult')
         self.kheff  =  self._build_interp_func('kheff')
-        
-        # physical params
-        self.rho = 1.225
-        self.mu = 0.0000181
 
-        # this must be wrapped into a boat!
-        self.B = B
-        self.L = L
-        self.FBAV = 0.625*Ff+0.375*Fa
+    
+    def _measure_windage(self):
+        self.boa = self.yacht.boa
+        self.loa = self.yacht.loa
+        self.fbav = 0.625*self.yacht.ff+0.375*self.yacht.fa
 
 
     def _measure_sails(self):
@@ -63,7 +63,7 @@ class AeroMod(object):
 
 
     # prototype top function in hydro mod
-    def update(self, vb, phi, tws, twa):
+    def update(self, vb, phi, tws, twa, flat):
         '''
         Update the aero model for current iter
         '''
@@ -71,8 +71,9 @@ class AeroMod(object):
         self.phi = max(0, phi)
         self.tws = tws
         self.twa = twa
-        # gradual flatening of the sails with tws increase
-        self.flat = np.where(tws>0.0,0.6+0.4*np.cos(tws/35.*np.pi),1.0)
+        # gradual flatening of the sails with tws increase, min is 0.62 from 17 knots
+        self.flat = np.where(tws<2.5,1,np.where(tws<8.5,0.81+0.19*np.cos((tws-2.5)/6*np.pi),0.62))
+        # self.flat = max(0.62,min(flat,1.0))
 
         self._update_windTriangle()
         self._area()
@@ -114,7 +115,7 @@ class AeroMod(object):
     def _get_Aref(self, awa):
         # only hull part
         d = 0.5*(1-np.cos(awa/90.*np.pi))
-        return self.FBAV*((1-d)*self.B + d*self.L)
+        return self.fbav*((1-d)*self.boa + d*self.loa)
 
     
     def _get_coeffs(self):
@@ -207,7 +208,7 @@ class AeroMod(object):
 
 
     def debbug(self):
-        for sail in self.sail_quiver:
+        for sail in self.yacht.sails:
             sail.debbug_coeffs()
         flat = np.linspace(0,1,64)
         awa = np.linspace(0,90,64)
@@ -223,7 +224,7 @@ class AeroMod(object):
 
 
     def print_state(self):
-        self.update(self.vb,self.phi,self.tws,self.twa)
+        self.update(self.vb,self.phi,self.tws,self.twa,self.twa)
         print('AeroMod state:')
         print(' TWA is :  %.2f (deg)' % self.twa)
         print(' TWS is :  %.2f (m/s)' % self.tws)
@@ -236,6 +237,7 @@ class AeroMod(object):
         print(' HM is :   %.2f (Nm)'  % self.Mx)
         print(' Cl is :   %.2f (-)'   % self.cl)
         print(' Cd is :   %.2f (-)'   % self.cd)
+        print(' Flat is : %.2f (-)'   % self.flat)
         print(' Sail area:')
         for sail in self.sails:
             print(' - '+sail.type+' : %.2f (m^2)' % sail.area)

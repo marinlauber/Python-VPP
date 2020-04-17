@@ -14,7 +14,7 @@ from src.YachtMod import Yacht, Appendage
 
 class HydroMod(object):
 
-    def __init__(self, yacht, rho=1025.0, mu=0.00119, g=9.81):
+    def __init__(self, Yacht, rho=1025.0, mu=0.00119, g=9.81):
 
         # physical parameters
         self.rho = rho
@@ -23,7 +23,7 @@ class HydroMod(object):
         self.nu  = self.mu/self.rho
 
         # store yacht data
-        self.yacht = yacht
+        self.yacht = Yacht
         self.yacht.rho = self.rho
         self.yacht.g = self.g
 

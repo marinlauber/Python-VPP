@@ -112,7 +112,8 @@ class Bulb(Appendage):
 
 class Yacht(object):
 
-    def __init__(self, Lwl, Vol, Bwl, Tc, WSA, Tmax, Amax, Mass, App=[]):
+    def __init__(self, Lwl, Vol, Bwl, Tc, WSA, Tmax, Amax, Mass,
+                Loa, Boa, Ff, Fa, App=[], Sails=[]):
         """
         Lwl : waterline length (m)
         Vol : volume of canoe body (m^3)
@@ -124,20 +125,23 @@ class Yacht(object):
         Mass : total mass of the yacht (kg)
         App : appendages (Appendages object as list, i.e [Keel(...)] )
         """
-        self.rho = 1025.
-        self.g = 9.81    
+        self.g = 9.81
 
         self.l = Lwl
         self.vol = Vol
         self.bwl = Bwl
-        self.bmax = 1.4*self.bwl
-        self.bdwt = 89.0 # standard crew weight
         self.tc = Tc
         self.wsa = WSA
         self.tmax = Tmax
-        self.Rm4 = 0.43*self.tmax
         self.amax = Amax
         self.mass = Mass
+        self.loa = Loa
+        self.boa = Boa
+        self.ff = Ff
+        self.fa = Fa
+        self.bmax = 1.4*self.bwl
+        self.bdwt = 89.0 # standard crew weight
+        self.Rm4 = 0.43*self.tmax
 
         # standard crew weight
         self.cw = 25.8*self.l**1.4262
@@ -150,6 +154,7 @@ class Yacht(object):
 
         # appednages object
         self.appendages = App
+        self.sails = Sails
 
         # righting moment interpolation function
         self._interp_rm = self._build_interp_func('rm')
