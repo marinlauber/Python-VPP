@@ -10,7 +10,6 @@ __email__  = "M.Lauber@soton.ac.uk"
 import numpy as np
 from scipy import interpolate
 import matplotlib.pyplot as plt
-from src.YachtMod import Yacht, Appendage
 
 class HydroMod(object):
 
@@ -214,11 +213,13 @@ class HydroMod(object):
         print(' RM is :    %.2f (Nm)'  % self.Mx)
 
 
-if __name__ == "__main__":
-    
-    # Bare hull (Appendages in intialized as zeros)
-    YD41 = HydroMod(Yacht(Lwl=11.90, Vol=6.05, Bwl=3.18, Tc=0.4,
-                        WSA=28.20, Tmax=2.30, Amax=1.051,
-                        App=[Appendage()]))
-    YD41.print_state()
-    YD41.show_resistance(np.linspace(0, 12, 24))
+# if __name__ == "__main__":
+    # # Bare hull (Appendages in intialized as zeros)
+    # YD41 = HydroMod(Yacht(Lwl=11.90,Vol=6.05,
+    #                       Bwl=3.18,Tc=0.4,
+    #                       WSA=28.20,Tmax=2.30,
+    #                       Amax=1.051,Mass=6500,
+    #                       Ff=1.5,Fa=1.5,
+    #                       Boa=4.2,Loa=12.5))
+    # YD41.print_state()
+    # YD41.show_resistance(np.linspace(0, 12, 24))

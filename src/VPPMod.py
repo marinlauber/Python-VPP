@@ -12,15 +12,13 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy.optimize import fsolve
 from tqdm import trange
-from mpl_toolkits import mplot3d
+# from mpl_toolkits import mplot3d
 import warnings
 warnings.filterwarnings('ignore', 'The iteration is not making good progress')
 plt.style.use('jupyter')
 
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
-from src.YachtMod import Yacht, Keel, Rudder
-from src.SailMod import Main, Jib
 
 class VPP(object):
 
@@ -211,24 +209,3 @@ class VPP(object):
         plt.tight_layout()
         plt.show()
 
-
-if __name__ == "__main__":
-
-    # test with YD-41 from Larsson
-    Keel  =  Keel(Cu=1.00,Cl=0.78,Span=1.90)
-    Rudder = Rudder(Cu=0.48,Cl=0.22,Span=1.15)
-
-    hydro = HydroMod(yacht=Yacht(Lwl=11.90,Vol=6.05,
-                                Bwl=3.18,Tc=0.4,
-                                WSA=28.20,Tmax=2.30,
-                                Amax=1.051,Mass=6500,
-                                App=[Keel,Rudder]))
-    aero = AeroMod(sails=[Main(P=16.60,E=5.60,Roach=0.1,BAD=1.),
-                          Jib(I=16.20,J=5.10,LPG=5.40,HBI=1.8)],
-                Ff=1.5, Fa=1.5, B=4.20, L=12.50)
-
-    vpp = VPP(AeroMod=aero, HydroMod=hydro)
-    vpp.set_analysis(tws_range=np.array([5.0, 7.0]),
-                     twa_range=np.linspace(30.0,140.0,23))
-    vpp.run(verbose=True)
-    vpp.polar()
