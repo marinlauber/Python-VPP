@@ -146,16 +146,16 @@ class VPP(object):
         for i in range(len(self.tws_range)):
             idx, vmg = self._make_nice(self.store[i,:,:])
             if n==1:
-                ax.plot(self.twa_range[:idx[0]]/180*np.pi,self.store[i,:idx[0],0]/0.5144,
+                ax.plot(self.twa_range[:idx[0]]/180*np.pi,self.store[i,:idx[0],0],
                         'k',lw=1,linestyle=stl[int(i%4)],
                         label=f'{self.tws_range[i]/0.5144:.1f}')
-                ax.plot(self.twa_range[vmg[0]]/180*np.pi, self.store[i,vmg[0],0]/0.5144,
+                ax.plot(self.twa_range[vmg[0]]/180*np.pi, self.store[i,vmg[0],0],
                         'ok',lw=1,markersize=4,mfc='None')
                 idx2 = np.where(self.Nsails==1,0,3)
-                ax.plot(self.twa_range[vmg[1]]/180*np.pi, self.store[i,vmg[1],idx2]/0.5144,
+                ax.plot(self.twa_range[vmg[1]]/180*np.pi, self.store[i,vmg[1],idx2],
                         'ok',lw=1,markersize=4,mfc='None')
                 if self.Nsails!=1:
-                    ax.plot(self.twa_range[idx[1]:]/180*np.pi,self.store[i,idx[1]:,3]/0.5144,
+                    ax.plot(self.twa_range[idx[1]:]/180*np.pi,self.store[i,idx[1]:,3],
                            'gray',lw=1,linestyle=stl[int(i%4)])
                 ax.legend(title=r'TWS (knots)',loc=1,bbox_to_anchor=(1.05,1.05))
             else:

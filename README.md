@@ -3,13 +3,13 @@
 
 ## Getting Started
 ### To Do List (prioritized)
-1. wrap rig into yacht class, and update measure functions
+1. ~~wrap rig into yacht class~~, and update measure functions
 2. validate on YD-41 (Principle of Yacht Design), and write tests
-3. optimize the boat velocity with the 3-DOF equlibrium as constraints (Lagrange multipliers)
+3. ~~optimize the boat velocity with the 3-DOF equlibrium as constraints (Lagrange multipliers)~~
 4. Add all the windag contributions (mast, crew, rigging, etc.)
 5. Optional Delft hydro model
 6. Add dagerboards to the possible appendages  
-6. tidy plotting and results
+6. ~~tidy plotting and results~~
 
 ### Prerequisites
 
