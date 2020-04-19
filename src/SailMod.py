@@ -8,8 +8,8 @@ __version__ = "1.0.1"
 __email__  = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from scipy import interpolate
 import matplotlib.pyplot as plt
+from scipy import interpolate
 
 class Sail(object):
 
@@ -19,9 +19,20 @@ class Sail(object):
         self.area = area
         self.vce  = vce
         # get sails coefficients
-        self._build_interp_func(self.type+'.dat')
+        self._build_interp_func(self.type)
         self.bk = 1. # always valid for main, only AWA<135 for jib
         self.up = up # is that an upwind sail?
+
+
+    def _build_interp_func(self, fname):
+        '''
+        build interpolation function and returns it in a list
+        '''
+        a = np.genfromtxt('dat/'+fname+'.dat',delimiter=',',skip_header=1)
+        self.kp = a[0,0]
+        # linear for now, this is not good, might need to polish data outside
+        self.interp_cd = interpolate.interp1d(a[1,:],a[2,:],kind='linear')
+        self.interp_cl = interpolate.interp1d(a[1,:],a[3,:],kind='linear')
 
 
     def cl(self, awa):
@@ -32,17 +43,6 @@ class Sail(object):
     def cd(self, awa):
         awa = max(0, min(awa, 180))
         return self.interp_cd(awa)
-
-
-    def _build_interp_func(self, fname):
-        '''
-        build interpolation function and returns it in a list
-        '''
-        a = np.genfromtxt('dat/'+fname,delimiter=',',skip_header=1)
-        self.kp = a[0,0]
-        # linear for now, this is not good, might need to polish data outside
-        self.interp_cd = interpolate.interp1d(a[1,:],a[2,:],kind='linear')
-        self.interp_cl = interpolate.interp1d(a[1,:],a[3,:],kind='linear')
 
 
     def debbug_coeffs(self, N=256):

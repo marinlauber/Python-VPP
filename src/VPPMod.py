@@ -12,13 +12,13 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy.optimize import fsolve
 from tqdm import trange
-# from mpl_toolkits import mplot3d
 import warnings
-warnings.filterwarnings('ignore', 'The iteration is not making good progress')
 plt.style.use('jupyter')
 
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
+from src.utils import polar
+
 
 class VPP(object):
 
@@ -38,6 +38,8 @@ class VPP(object):
 
         # debbuging flag
         self.debbug = False
+        if not self.debbug:
+            warnings.filterwarnings('ignore','The iteration is not making good progress')
     
 
     def set_analysis(self, tws_range, twa_range):
@@ -55,10 +57,6 @@ class VPP(object):
         # prepare storage array
         self.Nsails = len(self.yacht.sails) - 1  # main not counted
         self.store = np.zeros((len(self.tws_range),len(self.twa_range),3*self.Nsails))
-
-        if(self.debbug==True):
-            for i in range(self.store.shape[0]):
-                self.store[i,:,0] = np.ones_like(twa_range)*tws_range[i]
 
         # flag for later
         self.upToDate = True
@@ -80,7 +78,7 @@ class VPP(object):
 
                 self.aero.up = self.aero.sails[1].up
 
-                # reset
+                # reset at every sail change
                 self.vb0 = 0.35*np.sqrt(self.hydro.l*self.hydro.g)
                 self.phi0 = 0.
                 self.leeway0 = 0.
@@ -95,7 +93,7 @@ class VPP(object):
 
                     res = fsolve(self.resid,[self.vb0,self.phi0,self.leeway0],args=(twa, tws))
                     
-                    self.store[i,j,int(3*n):int(3*(n+1))] = res[:]
+                    self.store[i,j,int(3*n):int(3*(n+1))] = res[:]*np.array([1./0.5144,1,1])
                     if verbose:
                         print('Running case :     (%.1f,%.2f)' % (twa,tws))
                         print('Initial Guess Vb :        %.3f' % self.vb0)
@@ -124,88 +122,57 @@ class VPP(object):
         Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
         Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, 1.0)
 
-        # heel angle penalty
-        # dphi = np.where(phi0>=self.phi_max, phi0-self.phi_max, 0.0)
-
         return [(Fxh - Fxa)**2, (Mxh - Mxa)**2, (Fyh - Fya)**2]
 
-    
-    def _get_VMG(self, vb):
-        vmg = abs(vb*np.cos(self.twa_range/180*np.pi))
-        return np.argmax(vmg)
+
+    def write(self, fname):
+        pass
 
 
     def _make_nice(self, dat):
         if self.Nsails==1:
-            vb_up = dat[:,0]/0.5144
-            vb_dn = vb_up
-            twa_up = self.twa_range/180*np.pi
-            twa_dn = twa_up
-            phi_up = dat[:,1]
-            phi_dn = phi_up
-            gam_up = dat[:,2]
-            gam_dn = gam_up
-            up = np.argmax( vb_up*np.cos(twa_up))
-            dn = np.argmax(-vb_dn*np.cos(twa_up))
+            up = np.argmax( dat[:,0]*np.cos(self.twa_range/180*np.pi))
+            dn = np.argmax(-dat[:,0]*np.cos(self.twa_range/180*np.pi))
+            return np.array([-1,0]), np.array([up, dn])
         else:
             idx = np.argmin(abs(dat[:,0]-dat[:,3]))
-            # vb_up = dat[:,0]/0.5144
-            # vb_dn = dat[:,3]/0.5144
-            vb_up = dat[:idx+2,0]/0.5144
-            vb_dn = dat[idx-2:,3]/0.5144
-            # twa_up = self.twa_range/180*np.pi
-            # twa_dn = self.twa_range/180*np.pi
-            twa_up = self.twa_range[:idx+2]/180*np.pi
-            twa_dn = self.twa_range[idx-2:]/180*np.pi
-            # phi_up = dat[:,1]
-            # phi_dn = dat[:,4]
-            phi_up = dat[:idx+2,1]
-            phi_dn = dat[idx-2:,4]
-            # gam_up = dat[:,2]
-            # gam_dn = dat[:,5]
-            gam_up = dat[:idx+2,2]
-            gam_dn = dat[idx-2:,5]
-            up = np.argmax( vb_up*np.cos(twa_up))
-            dn = np.argmax(-vb_dn*np.cos(twa_dn))
-        return twa_up,vb_up,phi_up,gam_up,up,twa_dn,vb_dn,phi_dn,gam_dn,dn
+            up = np.argmax( dat[:,0]*np.cos(self.twa_range/180*np.pi))
+            dn = np.argmax(-dat[:,3]*np.cos(self.twa_range/180*np.pi))
+            return np.array([idx+2, idx-2]), np.array([up, dn])
 
 
-    def polar(self):
-        stl = ['-','--','-.',':']
-        fig = plt.figure(figsize=(16,7.5))
-        ax = fig.add_subplot(131, polar=True)
-        ax2 = fig.add_subplot(132, polar=True)
-        ax3 = fig.add_subplot(133, polar=True)
-        for i in range(self.store.shape[0]):
-            twa_up,vb_up,phi_up,gam_up,up,twa_dn,vb_dn,phi_dn,gam_dn,dn = self._make_nice(self.store[i,:,:])
-            ax.plot(twa_up,vb_up,'k',lw=1,linestyle=stl[int(i%4)],
-                    label=f'{self.tws_range[i]/0.5144:.1f}')
-            ax.plot(twa_up[up], vb_up[up],
-                    'ok',lw=1,markersize=4,mfc='None')
-            ax.plot(twa_dn[dn], vb_dn[dn],
-                    'ok',lw=1,markersize=4,mfc='None')
-            ax2.plot(twa_up,phi_up,'k',lw=1,linestyle=stl[int(i%4)])
-            ax3.plot(twa_up,gam_up,'k',lw=1,linestyle=stl[int(i%4)])
-            if self.Nsails!=1:
-                ax.plot(twa_dn,vb_dn,'gray',lw=1,linestyle=stl[int(i%4)])
-                ax2.plot(twa_dn,phi_dn,'gray',lw=1,linestyle=stl[int(i%4)])
-                ax3.plot(twa_dn,gam_dn,'gray',lw=1,linestyle=stl[int(i%4)])
-        ax.set_xticks(np.linspace(0,np.pi,5,))  
-        ax.set_theta_direction(-1)
-        ax.set_theta_offset(np.pi/2.0)    
-        ax.set_thetamin(0); ax.set_thetamax(180)
-        ax.set_xlabel(r'TWA ($^\circ$)'); ax.set_ylabel(r'$V_B$ (knots)',labelpad=-40)
-        ax.legend(title=r'TWS (knots)')
-        ax2.set_xticks(np.linspace(0,np.pi,5,))  
-        ax2.set_theta_direction(-1)
-        ax2.set_theta_offset(np.pi/2.0)    
-        ax2.set_thetamin(0); ax2.set_thetamax(180)
-        ax2.set_xlabel(r'TWA ($^\circ$)'); ax2.set_ylabel(r'Heel $\phi$ ($^\circ$)',labelpad=-40)
-        ax3.set_xticks(np.linspace(0,np.pi,5,))  
-        ax3.set_theta_direction(-1)
-        ax3.set_theta_offset(np.pi/2.0)    
-        ax3.set_thetamin(0); ax3.set_thetamax(180)
-        ax3.set_xlabel(r'TWA ($^\circ$)'); ax3.set_ylabel(r'Leeway $\gamma$ ($^\circ$)',labelpad=-40)
+    def polar(self, n=1, save=False):
+        fig, ax, stl = polar(n)
+        for i in range(len(self.tws_range)):
+            idx, vmg = self._make_nice(self.store[i,:,:])
+            if n==1:
+                ax.plot(self.twa_range[:idx[0]]/180*np.pi,self.store[i,:idx[0],0]/0.5144,
+                        'k',lw=1,linestyle=stl[int(i%4)],
+                        label=f'{self.tws_range[i]/0.5144:.1f}')
+                ax.plot(self.twa_range[vmg[0]]/180*np.pi, self.store[i,vmg[0],0]/0.5144,
+                        'ok',lw=1,markersize=4,mfc='None')
+                idx2 = np.where(self.Nsails==1,0,3)
+                ax.plot(self.twa_range[vmg[1]]/180*np.pi, self.store[i,vmg[1],idx2]/0.5144,
+                        'ok',lw=1,markersize=4,mfc='None')
+                if self.Nsails!=1:
+                    ax.plot(self.twa_range[idx[1]:]/180*np.pi,self.store[i,idx[1]:,3]/0.5144,
+                           'gray',lw=1,linestyle=stl[int(i%4)])
+                ax.legend(title=r'TWS (knots)',loc=1,bbox_to_anchor=(1.05,1.05))
+            else:
+                for j in range(n):
+                    ax[j].plot(self.twa_range[:idx[0]]/180*np.pi,self.store[i,:idx[0],j],
+                            'k',lw=1,linestyle=stl[int(i%4)],
+                            label=f'{self.tws_range[i]/0.5144:.1f}')
+                    if j == 0:
+                        ax[j].plot(self.twa_range[vmg[0]]/180*np.pi, self.store[i,vmg[0],j],
+                                'ok',lw=1,markersize=4,mfc='None')
+                        idx2 = np.where(self.Nsails==1,j,int(j+3))
+                        ax[j].plot(self.twa_range[vmg[1]]/180*np.pi, self.store[i,vmg[1],idx2],
+                                'ok',lw=1,markersize=4,mfc='None')
+                    if self.Nsails!=1:
+                        ax[j].plot(self.twa_range[idx[1]:]/180*np.pi,self.store[i,idx[1]:,int(j+3)],
+                                'gray',lw=1,linestyle=stl[int(i%4)])
+                ax[0].legend(title=r'TWS (knots)',loc=1,bbox_to_anchor=(1.05,1.05))
         plt.tight_layout()
+        if save: plt.savefig('Figure.png',dpi=500)
         plt.show()
-

@@ -8,8 +8,7 @@ __version__ = "1.0.1"
 __email__  = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from scipy import interpolate
-
+from src.utils import build_interp_func
 
 class Appendage(object):
 
@@ -33,9 +32,9 @@ class Appendage(object):
         # no residuary resistance
         self._interp_cr = lambda fn: 0.
         if self.type=='keel':
-            self._interp_cr = self._build_interp_func('rrk')
+            self._interp_cr = build_interp_func('rrk')
         if self.type=='bulb':
-            self._interp_cr = self._build_interp_func('rrk',i=2)
+            self._interp_cr = build_interp_func('rrk',i=2)
 
 
     def _cl(self, leeway):
@@ -45,17 +44,9 @@ class Appendage(object):
     def _cr(self, fn):
         return self._interp_cr(max(0.0,min(fn,0.6)))
 
+
     def _Ksff(self, phi):
         return 1.0
-
-
-    def _build_interp_func(self, fname, i=1, kind='linear'):
-        '''
-        build interpolatison function and returns it in a list
-        '''
-        a = np.genfromtxt('dat/'+fname+'.dat',delimiter=',',skip_header=1)
-        # linear for now, this is not good, might need to polish data outside
-        return interpolate.interp1d(a[0,:],a[i,:],kind=kind)
 
 
     def print(self):
@@ -157,7 +148,7 @@ class Yacht(object):
         self.sails = Sails
 
         # righting moment interpolation function
-        self._interp_rm = self._build_interp_func('rm')
+        self._interp_rm = build_interp_func('rm')
 
         # pupulate everything
         self.update()
@@ -190,17 +181,8 @@ class Yacht(object):
         return RmC*np.where(phi<=7.5,0.5*(1-np.cos(np.maximum(0,phi-2.5)/5.*np.pi)),1.)
 
 
-    def _build_interp_func(self, fname, kind='linear'):
-        '''
-        build interpolatison function and returns it in a list
-        '''
-        a = np.genfromtxt('dat/'+fname+'.dat',delimiter=',',skip_header=1)
-        # linear for now, this is not good, might need to polish data outside
-        return interpolate.interp1d(a[0,:],a[1,:],kind=kind)
+# if __name__ == "__main__":
 
-
-if __name__ == "__main__":
-
-    keel = Keel(Cu=1, Cl=1, Span=1)
-    keel.print()
+#     keel = Keel(Cu=1, Cl=1, Span=1)
+#     keel.print()
         

@@ -16,7 +16,7 @@
 ### Running the tests
 
 <p align="center">
-    <img src="Figure_1.png" alt="YD-41 VPP results" width="1024">
+    <img src="Figure.png" alt="YD-41 VPP results" width="1024">
 </p>
 
 ## Using the code

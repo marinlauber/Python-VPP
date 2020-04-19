@@ -11,6 +11,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
+from src.utils import build_interp_func
 
 class AeroMod(object):
 
@@ -33,8 +34,8 @@ class AeroMod(object):
         self._measure_windage()
 
         # coeffs interp function
-        self.fcdmult = self._build_interp_func('fcdmult')
-        self.kheff  =  self._build_interp_func('kheff')
+        self.fcdmult = build_interp_func('fcdmult')
+        self.kheff  =  build_interp_func('kheff')
 
     
     def _measure_windage(self):
@@ -197,15 +198,6 @@ class AeroMod(object):
 #
 # -- utility functions
 #
-    def _build_interp_func(self, fname, kind='linear'):
-        '''
-        build interpolatison function and returns it in a list
-        '''
-        a = np.genfromtxt('dat/'+fname+'.dat',delimiter=',',skip_header=1)
-        # linear for now, this is not good, might need to polish data outside
-        return interp1d(a[0,:],a[1,:],kind=kind)
-
-
     def debbug(self):
         for sail in self.yacht.sails:
             sail.debbug_coeffs()
