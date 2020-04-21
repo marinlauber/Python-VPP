@@ -21,6 +21,34 @@
 
 ## Using the code
 
+### Input variable
+
+1. Appendages :
+    * Cu : Root Chord / Upper Chord (m)
+    * Cl : Tip Chord / Lower Chord (m)
+    * Span : Span (m) 
+1. Yacht : 
+    * Lwl : Length waterline (m)
+    * Vol : Displ. volume of canoebody (m^3)
+    * Bwl : Beam waterine (m)
+    * Tc : Canoebody draft (m)
+    * WSA : Wetted surface area (m^2)
+    * Tmax : Draft max, i.e. Keel (m)
+    * Amax : Max. section area (m^2)
+    * Mass : Total mass of the yacht, includeing keel (kg)
+    * Ff : Freeboard heigt fore (m)
+    * Fa : Freeboard height aft (m)
+    * Boa : Beam overall (m)
+    * Loa : Length overall (m)
+    * App : List of appendages
+    * Sails : List of Sails
+1. Sails:
+    Standard measurements, except Roach is defined as 1-A/(0.5PE)
+    Kite only takes area and vce esitmate
+1. VPP.set_analysis()
+    * TWA range : range of TWA to use
+    * TWS range : range of TWS, must be between [2, 35]
+
 
 ## Authors
 

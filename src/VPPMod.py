@@ -96,8 +96,8 @@ class VPP(object):
                     self.store[i,j,int(3*n):int(3*(n+1))] = res[:]*np.array([1./0.5144,1,1])
                     if verbose:
                         print('Running case :     (%.1f,%.2f)' % (twa,tws))
-                        print('Initial Guess Vb :        %.3f' % self.vb0)
-                        print('Result for Vb :           %.3f' % res[0])
+                        print('Initial Guess Vb :        %.3f' % (self.vb0/0.5144))
+                        print('Result for Vb :           %.3f' % (res[0]/0.5144))
                         print('Lift coefficient :        %.3f' % self.aero.cl)
                         print('Drag coefficient :        %.3f' % self.aero.cd)
                         print('Flatener coefficient :    %.3f' % self.aero.flat)

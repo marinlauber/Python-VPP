@@ -8,7 +8,8 @@ __version__ = "1.0.1"
 __email__  = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from scipy import interpolate
+from scipy.interpolate import RegularGridInterpolator
+import warnings
 import matplotlib.pyplot as plt
 
 class HydroMod(object):
@@ -32,6 +33,10 @@ class HydroMod(object):
 
         # get resistance surfaces from ORC
         self.__load_data()
+        
+        # print warning if yacht is close to boundaries for Rr
+        if(self.btr<3.0) or (self.btr>8.5) or (self.lvr<3.5) or (self.lvr>8.5):
+            warnings.warn('Yacht dimensions are close to boundaries of resistance surfaces, extrapolation will be used if values (fn, btr, lvr) are outside of range, but resistance might be affected.', UserWarning, stacklevel=2)
 
 
     def __load_data(self):
@@ -46,14 +51,17 @@ class HydroMod(object):
         btr = surf[0,2:,0]; lvr = surf[0,1,1:]
         # build interpolation function for 3D data
         data = np.zeros(((25,41,41))); data[1:,:,:] = surf[:,2:,1:]
-        self._interp_Rr = interpolate.RegularGridInterpolator((fn, btr, lvr), data)
+        # extrapolate if outside range
+        # https://github.com/scipy/scipy/blob/v0.16.1/scipy/interpolate/interpolate.py#L1528
+        self._interp_Rr = RegularGridInterpolator((fn, btr, lvr), data, method="linear",
+                                                   bounds_error=False, fill_value=None)
 
 
     def _get_Rr(self):
         """
         Get residuary resistance at this froude number
         """
-        fn = max(0.0, (min(self.fn, 0.7)))
+        fn = max(0.0, self.fn) 
         # Note:  To convert to drag in Newtons multiply the values by displacement and 9.81 then divide by 1000.
         Rr = self._interp_Rr((fn,self.btr,self.lvr))*self.mass*self.g*1e-3
         for appendage in self.yacht.appendages:
