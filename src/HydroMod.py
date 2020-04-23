@@ -36,7 +36,9 @@ class HydroMod(object):
         
         # print warning if yacht is close to boundaries for Rr
         if(self.btr<3.0) or (self.btr>8.5) or (self.lvr<3.5) or (self.lvr>8.5):
-            warnings.warn('Yacht dimensions are close to boundaries of resistance surfaces, extrapolation will be used if values (fn, btr, lvr) are outside of range, but resistance might be affected.', UserWarning, stacklevel=2)
+            warnings.warn('Yacht dimensions are close to boundaries of resistance surfaces, '+
+                          'extrapolation will be used if values (fn, btr, lvr) are outside of '+
+                          'range, but resistance might be affected.', UserWarning, stacklevel=2)
 
 
     def __load_data(self):
@@ -62,7 +64,7 @@ class HydroMod(object):
         Get residuary resistance at this froude number
         """
         fn = max(0.0, self.fn) 
-        # Note:  To convert to drag in Newtons multiply the values by displacement and 9.81 then divide by 1000.
+        # Note:  To convert to drag in Newtons multiply the values by displacement and 9.81/1000.
         Rr = self._interp_Rr((fn,self.btr,self.lvr))*self.mass*self.g*1e-3
         for appendage in self.yacht.appendages:
             # for now appendages have no volume (no Rr_app)
@@ -111,15 +113,15 @@ class HydroMod(object):
         Flate plate turbulent boudnary layer friction coefficient.
         Take a length scale, such that it can be used for appendags as well
         """
-        self.Re = max(1e4, self.vb*L/self.nu) # prevents dividing by zero, lowest for turbulence on plate
-        return 0.066*(np.log10(self.Re)-2.03)**(-2)
+        Re = max(1e4, self.vb*L/self.nu) # prevents dividing by zero, lowest for turbulence on plate
+        return 0.066*(np.log10(Re)-2.03)**(-2)
 
 
     def update(self, vb, phi, leeway):
 
         self.vb = max(0, vb)
         self.phi = max(0, phi)
-        self.leeway = leeway
+        self.leeway = max(0,leeway)
         self.lsm, self.lvr, self.btr = self.yacht.measureLSM()
         self.fn = self.vb / (np.sqrt(self.g*self.lsm))
 
@@ -127,14 +129,13 @@ class HydroMod(object):
         self.Fx = self._get_Rr() + self._get_Rv() + self._get_Ri() 
 
         # keel side force, calculated when _get_Ri() is called
-        self.Fy = self.Ksf
+        self.Fy = self.Ksf*np.cos(self.phi/180.*np.pi)
 
         # measure righting moment
         # self._limit_heel()
         self.Mx = self.yacht._get_RmH(self.phi) + self._get_RmV(self.vb)
         # add crew and keel (lift) contribution
         self.Mx += self.yacht._get_RmC(self.phi) - self.Ksf*self.yacht.Rm4
-        self.Fy *= np.cos(self.phi/180.*np.pi)
 
         return self.Fx, self.Fy, self.Mx
 
@@ -146,7 +147,7 @@ class HydroMod(object):
      # dynamic RM
     def _get_RmV(self, vb):
         return (5.955e-5/3.)*self.vol*self.lsm*(1-6.25*(self.bwl/np.sqrt(self.yacht.amax))) \
-               *self.vb/self.lsm*self.phi
+                *self.vb/self.lsm*self.phi
 
 
     # old Delft Method
