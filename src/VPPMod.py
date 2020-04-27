@@ -191,7 +191,7 @@ class VPP(object):
 
     def polar(self, n=1, save=False):
         """
-        Generate a pola plot of the equilibrium variables.
+        Generate a polar plot of the equilibrium variables.
 
         Parameters
         ----------
