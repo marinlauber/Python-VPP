@@ -1,0 +1,176 @@
+
+<!DOCTYPE html>
+
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <title>Welcome to Python-VPP’s documentation! &#8212; Python-VPP  documentation</title>
+    <link rel="stylesheet" href="_static/alabaster.css" type="text/css" />
+    <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+    <script type="text/javascript" src="_static/jquery.js"></script>
+    <script type="text/javascript" src="_static/underscore.js"></script>
+    <script type="text/javascript" src="_static/doctools.js"></script>
+    <script type="text/javascript" src="_static/language_data.js"></script>
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+   
+  <link rel="stylesheet" href="_static/custom.css" type="text/css" />
+  
+  
+  <meta name="viewport" content="width=device-width, initial-scale=0.9, maximum-scale=0.9" />
+
+  </head><body>
+  
+
+    <div class="document">
+      <div class="documentwrapper">
+        <div class="bodywrapper">
+          
+
+          <div class="body" role="main">
+            
+  <div class="section" id="module-src.VPPMod">
+<span id="welcome-to-python-vpp-s-documentation"></span><h1>Welcome to Python-VPP’s documentation!<a class="headerlink" href="#module-src.VPPMod" title="Permalink to this headline">¶</a></h1>
+<dl class="class">
+<dt id="src.VPPMod.VPP">
+<em class="property">class </em><code class="sig-prename descclassname">src.VPPMod.</code><code class="sig-name descname">VPP</code><span class="sig-paren">(</span><em class="sig-param">Yacht</em><span class="sig-paren">)</span><a class="headerlink" href="#src.VPPMod.VPP" title="Permalink to this definition">¶</a></dt>
+<dd><p>A VPP Class that run an analysis on a given Yacht.</p>
+<dl class="method">
+<dt id="src.VPPMod.VPP.polar">
+<code class="sig-name descname">polar</code><span class="sig-paren">(</span><em class="sig-param">n=1</em>, <em class="sig-param">save=False</em><span class="sig-paren">)</span><a class="headerlink" href="#src.VPPMod.VPP.polar" title="Permalink to this definition">¶</a></dt>
+<dd><p>Generate a pola plot of the equilibrium variables.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>n</strong> – An integer, number of plots to show, default is 1 (Vb).</p></li>
+<li><p><strong>save</strong> – A logical, save figure or not, default is False.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.VPPMod.VPP.resid">
+<code class="sig-name descname">resid</code><span class="sig-paren">(</span><em class="sig-param">x0</em>, <em class="sig-param">twa</em>, <em class="sig-param">tws</em><span class="sig-paren">)</span><a class="headerlink" href="#src.VPPMod.VPP.resid" title="Permalink to this definition">¶</a></dt>
+<dd><p>Computes the residuals of the force/moment equilibrium at the given state.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>x0</strong> – A numpy array of the variables (DOF).</p></li>
+<li><p><strong>twa</strong> – A float of the TWA at which to compute the residuals.</p></li>
+<li><p><strong>tws</strong> – A float of the TWs at which to compute the residuals.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns</dt>
+<dd class="field-even"><p>Residuals on each DOF</p>
+</dd>
+<dt class="field-odd">Return type</dt>
+<dd class="field-odd"><p>Numpy.Array</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.VPPMod.VPP.run">
+<code class="sig-name descname">run</code><span class="sig-paren">(</span><em class="sig-param">verbose=False</em><span class="sig-paren">)</span><a class="headerlink" href="#src.VPPMod.VPP.run" title="Permalink to this definition">¶</a></dt>
+<dd><p>Run the analysis for the given analysis range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><p><strong>verbose</strong> – A logical, if True, prints results of equilibrium at each TWA/TWS.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="method">
+<dt id="src.VPPMod.VPP.set_analysis">
+<code class="sig-name descname">set_analysis</code><span class="sig-paren">(</span><em class="sig-param">tws_range</em>, <em class="sig-param">twa_range</em><span class="sig-paren">)</span><a class="headerlink" href="#src.VPPMod.VPP.set_analysis" title="Permalink to this definition">¶</a></dt>
+<dd><p>Sets the analysis range.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters</dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>tws_range</strong> – A numpy.array with the different TWS to run the analysis at.</p></li>
+<li><p><strong>twa_range</strong> – A numpy.array with the different TWA to run the analysis at.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<div class="toctree-wrapper compound">
+</div>
+</div>
+<div class="section" id="indices-and-tables">
+<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Permalink to this headline">¶</a></h1>
+<ul class="simple">
+<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
+<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
+<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
+</ul>
+</div>
+
+
+          </div>
+          
+        </div>
+      </div>
+      <div class="sphinxsidebar" role="navigation" aria-label="main navigation">
+        <div class="sphinxsidebarwrapper">
+<h1 class="logo"><a href="#">Python-VPP</a></h1>
+
+
+
+
+
+
+
+
+<h3>Navigation</h3>
+
+<div class="relations">
+<h3>Related Topics</h3>
+<ul>
+  <li><a href="#">Documentation overview</a><ul>
+  </ul></li>
+</ul>
+</div>
+<div id="searchbox" style="display: none" role="search">
+  <h3 id="searchlabel">Quick search</h3>
+    <div class="searchformwrapper">
+    <form class="search" action="search.html" method="get">
+      <input type="text" name="q" aria-labelledby="searchlabel" />
+      <input type="submit" value="Go" />
+    </form>
+    </div>
+</div>
+<script type="text/javascript">$('#searchbox').show(0);</script>
+
+
+
+
+
+
+
+
+        </div>
+      </div>
+      <div class="clearer"></div>
+    </div>
+    <div class="footer">
+      &copy;2020, Marin Lauber.
+      
+      |
+      Powered by <a href="http://sphinx-doc.org/">Sphinx 2.1.2</a>
+      &amp; <a href="https://github.com/bitprophet/alabaster">Alabaster 0.7.12</a>
+      
+      |
+      <a href="_sources/index.rst.txt"
+          rel="nofollow">Page source</a>
+    </div>
+
+    
+
+    
+  </body>
+</html>

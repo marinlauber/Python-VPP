@@ -21,9 +21,18 @@ from src.utils import polar
 
 
 class VPP(object):
+    """A VPP Class that run an analysis on a given Yacht."""
 
     def __init__(self, Yacht):
+        """
+        Initializes the VPP model
 
+        Parameters
+        ----------
+        Yacht
+            A Yacht object with Appendages and Sails
+
+        """
         # build model
         self.yacht = Yacht
         self.aero = AeroMod(self.yacht)
@@ -43,6 +52,17 @@ class VPP(object):
     
 
     def set_analysis(self, tws_range, twa_range):
+        """
+        Sets the analysis range.
+
+        Parameters
+        ----------
+        tws_range
+            A numpy.array with the different TWS to run the analysis at.
+        twa_range
+            A numpy.array with the different TWA to run the analysis at.
+
+        """
         
         if(tws_range.max()<=35. and tws_range.min()>=2.):
             self.tws_range = tws_range*0.5144
@@ -63,6 +83,16 @@ class VPP(object):
     
 
     def run(self, verbose=False):
+        """
+        Run the analysis for the given analysis range.
+
+
+        Parameters
+        ----------
+        verbose
+            A logical, if True, prints results of equilibrium at each TWA/TWS.
+    
+        """
 
         if(not self.upToDate): raise 'VPP run stop: no analysis set!'
 
@@ -116,6 +146,24 @@ class VPP(object):
 
     
     def resid(self, x0, twa, tws):
+        """
+        Computes the residuals of the force/moment equilibrium at the given state.
+
+        Parameters
+        ----------
+        x0
+            A numpy array of the variables (DOF).
+        twa
+            A float of the TWA at which to compute the residuals.
+        tws
+            A float of the TWs at which to compute the residuals.
+
+        Returns
+        -------
+        Numpy.Array
+            Residuals on each DOF
+
+        """
 
         vb0=x0[0]; phi0=x0[1]; leeway=x0[2] #; flat=x0[3]
 
@@ -142,6 +190,17 @@ class VPP(object):
 
 
     def polar(self, n=1, save=False):
+        """
+        Generate a pola plot of the equilibrium variables.
+
+        Parameters
+        ----------
+        n
+            An integer, number of plots to show, default is 1 (Vb).
+        save
+            A logical, save figure or not, default is False.
+
+        """
         fig, ax, stl = polar(n)
         for i in range(len(self.tws_range)):
             idx, vmg = self._make_nice(self.store[i,:,:])
