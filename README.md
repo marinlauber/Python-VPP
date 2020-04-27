@@ -21,6 +21,8 @@
 
 ## Using the code
 
+See the [documentation](https://marinlauber.github.io/Python-VPP/).
+
 ### Input variable
 
 1. Appendages :
