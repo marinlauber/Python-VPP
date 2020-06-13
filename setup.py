@@ -4,7 +4,7 @@ with open("README.md", "r") as fh:
     long_description = fh.read()
 
 setuptools.setup(
-    name="Python-VPP-marinlauber", # Replace with your own username
+    name="Python-VPP-marinlauber",  # Replace with your own username
     version="0.0.1",
     author="Marin Lauber",
     author_email="M.Lauber@soton.ac.uk",
@@ -18,5 +18,5 @@ setuptools.setup(
         "License :: MIT License",
         "Operating System :: OS Independent",
     ],
-    python_requires='>=3.5',
+    python_requires=">=3.5",
 )
