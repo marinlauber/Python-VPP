@@ -53,7 +53,6 @@ Pygments==2.6.1
 pyparsing==2.4.7
 pyrsistent==0.16.0
 python-dateutil==2.8.1
--e git+https://github.com/TAJD/Python-VPP.git@c68fdeffc06c3343a0ccebf6ebb9bbb58e51f1d1#egg=Python_VPP
 pytz==2020.1
 pyzmq==19.0.1
 qtconsole==4.7.4
