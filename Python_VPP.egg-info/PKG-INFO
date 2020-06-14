@@ -1,9 +1,9 @@
 Metadata-Version: 2.1
-Name: Python-VPP-marinlauber
-Version: 0.0.1
+Name: Python-VPP
+Version: 0.0.2
 Summary: OOP Velocity Prediction Program
 Home-page: UNKNOWN
-Author: Marin Lauber
+Author: Marin Lauber, Otto Vilani and Thomas Dickson
 Author-email: M.Lauber@soton.ac.uk
 License: UNKNOWN
 Description: # Python-VPP

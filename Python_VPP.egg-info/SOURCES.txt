@@ -1,9 +1,9 @@
 README.md
 setup.py
-Python_VPP_marinlauber.egg-info/PKG-INFO
-Python_VPP_marinlauber.egg-info/SOURCES.txt
-Python_VPP_marinlauber.egg-info/dependency_links.txt
-Python_VPP_marinlauber.egg-info/top_level.txt
+Python_VPP.egg-info/PKG-INFO
+Python_VPP.egg-info/SOURCES.txt
+Python_VPP.egg-info/dependency_links.txt
+Python_VPP.egg-info/top_level.txt
 src/AeroMod.py
 src/HydroMod.py
 src/SailMod.py
