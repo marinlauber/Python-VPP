@@ -1,5 +1,10 @@
-# Python-VPP (DEVELOPEMENT-STATE)
+# Python-VPP
+
+![Upload Python Package](https://github.com/TAJD/Python-VPP/workflows/Upload%20Python%20Package/badge.svg)
+
 3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code make use of Object-oriented-Programming to be very general.
+
+
 
 ## Getting Started
 ### To Do List (prioritized)
