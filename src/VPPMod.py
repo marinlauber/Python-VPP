@@ -205,7 +205,7 @@ class VPP(object):
         """
         Return a dict of the VPP results.
         """
-        return dict({"tws": self.tws_range, "twa": self.twa_range, "perf": self.store})
+        return dict({"tws": self.tws_range.tolist(), "twa": self.twa_range.tolist(), "perf": self.store.tolist()})
 
     def polar(self, n=1, save=False):
         """
