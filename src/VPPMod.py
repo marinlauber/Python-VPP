@@ -201,13 +201,11 @@ class VPP(object):
             dn = np.argmax(-dat[:, 3] * np.cos(self.twa_range / 180 * np.pi))
             return np.array([idx + 2, idx - 2]), np.array([up, dn])
 
-    
     def result(self):
         """
         Return a dict of the VPP results.
         """
-        
-
+        return dict({"tws": self.tws_range.tolist(), "twa": self.twa_range.tolist(), "perf": self.store.tolist()})
 
     def polar(self, n=1, save=False):
         """

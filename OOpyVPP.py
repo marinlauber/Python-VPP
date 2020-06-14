@@ -20,7 +20,7 @@ def produceVPPplot():
     Rudder1 = Rudder(Cu=0.48, Cl=0.22, Span=1.15)
 
     YD41 = Yacht(
-        Name='YD41',
+        Name="YD41",
         Lwl=11.90,
         Vol=6.05,
         Bwl=3.18,
@@ -37,15 +37,14 @@ def produceVPPplot():
         Sails=[
             Main(P=16.60, E=5.60, Roach=0.1, BAD=1.0),
             Jib(I=16.20, J=5.10, LPG=5.40, HBI=1.8),
-            Kite(area=150., vce=9.55),
+            Kite(area=150.0, vce=9.55),
         ],
     )
 
     vpp = VPP(Yacht=YD41)
 
     vpp.set_analysis(
-        tws_range=np.array([10.0]),
-        twa_range=np.linspace(30.0, 180.0, 5),
+        tws_range=np.array([10.0]), twa_range=np.linspace(30.0, 180.0, 5),
     )
 
     vpp.run(verbose=False)
@@ -58,7 +57,7 @@ def returnVPPsolutions():
     Rudder1 = Rudder(Cu=0.48, Cl=0.22, Span=1.15)
 
     YD41 = Yacht(
-        Name='YD41',
+        Name="YD41",
         Lwl=11.90,
         Vol=6.05,
         Bwl=3.18,
@@ -75,23 +74,21 @@ def returnVPPsolutions():
         Sails=[
             Main(P=16.60, E=5.60, Roach=0.1, BAD=1.0),
             Jib(I=16.20, J=5.10, LPG=5.40, HBI=1.8),
-            Kite(area=150., vce=9.55),
+            Kite(area=150.0, vce=9.55),
         ],
     )
 
     vpp = VPP(Yacht=YD41)
 
     vpp.set_analysis(
-        tws_range=np.array([10.0]),
-        twa_range=np.linspace(30.0, 180.0, 5),
+        tws_range=np.array([10.0]), twa_range=np.linspace(30.0, 180.0, 5),
     )
 
-    vpp.run(verbose=False)
-    print(vpp.store.shape)
-
+    vpp.run(verbose=True)
+    # print(vpp.store.shape)
+    res = vpp.result()
 
 
 if __name__ == "__main__":
     returnVPPsolutions()
     # test with YD-41 from Larsson
-
