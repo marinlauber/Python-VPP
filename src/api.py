@@ -51,9 +51,8 @@ def makevppresults():
         ],
     )
     vpp = VPP(Yacht=yacht)
-
     vpp.set_analysis(
-        tws_range=np.array([10.0]), twa_range=np.linspace(30.0, 180.0, 5),
+        tws_range=np.array(data["tws_range"]), twa_range=np.array(data["twa_range"]),
     )
 
     vpp.run(verbose=True)

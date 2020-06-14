@@ -72,13 +72,17 @@ def test_vpp_solution():
     main = dict({"P":16.60, "E":5.60, "Roach":0.1, "BAD":1.0})
     jib = dict({"I":16.20, "J":5.10, "LPG":5.40, "HBI":1.8})
     kite = dict({"area":150.0, "vce":9.55})
+    tws_range=np.array([10.0]).tolist()
+    twa_range= [i for i in np.linspace(30.0, 180.0, 5)]
     d = {"name": yacht["Name"],
          "yacht": yacht,
          "keel": keel,
          "rudder": rudder,
          "main": main,
          "jib": jib,
-         "kite": kite}
+         "kite": kite,
+         "tws_range": tws_range,
+         "twa_range": twa_range}
     json_string = json.dumps(d)
     url = 'http://0.0.0.0:5000/api/vpp/'
     headers = {'content-type': 'application/json', 'Accept-Charset': 'UTF-8'}
