@@ -1,5 +1,10 @@
-# Python-VPP (DEVELOPEMENT-STATE)
+# Python-VPP
+
+![Upload Python Package](https://github.com/TAJD/Python-VPP/workflows/Upload%20Python%20Package/badge.svg)
+
 3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code make use of Object-oriented-Programming to be very general.
+
+
 
 ## Getting Started
 ### To Do List (prioritized)
@@ -56,6 +61,7 @@ See the [documentation](https://marinlauber.github.io/Python-VPP/).
 
 * **[Otto Villani](https://www.linkedin.com/in/otto-villani-552760108/)** - *Initial idea, model selection* - [github](https://github.com/ottovillani)
 * **[Marin Lauber](https://www.linkedin.com/in/marin-lauber/)** - *Initial idea, developement* - [github](https://github.com/marinlauber)
+* **[Thomas Dickson](tajd.github.io)** - *Developer*
 
 ## License
 
@@ -65,3 +71,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 * Hat tip to anyone whose code was used
 * Inspiration
+
+
+
+## Modifications
+
+1. Formatted using [Black](https://github.com/psf/black).
+1. Added a "name" to the Yacht class which can be passed to plotting function.
+1. Renamed instances of Keel and Rudder objects in the example function.
