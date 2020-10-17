@@ -12,12 +12,14 @@ import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy.optimize import fsolve
 from tqdm import trange
+from typing import Final
 import warnings
 
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
 from src.utils import polar
 
+KNOTS_TO_MPS: Final = 0.5144
 
 class VPP(object):
     """A VPP Class that run an analysis on a given Yacht."""
@@ -65,7 +67,7 @@ class VPP(object):
         """
 
         if tws_range.max() <= 35.0 and tws_range.min() >= 2.0:
-            self.tws_range = tws_range * 0.5144
+            self.tws_range = tws_range * KNOTS_TO_MPS
         else:
             print("Anaylis only valid for TWS range : 2. < TWS < 35. knots.")
 
@@ -92,7 +94,7 @@ class VPP(object):
         ----------
         verbose
             A logical, if True, prints results of equilibrium at each TWA/TWS.
-    
+
         """
 
         if not self.upToDate:
@@ -100,7 +102,7 @@ class VPP(object):
 
         for i, tws in enumerate(self.tws_range):
 
-            print("Sailing in TWS : %.1f" % (tws / 0.5144))
+            print("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
 
             for n in range(self.Nsails):
 
@@ -133,12 +135,12 @@ class VPP(object):
                     )
 
                     self.store[i, j, int(3 * n) : int(3 * (n + 1))] = res[:] * np.array(
-                        [1.0 / 0.5144, 1, 1]
+                        [1.0 / KNOTS_TO_MPS, 1, 1]
                     )
                     if verbose:
                         print("Running case :     (%.1f,%.2f)" % (twa, tws))
-                        print("Initial Guess Vb :        %.3f" % (self.vb0 / 0.5144))
-                        print("Result for Vb :           %.3f" % (res[0] / 0.5144))
+                        print("Initial Guess Vb :        %.3f" % (self.vb0 / KNOTS_TO_MPS))
+                        print("Result for Vb :           %.3f" % (res[0] / KNOTS_TO_MPS))
                         print("Lift coefficient :        %.3f" % self.aero.cl)
                         print("Drag coefficient :        %.3f" % self.aero.cd)
                         print("Flattener coefficient :    %.3f" % self.aero.flat)
@@ -235,7 +237,7 @@ class VPP(object):
                     "k",
                     lw=1,
                     linestyle=stl[int(i % 4)],
-                    label=f"{self.tws_range[i]/0.5144:.1f}",
+                    label=f"{self.tws_range[i]/KNOTS_TO_MPS:.1f}",
                 )
                 ax.plot(
                     self.twa_range[vmg[0]] / 180 * np.pi,
@@ -271,7 +273,7 @@ class VPP(object):
                         "k",
                         lw=1,
                         linestyle=stl[int(i % 4)],
-                        label=f"{self.tws_range[i]/0.5144:.1f}",
+                        label=f"{self.tws_range[i]/KNOTS_TO_MPS:.1f}",
                     )
                     if j == 0:
                         ax[j].plot(
