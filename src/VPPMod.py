@@ -115,14 +115,13 @@ class VPP(object):
 
                 self.aero.up = self.aero.sails[1].up
 
-                # reset at every sail change
-                self.vb0 = 0.35 * np.sqrt(self.hydro.l * self.hydro.g)
-                self.phi0 = 0.0
-                self.leeway0 = 0.0
-
                 for j in trange(len(self.twa_range)):
 
                     twa = self.twa_range[j]
+
+                    self.vb0 = 0.8 * tws
+                    self.phi0 = 0
+                    self.leeway0 = 100.0 / twa if (100.0 / twa < 2 * tws) else 2 * tws
 
                     # don't do low twa with downwind sails
                     if (self.aero.up == True) and (twa >= self.lim_dn):
@@ -130,9 +129,12 @@ class VPP(object):
                     if (self.aero.up == False) and (twa <= self.lim_up):
                         continue
 
-                    res = fsolve(
-                        self.resid, [self.vb0, self.phi0, self.leeway0], args=(twa, tws)
+                    res, _, status, message = fsolve(
+                        self.resid, [self.vb0, self.phi0, self.leeway0], args=(twa, tws), full_output=1
                     )
+
+                    if verbose and status != 1:
+                        print(message)
 
                     self.store[i, j, int(3 * n) : int(3 * (n + 1))] = res[:] * np.array(
                         [1.0 / KNOTS_TO_MPS, 1, 1]
@@ -145,14 +147,6 @@ class VPP(object):
                         print("Drag coefficient :        %.3f" % self.aero.cd)
                         print("Flattener coefficient :    %.3f" % self.aero.flat)
                         print()
-
-                    self.hydro.update(res[0], res[1], res[2])
-                    self.aero.update(res[0], res[1], tws, twa, 1.0)
-
-                    # prepare next iteration
-                    self.vb0 = self.hydro.vb
-                    self.phi0 = self.hydro.phi
-                    self.leeway0 = self.hydro.leeway
 
             print()
         print("Optimization successful.")

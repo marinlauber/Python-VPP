@@ -139,9 +139,9 @@ class AeroMod(object):
         self.cd /= self.area
 
         # viscous quadratic parasitic drag and induced drag
-        self.CE = kpp / (self.area * self.cl ** 2) + self.area / (
-            np.pi * self._heff(self.awa) ** 2
-        )
+        devisor_1 = self.area * self.cl ** 2
+        devisor_2 = np.pi * self._heff(self.awa) ** 2
+        self.CE = (kpp / devisor_1 if devisor_1 else 0.0) + (self.area / devisor_2 if devisor_2 else 0.0)
 
         # fraction of parasitic drag due to jib
         self.fcdj = 0.0

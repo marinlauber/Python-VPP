@@ -126,6 +126,9 @@ def plot_polar(bm, calc, stats):
             continue
         label = os.path.splitext(f)[0]
         for i, s in enumerate(tws):
+            if (stats[f]['std'][i] < 1e-3):
+                print("Skip graph for TWS %d, %s" % (s, f))
+                continue
             _, ax = plt.subplots(1, 1, subplot_kw=dict(polar=True), figsize=(16 / 3, 7.5))
             twa = bm[f][s][:,0]
             ax.plot(
