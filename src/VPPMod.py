@@ -11,6 +11,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
 from scipy.optimize import fsolve
+from scipy.optimize import root
 from tqdm import trange
 from typing import Final
 import warnings
@@ -129,12 +130,16 @@ class VPP(object):
                     if (self.aero.up == False) and (twa <= self.lim_up):
                         continue
 
-                    res, _, status, message = fsolve(
-                        self.resid, [self.vb0, self.phi0, self.leeway0], args=(twa, tws), full_output=1
-                    )
+                    # res, _, status, message = fsolve(
+                    #     self.resid, [self.vb0, self.phi0, self.leeway0], args=(twa, tws), full_output=1
+                    # )
+                    # if verbose and status != 1:
+                    #     print(message)
 
-                    if verbose and status != 1:
-                        print(message)
+                    sol = root(self.resid, [self.vb0, self.phi0, self.leeway0], args=(twa, tws), method='lm')
+                    res = sol.x
+                    if verbose and not sol.success:
+                        print(sol.message)
 
                     self.store[i, j, int(3 * n) : int(3 * (n + 1))] = res[:] * np.array(
                         [1.0 / KNOTS_TO_MPS, 1, 1]
