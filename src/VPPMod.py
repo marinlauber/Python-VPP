@@ -121,7 +121,7 @@ class VPP(object):
 
                     self.vb0 = 0.8 * tws
                     self.phi0 = 0
-                    self.leeway0 = 100.0 / twa if (100.0 / twa < 2 * tws) else 2 * tws
+                    self.leeway0 = 100.0 / twa if (twa > 1.0 and 100.0 / twa < 2 * tws) else 2 * tws
 
                     # don't do low twa with downwind sails
                     if (self.aero.up == True) and (twa >= self.lim_dn):
