@@ -12,8 +12,7 @@ def build_interp_func(fname, i=1, kind="linear"):
         """
     a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
     # linear for now, this is not good, might need to polish data outside
-    return interpolate.interp1d(a[0, :], a[i, :], kind=kind)
-
+    return interpolate.interp1d(a[0, :], a[i, :], kind=kind, fill_value="extrapolate")
 
 def polar(n):
     stl = ["-", "--", "-.", ":"]
