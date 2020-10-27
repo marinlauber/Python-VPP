@@ -13,10 +13,11 @@ from scipy import interpolate
 
 class Sail(object):
 
-    def __init__(self, type, area, vce, up=True):
+    def __init__(self, type, area, vce, min_area, up=True):
         
         self.type = type
         self.area = area
+        self.min_area = min_area
         self.vce  = vce
         # get sails coefficients
         self._build_interp_func(self.type)
@@ -64,8 +65,9 @@ class Main(Sail):
         self.roach = Roach
         self.BAD = BAD
         self.area = 0.5*P*E*(1+self.roach)
+        self.min_area = 0.45*self.area
         self.vce =  P/3.*(1+self.roach) + BAD
-        super().__init__(self.type, self.area, self.vce)
+        super().__init__(self.type, self.area, self.vce, self.min_area)
 
 
 class Jib(Sail):
@@ -76,16 +78,18 @@ class Jib(Sail):
         self.LPG = LPG
         self.HBI = HBI
         self.area = 0.5 * I * max(J, LPG)
+        self.min_area = 0.3*self.area
         self.vce = I/3. + HBI
-        super().__init__(self.type, self.area, self.vce)
+        super().__init__(self.type, self.area, self.vce, self.min_area)
 
 
 class Kite(Sail):
     def __init__(self, area, vce):
         self.type = 'kite'
         self.area = area
+        self.min_area = self.area
         self.vce = vce
-        super().__init__(self.type, self.area, self.vce, up=False)
+        super().__init__(self.type, self.area, self.vce, self.min_area, up=False)
 
 
 # class Kite(Sail):

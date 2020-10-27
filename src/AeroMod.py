@@ -22,7 +22,7 @@ class AeroMod(object):
         # physical params
         self.rho = rho
         self.mu = mu
-        self.flat = 1.
+        self.flatmin = 0.62
         self.reef = 1.
 
         # set sails and measure what is need once
@@ -72,7 +72,7 @@ class AeroMod(object):
         self.tws = tws
         self.twa = twa
         # gradual flatening of the sails with tws increase, min is 0.62 from 17 knots
-        self.flat = np.where(tws<2.5,1,np.where(tws<8.5,0.81+0.19*np.cos((tws-2.5)/6*np.pi),0.62))
+        self.flat = np.where(tws<2.5,1,np.where(tws<8.5,0.81+0.19*np.cos((tws-2.5)/6*np.pi),self.flatmin))
         # self.flat = max(0.62,min(flat,1.0))
 
         self._update_windTriangle()
@@ -90,7 +90,7 @@ class AeroMod(object):
         self._get_coeffs()
 
         # instead of writing many time
-        awa = self.awa/180.*np.pi
+        awa = np.radians(self.awa)
 
         # lift and drag
         self.lift = 0.5*self.rho*self.aws**2*self.area*self.cl
@@ -101,15 +101,15 @@ class AeroMod(object):
         self.Fy = self.lift*np.cos(awa) + self.drag*np.sin(awa)
 
         # heeling moment
-        self.Mx = self.Fy * self._vce() * np.cos(self.phi/180.*np.pi)
+        self.Mx = self.Fy * self._vce() * np.cos(np.radians(self.phi))
 
         # side-force is horizontal component of Fh
-        self.Fy *= np.cos(np.deg2rad(self.phi))
+        self.Fy *= np.cos(np.radians(self.phi))
 
     
     def _get_Rw(self, awa):
         Rw = 0.5*self.rho*self.aws**2*self._get_Aref(awa)*0.816
-        return Rw * np.cos(awa/180.*np.pi)
+        return Rw * np.cos(np.radians(awa))
 
     
     def _get_Aref(self, awa):
@@ -153,10 +153,10 @@ class AeroMod(object):
         '''
         find AWS and AWA for a given TWS, TWA and VB
         '''
-        _awa_ = lambda awa : self.vb*np.sin(awa/180.*np.pi)-self.tws*np.sin((self.twa-awa)/180.*np.pi)
+        _awa_ = lambda awa : self.vb*np.sin(np.radians(awa))-self.tws*np.sin(np.radians(self.twa-awa))
         self.awa = fsolve(_awa_, self.twa)[0]
-        self.aws = np.sqrt((self.tws*np.sin(self.twa/180.*np.pi))**2 + \
-                           (self.tws*np.cos(self.twa/180.*np.pi) + self.vb)**2)
+        self.aws = np.sqrt((self.tws*np.sin(np.radians(self.twa)))**2 + \
+                           (self.tws*np.cos(np.radians(self.twa)) + self.vb)**2)
 
 
     def _area(self):

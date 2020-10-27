@@ -99,7 +99,7 @@ class HydroMod(object):
             self.cla =  np.hstack((self.cla, appendage.cla*appendage._Ksff(self.phi)))
             self.Teff = np.hstack((self.Teff,appendage.teff))
 
-        self.Ksfj = 0.5*self.rho*self.vb**2*self.cla*self.leeway/180.0*np.pi
+        self.Ksfj = 0.5*self.rho*self.vb**2*self.cla*np.radians(self.leeway)
         self.Ksf = np.sum(self.Ksfj)
 
         # contribution of each
@@ -129,7 +129,7 @@ class HydroMod(object):
         self.Fx = self._get_Rr() + self._get_Rv() + self._get_Ri() 
 
         # keel side force, calculated when _get_Ri() is called
-        self.Fy = self.Ksf*np.cos(self.phi/180.*np.pi)
+        self.Fy = self.Ksf*np.cos(np.radians(self.phi))
 
         # measure righting moment
         # self._limit_heel()
@@ -168,7 +168,7 @@ class HydroMod(object):
     #     return a
 
 
-    def show_resistance(self, vb):
+    def show_resistance(self, vb, fn="None"):
         resV,resR = np.empty_like(vb),np.empty_like(vb)
         for i, v in enumerate(vb):
             self.vb = v * 0.5144
@@ -177,11 +177,14 @@ class HydroMod(object):
             self.fn = self.vb / (np.sqrt(self.g*self.lsm))
             resR[i] = self._get_Rr()
             resV[i] =  self._get_Rv()
-        plt.plot(vb, resR, '-x', lw=1, label='Residuary Resistance')    
-        plt.plot(vb, resV, '-.', lw=1, label='Viscous Resistance')
-        plt.plot(vb, resV+resR, '->', lw=1, label='Total Resistance')
-        plt.xlabel(r'$V_b$ (knots)'); plt.ylabel(r'$R$ (N)')
+        plt.plot(vb/np.sqrt(self.g*self.lsm), resR, '-x', lw=1, label='Residuary Resistance')    
+        plt.plot(vb/np.sqrt(self.g*self.lsm), resV, '-.', lw=1, label='Viscous Resistance')
+        plt.plot(vb/np.sqrt(self.g*self.lsm), resV+resR, '->', lw=1, label='Total Resistance')
+        plt.xlabel(r'$F_n$ (-)'); plt.ylabel(r'$R$ (N)')
         plt.legend()
+        plt.tight_layout()
+        if fn!="None":
+            plt.savefig(fn, dpi=300)
         plt.show()
 
 

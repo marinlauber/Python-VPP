@@ -39,7 +39,7 @@ class VPP(object):
         self.hydro = HydroMod(self.yacht)
 
         # maximum allows heel angle
-        self.phi_max = 100.0
+        self.phi_max = 135.0
 
         # tws bounds for downwind/upwind sails
         self.lim_up = 60.0
@@ -121,8 +121,25 @@ class VPP(object):
                     if((self.aero.up==True) and(twa>=self.lim_dn)): continue
                     if((self.aero.up==False)and(twa<=self.lim_up)): continue
 
-                    res = fsolve(self.resid,[self.vb0,self.phi0,self.leeway0],args=(twa, tws))
+                    self.iter = 0
+
+                    while (True and (self.iter<10)):
+
+                        res = fsolve(self.resid,[self.vb0,self.phi0,self.leeway0],args=(twa, tws))
                     
+                        # is that a valid equilibrium?
+                        if res[1]<=self.phi_max:
+                            break
+                        
+                        # reduce sail area if heel is too much
+                        if(self.aero.up==True):
+                            if self.aero.sails[1].area!=self.aero.sails[1].min_area:
+                                self.aero.sails[1].area = max(self.aero.sails[1].area*0.8, self.aero.sails[1].min_area)
+                            else:
+                                self.aero.sails[0].area = max(self.aero.sails[0].area*0.8, self.aero.sails[0].min_area)
+                        self.iter +=1
+
+
                     self.store[i,j,int(3*n):int(3*(n+1))] = res[:]*np.array([1./0.5144,1,1])
                     if verbose:
                         print('Running case :     (%.1f,%.2f)' % (twa,tws))
@@ -205,31 +222,31 @@ class VPP(object):
         for i in range(len(self.tws_range)):
             idx, vmg = self._make_nice(self.store[i,:,:])
             if n==1:
-                ax.plot(self.twa_range[:idx[0]]/180*np.pi,self.store[i,:idx[0],0],
+                ax.plot(np.radians(self.twa_range[:idx[0]]),self.store[i,:idx[0],0],
                         'k',lw=1,linestyle=stl[int(i%4)],
                         label=f'{self.tws_range[i]/0.5144:.1f}')
-                ax.plot(self.twa_range[vmg[0]]/180*np.pi, self.store[i,vmg[0],0],
+                ax.plot(np.radians(self.twa_range[vmg[0]]), self.store[i,vmg[0],0],
                         'ok',lw=1,markersize=4,mfc='None')
                 idx2 = np.where(self.Nsails==1,0,3)
-                ax.plot(self.twa_range[vmg[1]]/180*np.pi, self.store[i,vmg[1],idx2],
+                ax.plot(np.radians(self.twa_range[vmg[1]]), self.store[i,vmg[1],idx2],
                         'ok',lw=1,markersize=4,mfc='None')
                 if self.Nsails!=1:
-                    ax.plot(self.twa_range[idx[1]:]/180*np.pi,self.store[i,idx[1]:,3],
+                    ax.plot(np.radians(self.twa_range[idx[1]:]),self.store[i,idx[1]:,3],
                            'gray',lw=1,linestyle=stl[int(i%4)])
                 ax.legend(title=r'TWS (knots)',loc=1,bbox_to_anchor=(1.05,1.05))
             else:
                 for j in range(n):
-                    ax[j].plot(self.twa_range[:idx[0]]/180*np.pi,self.store[i,:idx[0],j],
+                    ax[j].plot(np.radians(self.twa_range[:idx[0]]),self.store[i,:idx[0],j],
                             'k',lw=1,linestyle=stl[int(i%4)],
                             label=f'{self.tws_range[i]/0.5144:.1f}')
                     if j == 0:
-                        ax[j].plot(self.twa_range[vmg[0]]/180*np.pi, self.store[i,vmg[0],j],
+                        ax[j].plot(np.radians(self.twa_range[vmg[0]]), self.store[i,vmg[0],j],
                                 'ok',lw=1,markersize=4,mfc='None')
                         idx2 = np.where(self.Nsails==1,j,int(j+3))
-                        ax[j].plot(self.twa_range[vmg[1]]/180*np.pi, self.store[i,vmg[1],idx2],
+                        ax[j].plot(np.radians(self.twa_range[vmg[1]]), self.store[i,vmg[1],idx2],
                                 'ok',lw=1,markersize=4,mfc='None')
                     if self.Nsails!=1:
-                        ax[j].plot(self.twa_range[idx[1]:]/180*np.pi,self.store[i,idx[1]:,int(j+3)],
+                        ax[j].plot(np.radians(self.twa_range[idx[1]:]),self.store[i,idx[1]:,int(j+3)],
                                 'gray',lw=1,linestyle=stl[int(i%4)])
                 ax[0].legend(title=r'TWS (knots)',loc=1,bbox_to_anchor=(1.05,1.05))
         plt.tight_layout()
