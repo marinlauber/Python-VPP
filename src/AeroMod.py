@@ -11,7 +11,7 @@ import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import fsolve
 import matplotlib.pyplot as plt
-from src.utils import build_interp_func
+from src.UtilsMod import build_interp_func
 
 
 class AeroMod(object):

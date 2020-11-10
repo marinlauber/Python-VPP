@@ -13,8 +13,9 @@ from scipy import interpolate
 
 
 class Sail(object):
-    def __init__(self, type, area, vce, up=True):
+    def __init__(self, name, type, area, vce, up=True):
 
+        self.name = name
         self.type = type
         self.area = area
         self.vce = vce
@@ -54,7 +55,8 @@ class Sail(object):
 
 
 class Main(Sail):
-    def __init__(self, P, E, Roach, BAD):
+    def __init__(self, name, P, E, Roach, BAD):
+        self.name = name
         self.type = "main"
         self.P = P
         self.E = E
@@ -62,11 +64,12 @@ class Main(Sail):
         self.BAD = BAD
         self.area = 0.5 * P * E * (1 + self.roach)
         self.vce = P / 3.0 * (1 + self.roach) + BAD
-        super().__init__(self.type, self.area, self.vce)
+        super().__init__(self.name, self.type, self.area, self.vce)
 
 
 class Jib(Sail):
-    def __init__(self, I, J, LPG, HBI):
+    def __init__(self, name, I, J, LPG, HBI):
+        self.name = name
         self.type = "jib"
         self.I = I
         self.J = J
@@ -74,15 +77,16 @@ class Jib(Sail):
         self.HBI = HBI
         self.area = 0.5 * I * max(J, LPG)
         self.vce = I / 3.0 + HBI
-        super().__init__(self.type, self.area, self.vce)
+        super().__init__(self.name, self.type, self.area, self.vce)
 
 
 class Kite(Sail):
-    def __init__(self, area, vce):
+    def __init__(self, name, area, vce):
+        self.name = name
         self.type = "kite"
         self.area = area
         self.vce = vce
-        super().__init__(self.type, self.area, self.vce, up=False)
+        super().__init__(self.name, self.type, self.area, self.vce, up=False)
 
 
 # class Kite(Sail):

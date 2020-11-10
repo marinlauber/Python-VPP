@@ -8,7 +8,8 @@ __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from src.utils import build_interp_func
+import json
+from src.UtilsMod import build_interp_func
 
 
 class Appendage(object):
@@ -96,26 +97,9 @@ class Bulb(Appendage):
         self.cof = 1.50
         super().__init__(self.type, self.chord, self.area, 0.0, self.vol, self.ce)
 
-
 class Yacht(object):
-    def __init__(
-        self,
-        Name,
-        Lwl,
-        Vol,
-        Bwl,
-        Tc,
-        WSA,
-        Tmax,
-        Amax,
-        Mass,
-        Loa,
-        Boa,
-        Ff,
-        Fa,
-        App=[],
-        Sails=[],
-    ):
+    def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
+                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[]):
         """
         Name : Name of particular design 
         Lwl : waterline length (m)
@@ -129,7 +113,7 @@ class Yacht(object):
         App : appendages (Appendages object as list, i.e [Keel(...)] )
         """
         self.g = 9.81
-
+        self.Name = Name
         self.l = Lwl
         self.vol = Vol
         self.bwl = Bwl
@@ -155,7 +139,7 @@ class Yacht(object):
         self.cla = self.area_proj * 2 * np.pi / (1.0 + 0.5 * self.area_proj / self.tc)
         self.teff = 2.07 * self.tc
 
-        # appednages object
+        # appendages object
         self.appendages = App
         self.sails = Sails
 
@@ -165,22 +149,27 @@ class Yacht(object):
         # pupulate everything
         self.update()
 
+
     def update(self):
         self.lsm = self.l
         self.lvr = self.lsm / self.vol ** (1.0 / 3.0)
         self.btr = self.bwl / self.tc
 
+
     def measure(self):
         self.update()
         return self.l, self.vol, self.mass, self.bwl, self.tc, self.wsa
+
 
     def measureLSM(self):
         self.update()
         return self.lsm, self.lvr, self.btr
 
+
     def _get_RmH(self, phi):
         # RM default is equal to RM hyrostatic
         return self._interp_rm(phi) * self.mass * self.g  # + 1./3.*self.rm_default
+
 
     def _get_RmC(self, phi):
         RmC = (
@@ -192,6 +181,30 @@ class Yacht(object):
         return RmC * np.where(
             phi <= 7.5, 0.5 * (1 - np.cos(np.maximum(0, phi - 2.5) / 5.0 * np.pi)), 1.0
         )
+
+    def write(self):
+        with open('yacht.json', 'w') as fp:
+            json.dump(self._get_dict(), fp,  ensure_ascii=False, indent=2, sort_keys=False)
+    def _get_dict(self):
+        dic={}
+        for attr, value in self.__dict__.items():
+            if(attr not in ["appendages","sails","Name"]) and (not callable(getattr(self, attr))):
+                dic.update(dict({attr: value}))
+        dic = {self.Name: dic}
+        app={}; sails={}
+        for appendage in self.appendages:
+            vals={}
+            for attr, value in appendage.__dict__.items():
+                if not callable(getattr(appendage, attr)):
+                    vals.update(dict({attr: value}))
+            app.update(dict({appendage.type: vals}))
+        for sail in self.sails:
+            vals={}
+            for attr, value in sail.__dict__.items():
+                if not callable(getattr(sail, attr)):
+                    vals.update(dict({attr: value}))
+            sails.update(dict({sail.type: vals}))
+        return dic.update(dict({'Appendages': app, 'Sails': sails}))
 
 
 # if __name__ == "__main__":
