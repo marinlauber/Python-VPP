@@ -10,6 +10,7 @@ __email__ = "M.Lauber@soton.ac.uk"
 import numpy as np
 from scipy.interpolate import interp1d
 from scipy.optimize import fsolve
+from scipy.optimize import root
 import matplotlib.pyplot as plt
 from src.UtilsMod import build_interp_func
 
@@ -24,6 +25,8 @@ class AeroMod(object):
         self.mu = mu
         self.flat = 1.0
         self.reef = 1.0
+        self.ftj = 1.0
+        self.rfm = 1.0
 
         # set sails and measure what is need once
         self.yacht = Yacht
@@ -37,22 +40,26 @@ class AeroMod(object):
         self.fcdmult = build_interp_func("fcdmult")
         self.kheff = build_interp_func("kheff")
 
+
     def _measure_windage(self):
         self.boa = self.yacht.boa
         self.loa = self.yacht.loa
         self.fbav = 0.625 * self.yacht.ff + 0.375 * self.yacht.fa
 
+
     def _measure_sails(self):
-        self.fractionality = 1.0
+        self.fractionality = 1.0; b2=0.
         for sail in self.sails:
+            sail.measure(self.rfm, self.ftj)
             if sail.type == "main":
                 self.fractionality /= sail.P + sail.BAD
-                b1 = sail.P + sail.BAD
+                b1 = sail.P_r + sail.BAD
                 self.roach = sail.roach
+                tf = (0.16*(sail.CE-0.024)/sail.P+0.94)*sail.P+sail.BAD
             if sail.type == "jib":
-                self.fractionality *= sail.I
-                b2 = sail.I
-                self.overlap = sail.LPG / sail.J
+                self.fractionality *= sail.IG_r
+                b2 = sail.I*sail.IG_r/sail.IG
+                self.overlap = sail.LPG_r / sail.J
                 self.HBI = sail.HBI
         self.eff_span_corr = (
             1.1
@@ -60,10 +67,12 @@ class AeroMod(object):
             + 0.5 * (0.68 + 0.31 * self.fractionality + 0.0075 * self.overlap - 1.1)
         )
         self.b = max(b1, b2)
-        self.heff_height_max_spi = self.b
+        # assumes no mizain mast
+        self.heff_height_max_spi = max(tf+self.HBI, 0)
+
 
     # prototype top function in hydro mod
-    def update(self, vb, phi, tws, twa, flat):
+    def update(self, vb, phi, tws, twa, flat, RED):
         """
         Update the aero model for current iter
         """
@@ -72,13 +81,11 @@ class AeroMod(object):
         self.tws = tws
         self.twa = twa
         # gradual flatening of the sails with tws increase, min is 0.62 from 17 knots
-        self.flat = np.where(
-            tws < 2.5,
-            1,
-            np.where(tws < 8.5, 0.81 + 0.19 * np.cos((tws - 2.5) / 6 * np.pi), 0.62),
-        )
-        # self.flat = max(0.62,min(flat,1.0))
+        self.flat = np.where(tws<2.5, 1, np.where(tws < 8.5, 0.81 + 0.19 * np.cos((tws - 2.5) / 6 * np.pi), 0.62))
+        self.ftj = max(RED-1., 0.)
+        self.rfm = min(RED, 1.)
 
+        self._measure_sails()
         self._update_windTriangle()
         self._area()
         self._compute_forces()
@@ -97,9 +104,7 @@ class AeroMod(object):
 
         # lift and drag
         self.lift = 0.5 * self.rho * self.aws ** 2 * self.area * self.cl
-        self.drag = 0.5 * self.rho * self.aws ** 2 * self.area * self.cd + self._get_Rw(
-            awa
-        )
+        self.drag = 0.5 * self.rho * self.aws ** 2 * self.area * self.cd + self._get_Rw(awa)
 
         # project into yacht coordinate system
         self.Fx = self.lift * np.sin(awa) - self.drag * np.cos(awa)
@@ -111,14 +116,17 @@ class AeroMod(object):
         # side-force is horizontal component of Fh
         self.Fy *= np.cos(np.deg2rad(self.phi))
 
+
     def _get_Rw(self, awa):
         Rw = 0.5 * self.rho * self.aws ** 2 * self._get_Aref(awa) * 0.816
         return Rw * np.cos(awa / 180.0 * np.pi)
+
 
     def _get_Aref(self, awa):
         # only hull part
         d = 0.5 * (1 - np.cos(awa / 90.0 * np.pi))
         return self.fbav * ((1 - d) * self.boa + d * self.loa)
+
 
     def _get_coeffs(self):
         """
@@ -157,6 +165,7 @@ class AeroMod(object):
         ) + self.CE * self.cl ** 2 * self.flat ** 2 * self.fcdmult(self.flat)
         self.cl = self.flat * self.cl
 
+
     def _update_windTriangle(self):
         """
         find AWS and AWA for a given TWS, TWA and VB
@@ -170,6 +179,7 @@ class AeroMod(object):
             + (self.tws * np.cos(self.twa / 180.0 * np.pi) + self.vb) ** 2
         )
 
+
     def _area(self):
         """
         Fill sail area variable
@@ -178,30 +188,28 @@ class AeroMod(object):
         for sail in self.sails:
             self.area += sail.area
 
+
     def _vce(self):
         """
-        Vectical centre of effort, NOT correct, must be lift/drag weigted
+        Vectical centre of effort lift/drag weigted
         """
         sum = 0.0
         for sail in self.sails:
-            # if(sail.up==self.up):
-            sum += sail.area * sail.vce * sail.bk
+            cl2 = sail.cl(self.awa)**2
+            cd2 = sail.cd(self.awa)**2
+            sum += sail.area * sail.vce * sail.bk * np.sqrt(cl2+cd2)
         self._area()
-        return (
-            sum
-            / self.area
-            * (
-                1
-                - 0.203 * (1 - self.flat)
-                - 0.451 * (1 - self.flat) * (1 - self.fractionality)
-            )
-        )
+        deltaCH = 0 if self.sails[1].up!=True else (1-self.ftj)*0.05*self.sails[1].IG
+        Zce = sum/(self.area*np.sqrt(self.cl**2+self.cd**2)) - deltaCH
+        return (Zce*(1-0.203*(1-self.flat)-0.451*(1-self.flat)*(1-self.fractionality)))
+
 
     def phi_up(self):
         """
         heel angle correction for AWA and AWS (5.51), this is in Radians!
         """
         return 0.5 * (self.phi + 10 * (self.phi / 30.0) ** 2) / 180.0 * np.pi
+
 
     def _heff(self, awa):
         awa = max(0, min(awa, 90))

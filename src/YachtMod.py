@@ -8,8 +8,8 @@ __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-import json
-from src.UtilsMod import build_interp_func
+from src.UtilsMod import build_interp_func,json_read,json_write
+from scipy import interpolate
 
 
 class Appendage(object):
@@ -97,6 +97,7 @@ class Bulb(Appendage):
         self.cof = 1.50
         super().__init__(self.type, self.chord, self.area, 0.0, self.vol, self.ce)
 
+
 class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
                  Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[]):
@@ -144,10 +145,16 @@ class Yacht(object):
         self.sails = Sails
 
         # righting moment interpolation function
-        self._interp_rm = build_interp_func("rm")
+        self._interp_rm = self._build_rm_interp()
 
         # pupulate everything
         self.update()
+
+
+    def _build_rm_interp(self):
+        a = json_read('Righting_moment')
+        return interpolate.interp1d(np.array(a["Heel"]), np.array(a["GZ"]),
+                                    kind="linear", fill_value="extrapolate")
 
 
     def update(self):
@@ -182,9 +189,11 @@ class Yacht(object):
             phi <= 7.5, 0.5 * (1 - np.cos(np.maximum(0, phi - 2.5) / 5.0 * np.pi)), 1.0
         )
 
+
     def write(self):
-        with open('yacht.json', 'w') as fp:
-            json.dump(self._get_dict(), fp,  ensure_ascii=False, indent=2, sort_keys=False)
+        json_write(self._get_dict(), 'yacht')
+
+
     def _get_dict(self):
         dic={}
         for attr, value in self.__dict__.items():

@@ -2,8 +2,7 @@
 
 ![Upload Python Package](https://github.com/TAJD/Python-VPP/workflows/Upload%20Python%20Package/badge.svg)
 
-3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code make use of Object-oriented-Programming to be very general.
-
+3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code make use of Object-oriented-Programming to be as general as possible.
 
 
 ## Getting Started
@@ -18,17 +17,50 @@
 
 ### Prerequisites
 
+There are only a few prerequisites to run this code, most python instalation will have them. We advise to use the `environment.yml` file provided in this repo to set-up a new conda environment to use the code (this keeps you machine nice and tidy).
+
+To create the environment simply run from the cloned/downloaded repo
+
+```bash
+$ conda env create -f environment.yml
+```
+and then active the new environment
+
+```bash
+$ conda activate Python-VPP
+```
+
+> **_NOTE:_** If you want to change the conda environment name, edit the first line of the `environment.yml` file.
+
 ### Running the tests
+
+You can run a benchmark agains the YD-41 results from WinVPP by running the `benchmark.py` script.
+
+```python
+$ python benchmark/benchmark.py -g -o
+```
+
+with the `graph` and `output` optional keyboard arguments.
+
+## Using the code
+
+To use the code, forst clone or download this repository onto your own machine. The main file that are used are `OOpyVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
+
+```python
+$ python OOpyVPP.py
+```
+
+into your console, and the code should run. Once the code has run, it should generate the following figure (or a similar one)
 
 <p align="center">
     <img src="Figure.png" alt="YD-41 VPP results" width="1024">
 </p>
 
-## Using the code
-
 See the [documentation](https://marinlauber.github.io/Python-VPP/).
 
 ### Input variable
+
+This is a crude list of all the input variables and their meaning, as well as the units they are expected to be in.
 
 1. Appendages :
     * Cu : Root Chord / Upper Chord (m)
@@ -51,7 +83,7 @@ See the [documentation](https://marinlauber.github.io/Python-VPP/).
     * Sails : List of Sails
 1. Sails:
     Standard measurements, except Roach is defined as 1-A/(0.5PE)
-    Kite only takes area and vce esitmate
+    Kite only takes area and vce esitmate (this is very rough)
 1. VPP.set_analysis()
     * TWA range : range of TWA to use
     * TWS range : range of TWS, must be between [2, 35]
@@ -71,8 +103,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 * Hat tip to anyone whose code was used
 * Inspiration
-
-
 
 ## Modifications
 

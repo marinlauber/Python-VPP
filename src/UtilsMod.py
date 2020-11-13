@@ -13,6 +13,16 @@ stl = ["-", "--", "-.", ":"]
 lab = [r"$V_B$ (knots)", r"Heel $\phi$ ($^\circ$)", r"Leeway $\gamma$ ($^\circ$)"]
 
 
+def json_read(fname):
+    with open(fname+'.json', 'r') as json_file:
+        return json.load(json_file)
+
+
+def json_write(data, fname):
+    with open(fname+'.json', 'w') as json_file:
+        json.dump(data, json_file, ensure_ascii=False, indent=2, sort_keys=False)
+
+
 def build_interp_func(fname, i=1, kind="linear"):
     """
         build interpolatison function and returns it in a list
@@ -49,7 +59,7 @@ def _make_nice(dat, twa_range):
             return np.array([idx + 2, idx - 2]), np.array([up, dn])
 
 
-def polar_plot(VPP, n=1, save=False):
+def polar_plot(VPP, n=1, save=False, awa=False):
         """
         Generate a polar plot of the equilibrium variables.
 
@@ -62,19 +72,20 @@ def polar_plot(VPP, n=1, save=False):
 
         """
         fig, ax = _polar(n)
+        wind = VPP.twa_range
         for i in range(len(VPP.tws_range)):
             idx, vmg = _make_nice(VPP.store[i, :, :, :], VPP.twa_range)
             for j in range(n):
-                ax[j].plot(VPP.twa_range[: idx[0]] / 180 * np.pi,VPP.store[i, : idx[0], 0, j],
+                ax[j].plot(wind[: idx[0]] / 180 * np.pi,VPP.store[i, : idx[0], 0, j],
                             "k",lw=1,linestyle=stl[int(i % 4)],label=f"{VPP.tws_range[i]/KNOTS_TO_MPS:.1f}")
                 if VPP.Nsails != 1:
-                    ax[j].plot(VPP.twa_range[idx[1] :] / 180 * np.pi,VPP.store[i, idx[1] :, 1, j],
+                    ax[j].plot(wind[idx[1] :] / 180 * np.pi,VPP.store[i, idx[1] :, 1, j],
                                "gray",lw=1,linestyle=stl[int(i % 4)])
             # add VMG points
-            ax[0].plot(VPP.twa_range[vmg[0]] / 180 * np.pi,VPP.store[i, vmg[0], 0, 0],
+            ax[0].plot(wind[vmg[0]] / 180 * np.pi,VPP.store[i, vmg[0], 0, 0],
                         "ok",lw=1,markersize=4,mfc="None")
             idx2 = np.where(VPP.Nsails==1, 0, 1)
-            ax[0].plot(VPP.twa_range[vmg[1]] / 180 * np.pi,VPP.store[i, vmg[1], idx2, 0],
+            ax[0].plot(wind[vmg[1]] / 180 * np.pi,VPP.store[i, vmg[1], idx2, 0],
                         "ok",lw=1,markersize=4,mfc="None")
             # add legend only on first axis
             ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
@@ -105,11 +116,6 @@ def _get_best_sails(store):
     return res
 
 
-def _load(fname):
-    with open(fname+'.json', 'r') as json_file:
-        return json.load(json_file)
-
-
 class VPPResults(object):
 
     def __init__(self, fname):
@@ -117,7 +123,7 @@ class VPPResults(object):
         self._load_data()
 
     def _load_data(self):
-        self.data = _load(self.fname); k=1
+        self.data = json_read(self.fname); k=1
         self.tws_range = np.array(self.data[0]["tws"])
         self.twa_range = np.array(self.data[0]["twa"])
         self.sails = self.data[0]["Sails"]

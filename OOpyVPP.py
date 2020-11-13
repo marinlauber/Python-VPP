@@ -39,7 +39,7 @@ if __name__ == "__main__":
    vpp = VPP(Yacht=YD41)
 
    vpp.set_analysis(tws_range=np.arange(4.0,18.0,4.0),
-                  twa_range=np.linspace(30.0,180.0,11))
+                    twa_range=np.linspace(30.0,180.0,34))
 
    vpp.run(verbose=False)
    vpp.polar(n=3, save=False)

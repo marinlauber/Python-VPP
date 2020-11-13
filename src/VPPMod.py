@@ -10,15 +10,13 @@ __email__ = "M.Lauber@soton.ac.uk"
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
-from scipy.optimize import fsolve
 from scipy.optimize import root
 from tqdm import trange
 import warnings
-import json
 
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
-from src.UtilsMod import KNOTS_TO_MPS, polar_plot, sail_chart
+from src.UtilsMod import KNOTS_TO_MPS,polar_plot,sail_chart,json_write
 
 class VPP(object):
     """A VPP Class that run an analysis on a given Yacht."""
@@ -39,7 +37,7 @@ class VPP(object):
         self.hydro = HydroMod(self.yacht)
 
         # maximum allows heel angle
-        self.phi_max = 100.0
+        self.phi_max = 25.0
 
         # debbuging flag
         self.debbug = False
@@ -131,27 +129,14 @@ class VPP(object):
                     if (self.aero.up == False) and (twa <= self.lim_up):
                         continue
 
-                    sol = root(self.resid, [self.vb0, self.phi0, self.leeway0], args=(twa, tws), method='lm')
-                    res = sol.x
+                    sol = root(self.resid, [self.vb0, self.phi0, self.leeway0],
+                               args=(twa, tws), method='lm')
+                    self.vb0, self.phi0, self.leeway0 = res = sol.x
                     if verbose and not sol.success:
                         print(sol.message)
 
                     # store data for later
                     self.store[i, j, n, :] = res[:] * np.array([1.0/KNOTS_TO_MPS, 1, 1])
-
-                    if verbose:
-                        resids = self.resid(res, twa, tws)
-                        print("Running case :     (%.1f,%.2f)" % (twa, tws))
-                        print("Initial Guess Vb :        %.3f" % (self.vb0 / KNOTS_TO_MPS))
-                        print("Result for Vb :           %.3f" % (res[0] / KNOTS_TO_MPS))
-                        print("Lift coefficient :        %.3f" % self.aero.cl)
-                        print("Drag coefficient :        %.3f" % self.aero.cd)
-                        print("Flattener coefficient :   %.3f" % self.aero.flat)
-                        print("Residuals :                   ")
-                        print("\tSurge :           %.3f" % resids[0])
-                        print("\tRoll :            %.3f" % resids[1])
-                        print("\tSway :            %.3f" % resids[2])
-                        print()
 
             print()
         print("Optimization successful.")
@@ -178,11 +163,11 @@ class VPP(object):
         """
 
         vb0 = x0[0]
-        phi0 = x0[1]
+        phi0 = x0[1] # min(x0[1], self.phi_max)
         leeway = x0[2]  # ; flat=x0[3]
 
         Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
-        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, 1.0)
+        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, 1.0, 2.0)
 
         return [(Fxh - Fxa) ** 2, (Mxh - Mxa) ** 2, (Fyh - Fya) ** 2]
 
@@ -194,7 +179,8 @@ class VPP(object):
         lab = ["Speed", "Heel", "Leeway"]
         data = [ {"tws": self.tws_range.tolist(),
                   "twa": self.twa_range.tolist(),
-                  "Sails":[self.yacht.sails[0].name+" + "+self.yacht.sails[n+1].name for n in range(self.Nsails)]} ]
+                  "Sails":[self.yacht.sails[0].name+" + "
+                  +self.yacht.sails[n+1].name for n in range(self.Nsails)]} ]
         for i in range(len(self.tws_range)):
             for j in range(len(self.twa_range)):
                 for n in range(self.Nsails):
@@ -206,8 +192,7 @@ class VPP(object):
 
 
     def write(self, fname):
-        with open(fname+'.json', 'w') as fp:
-            json.dump(self.results(), fp,  ensure_ascii=False, indent=2, sort_keys=False)
+        json_write(self.results(), fname)
 
 
     def polar(self, n=1, save=False):

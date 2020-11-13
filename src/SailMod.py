@@ -24,6 +24,7 @@ class Sail(object):
         self.bk = 1.0  # always valid for main, only AWA<135 for jib
         self.up = up  # is that an upwind sail?
 
+
     def _build_interp_func(self, fname):
         """
         build interpolation function and returns it in a list
@@ -62,9 +63,16 @@ class Main(Sail):
         self.E = E
         self.roach = Roach
         self.BAD = BAD
-        self.area = 0.5 * P * E * (1 + self.roach)
-        self.vce = P / 3.0 * (1 + self.roach) + BAD
-        super().__init__(self.name, self.type, self.area, self.vce)
+        self.area0 = 0.5 * P * E * (1 + self.roach)
+        self.vce = P / 3.0 * (1 + self.roach) + self.BAD
+        super().__init__(self.name, self.type, self.area0, self.vce)
+        self.measure()
+    
+    def measure(self, rfm=1, ftj=1):
+        self.P_r = self.P*rfm
+        self.vce = self.P_r / 3.0 * (1 + self.roach) + self.BAD
+        self.area = self.area0*rfm**2
+        self.CE = 1.
 
 
 class Jib(Sail):
@@ -73,11 +81,18 @@ class Jib(Sail):
         self.type = "jib"
         self.I = I
         self.J = J
+        self.IG = self.I
         self.LPG = LPG
         self.HBI = HBI
         self.area = 0.5 * I * max(J, LPG)
         self.vce = I / 3.0 + HBI
         super().__init__(self.name, self.type, self.area, self.vce)
+        self.measure()
+
+    def measure(self, rfm=1, fjt=1):
+        self.LPG_r = self.LPG*fjt
+        self.IG_r = self.IG*fjt
+        self.area = 0.5 * self.I * max(self.J, self.LPG_r)
 
 
 class Kite(Sail):
@@ -87,7 +102,10 @@ class Kite(Sail):
         self.area = area
         self.vce = vce
         super().__init__(self.name, self.type, self.area, self.vce, up=False)
+        self.measure()
 
+    def measure(self, rfm=1, ftj=1):
+        pass
 
 # class Kite(Sail):
 #     def __init__(self, SLU, SLE, SFL, SHW, ISP, J, SPL):
