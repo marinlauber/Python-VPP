@@ -179,15 +179,7 @@ class Yacht(object):
 
 
     def _get_RmC(self, phi):
-<<<<<<< HEAD
         RmC =  self.carm*(self.cw+0.7*self.bmax*self.bdwt)*np.cos(np.radians(phi))
-=======
-        RmC = (
-            self.carm
-            * (self.cw + 0.7 * self.bmax * self.bdwt)
-            * np.cos(np.deg2rad(phi))
-        )
->>>>>>> master
         # gradually ramp-up crew Rm from 2.5 to 7.5 degrees of heel.
         return RmC * np.where(
             phi <= 7.5, 0.5 * (1 - np.cos(np.maximum(0, phi - 2.5) / 5.0 * np.pi)), 1.0

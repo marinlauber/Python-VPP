@@ -23,15 +23,10 @@ class AeroMod(object):
         # physical params
         self.rho = rho
         self.mu = mu
-<<<<<<< HEAD
-        self.flatmin = 0.62
-        self.reef = 1.
-=======
         self.flat = 1.0
         self.reef = 1.0
         self.ftj = 1.0
         self.rfm = 1.0
->>>>>>> master
 
         # set sails and measure what is need once
         self.yacht = Yacht
@@ -86,14 +81,9 @@ class AeroMod(object):
         self.tws = tws
         self.twa = twa
         # gradual flatening of the sails with tws increase, min is 0.62 from 17 knots
-<<<<<<< HEAD
-        self.flat = np.where(tws<2.5,1,np.where(tws<8.5,0.81+0.19*np.cos((tws-2.5)/6*np.pi),self.flatmin))
-        # self.flat = max(0.62,min(flat,1.0))
-=======
         self.flat = np.where(tws<2.5, 1, np.where(tws < 8.5, 0.81 + 0.19 * np.cos((tws - 2.5) / 6 * np.pi), 0.62))
         self.ftj = max(RED-1., 0.)
         self.rfm = min(RED, 1.)
->>>>>>> master
 
         self._measure_sails()
         self._update_windTriangle()
@@ -110,11 +100,7 @@ class AeroMod(object):
         self._get_coeffs()
 
         # instead of writing many time
-<<<<<<< HEAD
-        awa = np.radians(self.awa)
-=======
         awa = self.awa / 180.0 * np.pi
->>>>>>> master
 
         # lift and drag
         self.lift = 0.5 * self.rho * self.aws ** 2 * self.area * self.cl
@@ -125,25 +111,16 @@ class AeroMod(object):
         self.Fy = self.lift * np.cos(awa) + self.drag * np.sin(awa)
 
         # heeling moment
-<<<<<<< HEAD
-        self.Mx = self.Fy * self._vce() * np.cos(np.radians(self.phi))
-=======
         self.Mx = self.Fy * self._vce() * np.cos(self.phi / 180.0 * np.pi)
->>>>>>> master
 
         # side-force is horizontal component of Fh
         self.Fy *= np.cos(np.radians(self.phi))
 
 
     def _get_Rw(self, awa):
-<<<<<<< HEAD
-        Rw = 0.5*self.rho*self.aws**2*self._get_Aref(awa)*0.816
-        return Rw * np.cos(np.radians(awa))
-=======
         Rw = 0.5 * self.rho * self.aws ** 2 * self._get_Aref(awa) * 0.816
         return Rw * np.cos(awa / 180.0 * np.pi)
 
->>>>>>> master
 
     def _get_Aref(self, awa):
         # only hull part
@@ -192,13 +169,6 @@ class AeroMod(object):
     def _update_windTriangle(self):
         """
         find AWS and AWA for a given TWS, TWA and VB
-<<<<<<< HEAD
-        '''
-        _awa_ = lambda awa : self.vb*np.sin(np.radians(awa))-self.tws*np.sin(np.radians(self.twa-awa))
-        self.awa = fsolve(_awa_, self.twa)[0]
-        self.aws = np.sqrt((self.tws*np.sin(np.radians(self.twa)))**2 + \
-                           (self.tws*np.cos(np.radians(self.twa)) + self.vb)**2)
-=======
         """
         _awa_ = lambda awa: self.vb * np.sin(awa / 180.0 * np.pi) - self.tws * np.sin(
             (self.twa - awa) / 180.0 * np.pi
@@ -208,7 +178,6 @@ class AeroMod(object):
             (self.tws * np.sin(self.twa / 180.0 * np.pi)) ** 2
             + (self.tws * np.cos(self.twa / 180.0 * np.pi) + self.vb) ** 2
         )
->>>>>>> master
 
 
     def _area(self):

@@ -15,19 +15,10 @@ from scipy import interpolate
 class Sail(object):
     def __init__(self, name, type, area, vce, up=True):
 
-<<<<<<< HEAD
-    def __init__(self, type, area, vce, min_area, up=True):
-        
-        self.type = type
-        self.area = area
-        self.min_area = min_area
-        self.vce  = vce
-=======
         self.name = name
         self.type = type
         self.area = area
         self.vce = vce
->>>>>>> master
         # get sails coefficients
         self._build_interp_func(self.type)
         self.bk = 1.0  # always valid for main, only AWA<135 for jib
@@ -72,12 +63,6 @@ class Main(Sail):
         self.E = E
         self.roach = Roach
         self.BAD = BAD
-<<<<<<< HEAD
-        self.area = 0.5*P*E*(1+self.roach)
-        self.min_area = 0.45*self.area
-        self.vce =  P/3.*(1+self.roach) + BAD
-        super().__init__(self.type, self.area, self.vce, self.min_area)
-=======
         self.area0 = 0.5 * P * E * (1 + self.roach)
         self.vce = P / 3.0 * (1 + self.roach) + self.BAD
         super().__init__(self.name, self.type, self.area0, self.vce)
@@ -88,7 +73,6 @@ class Main(Sail):
         self.vce = self.P_r / 3.0 * (1 + self.roach) + self.BAD
         self.area = self.area0*rfm**2
         self.CE = 1.
->>>>>>> master
 
 
 class Jib(Sail):
@@ -101,11 +85,6 @@ class Jib(Sail):
         self.LPG = LPG
         self.HBI = HBI
         self.area = 0.5 * I * max(J, LPG)
-<<<<<<< HEAD
-        self.min_area = 0.3*self.area
-        self.vce = I/3. + HBI
-        super().__init__(self.type, self.area, self.vce, self.min_area)
-=======
         self.vce = I / 3.0 + HBI
         super().__init__(self.name, self.type, self.area, self.vce)
         self.measure()
@@ -114,7 +93,6 @@ class Jib(Sail):
         self.LPG_r = self.LPG*fjt
         self.IG_r = self.IG*fjt
         self.area = 0.5 * self.I * max(self.J, self.LPG_r)
->>>>>>> master
 
 
 class Kite(Sail):
@@ -124,12 +102,8 @@ class Kite(Sail):
         self.area = area
         self.min_area = self.area
         self.vce = vce
-<<<<<<< HEAD
-        super().__init__(self.type, self.area, self.vce, self.min_area, up=False)
-=======
         super().__init__(self.name, self.type, self.area, self.vce, up=False)
         self.measure()
->>>>>>> master
 
     def measure(self, rfm=1, ftj=1):
         pass

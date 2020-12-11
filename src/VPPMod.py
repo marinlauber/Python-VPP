@@ -37,15 +37,7 @@ class VPP(object):
         self.hydro = HydroMod(self.yacht)
 
         # maximum allows heel angle
-<<<<<<< HEAD
-        self.phi_max = 135.0
-
-        # tws bounds for downwind/upwind sails
-        self.lim_up = 60.0
-        self.lim_dn = 135.0
-=======
         self.phi_max = 25.0
->>>>>>> master
 
         # debbuging flag
         self.debbug = False
@@ -132,7 +124,6 @@ class VPP(object):
                     self.leeway0 = 100.0 / twa if (twa > 1.0 and 100.0 / twa < 2 * tws) else 2 * tws
 
                     # don't do low twa with downwind sails
-<<<<<<< HEAD
                     if((self.aero.up==True) and(twa>=self.lim_dn)): continue
                     if((self.aero.up==False)and(twa<=self.lim_up)): continue
 
@@ -173,22 +164,6 @@ class VPP(object):
                     self.phi0 = self.hydro.phi
                     self.leeway0 = self.hydro.leeway
                 
-=======
-                    if (self.aero.up == True) and (twa >= self.lim_dn):
-                        continue
-                    if (self.aero.up == False) and (twa <= self.lim_up):
-                        continue
-
-                    sol = root(self.resid, [self.vb0, self.phi0, self.leeway0],
-                               args=(twa, tws), method='lm')
-                    self.vb0, self.phi0, self.leeway0 = res = sol.x
-                    if verbose and not sol.success:
-                        print(sol.message)
-
-                    # store data for later
-                    self.store[i, j, n, :] = res[:] * np.array([1.0/KNOTS_TO_MPS, 1, 1])
-
->>>>>>> master
             print()
         print("Optimization successful.")
 
