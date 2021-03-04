@@ -47,7 +47,7 @@ with the `graph` and `output` optional keyboard arguments.
 To use the code, forst clone or download this repository onto your own machine. The main file that are used are `OOpyVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
 
 ```python
-$ python OOpyVPP.py
+$ python runVPP.py
 ```
 
 into your console, and the code should run. Once the code has run, it should generate the following figure (or a similar one)

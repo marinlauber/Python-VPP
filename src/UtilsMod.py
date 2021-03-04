@@ -147,6 +147,38 @@ class VPPResults(object):
     def SailChart(self, save=False):
         sail_chart(self, save)
 
+    def polar_comp(self, other, n=1, save=False):
+        """
+        Compares polar plot from self to other, where they are both CPPResults
+
+        """
+        cols=["r","b"]
+        fig, ax = _polar(n)
+        for k,itself in enumerate([self, other]):
+            wind = itself.twa_range
+            for i in range(len(itself.tws_range)):
+                idx, vmg = _make_nice(itself.store[i, :, :, :], itself.twa_range)
+                for j in range(n):
+                    ax[j].plot(wind[: idx[0]] / 180 * np.pi,itself.store[i, : idx[0], 0, j],
+                               cols[k],lw=1,linestyle=stl[int(i % 4)],label=f"{itself.tws_range[i]/KNOTS_TO_MPS:.1f}")
+                    if itself.Nsails != 1:
+                        ax[j].plot(wind[idx[1] :] / 180 * np.pi,itself.store[i, idx[1] :, 1, j],
+                                   cols[k],alpha=0.5,lw=1,linestyle=stl[int(i % 4)])
+                # add VMG points
+                ax[0].plot(wind[vmg[0]] / 180 * np.pi,itself.store[i, vmg[0], 0, 0],
+                            "o"+cols[k],lw=1,markersize=4,mfc="None")
+                idx2 = np.where(itself.Nsails==1, 0, 1)
+                ax[0].plot(wind[vmg[1]] / 180 * np.pi,itself.store[i, vmg[1], idx2, 0],
+                            "o"+cols[k],lw=1,markersize=4,mfc="None")
+                # add legend only on first axis
+                if k==0: ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+        plt.tight_layout()
+        if save:
+            plt.savefig("VPP_comparison.png", dpi=500)
+        plt.show()
+
+
+
     # def print(self):
     #     print('self.store.shape',self.store.shape); print()
     #     print('self.twa_range', self.twa_range); print()
@@ -154,5 +186,10 @@ class VPPResults(object):
     #     print('self.sails', self.sails)
     #     print('self.store', self.store)
 
+    # def test_umod():
+    #     res1 = VPPResults("results")
+    #     res2 = VPPResults("results")
+    #     res2.store *= 1.01
+    #     res1.polar_comp(res2, n=1, save=True)
     
 

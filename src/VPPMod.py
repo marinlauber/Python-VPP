@@ -24,12 +24,10 @@ class VPP(object):
     def __init__(self, Yacht):
         """
         Initializes the VPP model
-
         Parameters
         ----------
         Yacht
             A Yacht object with Appendages and Sails
-
         """
         # build model
         self.yacht = Yacht
@@ -50,14 +48,12 @@ class VPP(object):
     def set_analysis(self, tws_range, twa_range):
         """
         Sets the analysis range.
-
         Parameters
         ----------
         tws_range
             A numpy.array with the different TWS to run the analysis at.
         twa_range
             A numpy.array with the different TWA to run the analysis at.
-
         """
 
         if tws_range.max() <= 35.0 and tws_range.min() >= 2.0:
@@ -88,13 +84,10 @@ class VPP(object):
     def run(self, verbose=False):
         """
         Run the analysis for the given analysis range.
-
-
         Parameters
         ----------
         verbose
             A logical, if True, prints results of equilibrium at each TWA/TWS.
-
         """
 
         if not self.upToDate:
@@ -124,46 +117,20 @@ class VPP(object):
                     self.leeway0 = 100.0 / twa if (twa > 1.0 and 100.0 / twa < 2 * tws) else 2 * tws
 
                     # don't do low twa with downwind sails
-                    if((self.aero.up==True) and(twa>=self.lim_dn)): continue
-                    if((self.aero.up==False)and(twa<=self.lim_up)): continue
+                    if (self.aero.up == True) and (twa >= self.lim_dn):
+                        continue
+                    if (self.aero.up == False) and (twa <= self.lim_up):
+                        continue
 
-                    self.iter = 0
+                    sol = root(self.resid, [self.vb0, self.phi0, self.leeway0],
+                               args=(twa, tws), method='lm')
+                    self.vb0, self.phi0, self.leeway0 = res = sol.x
+                    if verbose and not sol.success:
+                        print(sol.message)
 
-                    while (True and (self.iter<10)):
+                    # store data for later
+                    self.store[i, j, n, :] = res[:] * np.array([1.0/KNOTS_TO_MPS, 1, 1])
 
-                        res = fsolve(self.resid,[self.vb0,self.phi0,self.leeway0],args=(twa, tws))
-                    
-                        # is that a valid equilibrium?
-                        if res[1]<=self.phi_max:
-                            break
-                        
-                        # reduce sail area if heel is too much
-                        if(self.aero.up==True):
-                            if self.aero.sails[1].area!=self.aero.sails[1].min_area:
-                                self.aero.sails[1].area = max(self.aero.sails[1].area*0.8, self.aero.sails[1].min_area)
-                            else:
-                                self.aero.sails[0].area = max(self.aero.sails[0].area*0.8, self.aero.sails[0].min_area)
-                        self.iter +=1
-
-
-                    self.store[i,j,int(3*n):int(3*(n+1))] = res[:]*np.array([1./0.5144,1,1])
-                    if verbose:
-                        print('Running case :     (%.1f,%.2f)' % (twa,tws))
-                        print('Initial Guess Vb :        %.3f' % (self.vb0/0.5144))
-                        print('Result for Vb :           %.3f' % (res[0]/0.5144))
-                        print('Lift coefficient :        %.3f' % self.aero.cl)
-                        print('Drag coefficient :        %.3f' % self.aero.cd)
-                        print('Flatener coefficient :    %.3f' % self.aero.flat)
-                        print()       
-                    
-                    self.hydro.update(res[0], res[1], res[2])
-                    self.aero.update(res[0], res[1], tws, twa, 1.0)
-
-                    # prepare next iteration
-                    self.vb0 = self.hydro.vb
-                    self.phi0 = self.hydro.phi
-                    self.leeway0 = self.hydro.leeway
-                
             print()
         print("Optimization successful.")
 
@@ -171,7 +138,6 @@ class VPP(object):
     def resid(self, x0, twa, tws):
         """
         Computes the residuals of the force/moment equilibrium at the given state.
-
         Parameters
         ----------
         x0
@@ -180,12 +146,10 @@ class VPP(object):
             A float of the TWA at which to compute the residuals.
         tws
             A float of the TWs at which to compute the residuals.
-
         Returns
         -------
         Numpy.Array
             Residuals on each DOF
-
         """
 
         vb0 = x0[0]
@@ -225,43 +189,5 @@ class VPP(object):
         polar_plot(self, n, save)
 
 
-<<<<<<< HEAD
-        """
-        fig, ax, stl = polar(n)
-        for i in range(len(self.tws_range)):
-            idx, vmg = self._make_nice(self.store[i,:,:])
-            if n==1:
-                ax.plot(np.radians(self.twa_range[:idx[0]]),self.store[i,:idx[0],0],
-                        'k',lw=1,linestyle=stl[int(i%4)],
-                        label=f'{self.tws_range[i]/0.5144:.1f}')
-                ax.plot(np.radians(self.twa_range[vmg[0]]), self.store[i,vmg[0],0],
-                        'ok',lw=1,markersize=4,mfc='None')
-                idx2 = np.where(self.Nsails==1,0,3)
-                ax.plot(np.radians(self.twa_range[vmg[1]]), self.store[i,vmg[1],idx2],
-                        'ok',lw=1,markersize=4,mfc='None')
-                if self.Nsails!=1:
-                    ax.plot(np.radians(self.twa_range[idx[1]:]),self.store[i,idx[1]:,3],
-                           'gray',lw=1,linestyle=stl[int(i%4)])
-                ax.legend(title=r'TWS (knots)',loc=1,bbox_to_anchor=(1.05,1.05))
-            else:
-                for j in range(n):
-                    ax[j].plot(np.radians(self.twa_range[:idx[0]]),self.store[i,:idx[0],j],
-                            'k',lw=1,linestyle=stl[int(i%4)],
-                            label=f'{self.tws_range[i]/0.5144:.1f}')
-                    if j == 0:
-                        ax[j].plot(np.radians(self.twa_range[vmg[0]]), self.store[i,vmg[0],j],
-                                'ok',lw=1,markersize=4,mfc='None')
-                        idx2 = np.where(self.Nsails==1,j,int(j+3))
-                        ax[j].plot(np.radians(self.twa_range[vmg[1]]), self.store[i,vmg[1],idx2],
-                                'ok',lw=1,markersize=4,mfc='None')
-                    if self.Nsails!=1:
-                        ax[j].plot(np.radians(self.twa_range[idx[1]:]),self.store[i,idx[1]:,int(j+3)],
-                                'gray',lw=1,linestyle=stl[int(i%4)])
-                ax[0].legend(title=r'TWS (knots)',loc=1,bbox_to_anchor=(1.05,1.05))
-        plt.tight_layout()
-        if save: plt.savefig('Figure.png',dpi=500)
-        plt.show()
-=======
     def SailChart(self, save=False):
         sail_chart(self, save)
->>>>>>> master
