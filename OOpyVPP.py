@@ -45,3 +45,4 @@ if __name__ == "__main__":
    vpp.polar(n=3, save=False)
    vpp.SailChart(save=True)
    vpp.write('results')
+    
