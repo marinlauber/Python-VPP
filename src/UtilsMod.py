@@ -4,11 +4,10 @@
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy import interpolate
-from typing import Final
 import json
 
 
-KNOTS_TO_MPS: Final = 0.5144
+KNOTS_TO_MPS = 0.5144
 stl = ["-", "--", "-.", ":"]
 lab = [r"$V_B$ (knots)", r"Heel $\phi$ ($^\circ$)", r"Leeway $\gamma$ ($^\circ$)"]
 
