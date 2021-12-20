@@ -11,7 +11,6 @@ import numpy as np
 from src.UtilsMod import build_interp_func,json_read,json_write
 from scipy import interpolate
 
-
 class Appendage(object):
     def __init__(self, type, chord, area, span, vol, ce):
         """
