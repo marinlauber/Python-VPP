@@ -10,7 +10,7 @@
 1. ~~wrap rig into yacht class~~, and update measure functions
 2. validate on YD-41 (Principle of Yacht Design), and write tests
 3. ~~optimize the boat velocity with the 3-DOF equlibrium as constraints (Lagrange multipliers)~~
-4. Add all the windag contributions (mast, crew, rigging, etc.)
+4. Add all the windage contributions (mast, crew, rigging, etc.)
 5. Optional Delft hydro model
 6. Add dagerboards to the possible appendages  
 6. ~~tidy plotting and results~~
@@ -44,7 +44,7 @@ with the `graph` and `output` optional keyboard arguments.
 
 ## Using the code
 
-To use the code, forst clone or download this repository onto your own machine. The main file that are used are `OOpyVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
+To use the code, forst clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
 
 ```python
 $ python runVPP.py

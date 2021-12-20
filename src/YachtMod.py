@@ -11,7 +11,6 @@ import numpy as np
 from src.UtilsMod import build_interp_func,json_read,json_write
 from scipy import interpolate
 
-
 class Appendage(object):
     def __init__(self, type, chord, area, span, vol, ce):
         """
@@ -38,7 +37,7 @@ class Appendage(object):
             self._interp_cr = build_interp_func("rrk", i=2)
 
     def _cl(self, leeway):
-        return self.dclda * np.deg2rad(leeway)
+        return self.dclda * np.radians(leeway)
 
     def _cr(self, fn):
         return self._interp_cr(max(0.0, min(fn, 0.6)))
@@ -179,11 +178,7 @@ class Yacht(object):
 
 
     def _get_RmC(self, phi):
-        RmC = (
-            self.carm
-            * (self.cw + 0.7 * self.bmax * self.bdwt)
-            * np.cos(np.deg2rad(phi))
-        )
+        RmC =  self.carm*(self.cw+0.7*self.bmax*self.bdwt)*np.cos(np.radians(phi))
         # gradually ramp-up crew Rm from 2.5 to 7.5 degrees of heel.
         return RmC * np.where(
             phi <= 7.5, 0.5 * (1 - np.cos(np.maximum(0, phi - 2.5) / 5.0 * np.pi)), 1.0

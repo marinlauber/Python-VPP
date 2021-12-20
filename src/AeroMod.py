@@ -81,7 +81,7 @@ class AeroMod(object):
         self.tws = tws
         self.twa = twa
         # gradual flatening of the sails with tws increase, min is 0.62 from 17 knots
-        self.flat = np.where(tws<2.5, 1, np.where(tws < 8.5, 0.81 + 0.19 * np.cos((tws - 2.5) / 6 * np.pi), 0.62))
+        self.flat = flat #np.where(tws<2.5, 1, np.where(tws < 8.5, 0.81 + 0.19 * np.cos((tws - 2.5) / 6 * np.pi), 0.62))
         self.ftj = max(RED-1., 0.)
         self.rfm = min(RED, 1.)
 
@@ -110,11 +110,11 @@ class AeroMod(object):
         self.Fx = self.lift * np.sin(awa) - self.drag * np.cos(awa)
         self.Fy = self.lift * np.cos(awa) + self.drag * np.sin(awa)
 
-        # heeling moment
-        self.Mx = self.Fy * self._vce() * np.cos(self.phi / 180.0 * np.pi)
-
         # side-force is horizontal component of Fh
-        self.Fy *= np.cos(np.deg2rad(self.phi))
+        self.Fy *= np.cos(np.radians(self.phi))
+        
+        # heeling moment
+        self.Mx = self.Fy * self._vce()
 
 
     def _get_Rw(self, awa):
@@ -178,6 +178,9 @@ class AeroMod(object):
             (self.tws * np.sin(self.twa / 180.0 * np.pi)) ** 2
             + (self.tws * np.cos(self.twa / 180.0 * np.pi) + self.vb) ** 2
         )
+        # self.awa = np.arccos((self.tws*np.cos(np.radians(self.twa)) + self.vb) / np.sqrt((self.tws**2) + (self.vb**2) + 
+        #              2*self.tws*self.vb * np.cos(np.radians(self.twa))))
+        # self.aws = (self.tws * np.sin(np.radians(self.twa))) / np.sin(self.awa)
 
 
     def _area(self):
@@ -257,8 +260,5 @@ class AeroMod(object):
             print(" - " + sail.type + " : %.2f (m^2)" % sail.area)
 
 
-# if __name__ == "__main__":
-# aero = AeroMod(sails=[Main(24.5, 5.5),
-#                       Jib(17.3, 4.4)])
-# aero.debbug()
-# aero.print_state()
+if __name__ == "__main__":
+    pass

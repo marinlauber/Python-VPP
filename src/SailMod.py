@@ -100,6 +100,7 @@ class Kite(Sail):
         self.name = name
         self.type = "kite"
         self.area = area
+        self.min_area = self.area
         self.vce = vce
         super().__init__(self.name, self.type, self.area, self.vce, up=False)
         self.measure()
@@ -114,3 +115,6 @@ class Kite(Sail):
 #         self.area = max(area_d, 0.5*(SLU+SLE)*(SFL+4*SHW)/6.)
 #         self.vce = 0.565*ISP # above base of I
 #         super().__init__(self.type, self.area, self.vce, up=False)
+
+if __name__=="__main__":
+    pass

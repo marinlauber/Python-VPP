@@ -199,6 +199,9 @@ class HydroMod(object):
         plt.xlabel(r"$V_b$ (knots)")
         plt.ylabel(r"$R$ (N)")
         plt.legend()
+        plt.tight_layout()
+        if fn!="None":
+            plt.savefig(fn, dpi=300)
         plt.show()
 
     def _test_gz(self):
