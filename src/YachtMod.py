@@ -151,7 +151,7 @@ class Yacht(object):
 
 
     def _build_rm_interp(self):
-        a = json_read('Righting_moment')
+        a = json_read('righting_moment')
         return interpolate.interp1d(np.array(a["Heel"]), np.array(a["GZ"]),
                                     kind="linear", fill_value="extrapolate")
 
