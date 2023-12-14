@@ -54,19 +54,19 @@ def compute(tws_val, twa_range):
         Loa=12.5,
         App=[Keel1, Rudder1],
         Sails=[
-            Main(P=16.60, E=5.60, Roach=0.1, BAD=1.0),
-            Jib(I=16.20, J=5.10, LPG=5.40, HBI=1.8),
-            Kite(area=150.0, vce=9.55),
+            Main(name="M1",P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+            Jib(name="J1",I=16.20, J=5.10, LPG=5.40, HBI=1.8),
+            Kite(name="A2",area=150.0, vce=9.55),
         ],
     )
 
     vpp = VPP(Yacht=YD41)
     vpp.set_analysis(np.array([tws_val]) / KNOTS_TO_MPS, twa_range / np.pi * 180.0)
     vpp.run()
-
+    print(np.shape(vpp.store))
     res = np.empty([len(twa_range), 2])
     for i, twa in enumerate(twa_range):
-        res[i, :] = [twa , max(vpp.store[0, :, 0][i], vpp.store[0, :, 3][i])]
+        res[i, :] = [twa , np.max(vpp.store[0, i, :, 0], axis=0)]
     return res
 
 def vmg_stats(vb):
