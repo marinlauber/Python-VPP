@@ -25,7 +25,7 @@ jobs:
       - name: Install dependencies
         run: |
           conda env update --file environment.yml --name base
-          ls -a
       - name: Test with pytest
+        shell: bash -l {0}
         run: |
-          conda activate base && pytest --verbose
+          pytest --verbose
