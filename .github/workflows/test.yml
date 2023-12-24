@@ -4,19 +4,16 @@ on: [push]
 
 jobs:
   example-1:
-    name: Testing (${{ matrix.python-version }}, ${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: ["ubuntu-latest"]
-        python-version: ["3.11"]
+    name: Testing 
     steps:
-      - name: Configure conda
-        uses: conda-incubator/setup-miniconda@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v3
         with:
-          auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
+          python-version: '3.10'
+      - name: Add conda to system path
+        run: |
+          # $CONDA is an environment variable pointing to the root of the miniconda directory
+          echo $CONDA/bin >> $GITHUB_PATH
       - name: Check repo out
         uses: actions/checkout@v4
         with:
