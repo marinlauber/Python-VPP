@@ -8,3 +8,4 @@ venv
 dev.py
 OOyVPP_otto.py
 /.pytest_cache
+/__pycache__

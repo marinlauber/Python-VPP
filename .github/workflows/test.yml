@@ -28,5 +28,4 @@ jobs:
           ls -a
       - name: Test with pytest
         run: |
-          conda install pytest
-          pytest --verbose
+          conda activate base && pytest --verbose
