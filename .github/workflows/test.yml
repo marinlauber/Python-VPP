@@ -12,15 +12,17 @@ jobs:
         os: ["ubuntu-latest"]
         python-version: ["3.11"]
     steps:
-      - uses: conda-incubator/setup-miniconda@v3
+      - name: Configure conda
+        uses: conda-incubator/setup-miniconda@v3
         with:
           auto-update-conda: true
           python-version: ${{ matrix.python-version }}
-      - uses: actions/checkout@v2
+      - name: Check repo out
+        uses: actions/checkout@v4
       - name: Install dependencies
         run: |
           $CONDA/bin/conda env update --file environment.yml --name base
       - name: Run tests
         run: |
-          ls;
-          cd Python-VPP && $CONDA/bin/pytest
+          ls -a;
+          $CONDA/bin/pytest
