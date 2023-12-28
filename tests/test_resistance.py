@@ -1,7 +1,7 @@
-import pytest
 import numpy.testing as np_testing
+
 from src.HydroMod import HydroMod
-from src.YachtMod import Yacht, Keel, Rudder
+from src.YachtMod import Keel, Rudder, Yacht
 
 # test with YD-41 from Larsson
 Keel = Keel(Cu=1.00, Cl=0.78, Span=1.90)
@@ -25,6 +25,7 @@ YD41 = HydroMod(
         App=[Keel, Rudder],
     )
 )
+
 
 def test_Rr_interpolation():
     np_testing.assert_approx_equal(YD41._interp_Rr((0.125, 3.0, 2.5)), 0.0487, 4)

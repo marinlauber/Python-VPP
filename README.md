@@ -12,7 +12,7 @@
 3. ~~optimize the boat velocity with the 3-DOF equlibrium as constraints (Lagrange multipliers)~~
 4. Add all the windage contributions (mast, crew, rigging, etc.)
 5. Optional Delft hydro model
-6. Add dagerboards to the possible appendages  
+6. Add dagger boards to the possible appendages  
 6. ~~tidy plotting and results~~
 
 ### Prerequisites
@@ -69,13 +69,13 @@ This is a crude list of all the input variables and their meaning, as well as th
 1. Yacht : 
     * Lwl : Length waterline (m)
     * Vol : Displ. volume of canoebody (m^3)
-    * Bwl : Beam waterine (m)
-    * Tc : Canoebody draft (m)
+    * Bwl : Beam waterline (m)
+    * Tc : Canoe body draft (m)
     * WSA : Wetted surface area (m^2)
     * Tmax : Draft max, i.e. Keel (m)
     * Amax : Max. section area (m^2)
-    * Mass : Total mass of the yacht, includeing keel (kg)
-    * Ff : Freeboard heigt fore (m)
+    * Mass : Total mass of the yacht, including keel (kg)
+    * Ff : Freeboard height fore (m)
     * Fa : Freeboard height aft (m)
     * Boa : Beam overall (m)
     * Loa : Length overall (m)
@@ -83,7 +83,7 @@ This is a crude list of all the input variables and their meaning, as well as th
     * Sails : List of Sails
 1. Sails:
     Standard measurements, except Roach is defined as 1-A/(0.5PE)
-    Kite only takes area and vce esitmate (this is very rough)
+    Kite only takes area and vce estimate (this is very rough)
 1. VPP.set_analysis()
     * TWA range : range of TWA to use
     * TWS range : range of TWS, must be between [2, 35]
@@ -93,7 +93,7 @@ This is a crude list of all the input variables and their meaning, as well as th
 
 * **[Otto Villani](https://www.linkedin.com/in/otto-villani-552760108/)** - *Initial idea, model selection* - [github](https://github.com/ottovillani)
 * **[Marin Lauber](https://www.linkedin.com/in/marin-lauber/)** - *Initial idea, developement* - [github](https://github.com/marinlauber)
-* **[Thomas Dickson](tajd.github.io)** - *Developer*
+* **[Thomas Dickson](https://tajd.co.uk/about)** - *Developer* - [github](http://github.com/TAJD)
 
 ## License
 
