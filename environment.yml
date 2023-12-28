@@ -10,5 +10,9 @@ dependencies:
     - nlopt
     - pytest
     - flask
+    - isort
+    - black
+    - streamlit
+    - mypy
     - pip:
       - tqdm

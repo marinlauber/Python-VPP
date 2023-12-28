@@ -7,17 +7,21 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
+import warnings
+import logging
+
 import nlopt
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy import interpolate
-from scipy.optimize import root, minimize
+from scipy.optimize import root
 from tqdm import trange
-import warnings
 
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
-from src.UtilsMod import KNOTS_TO_MPS,polar_plot,sail_chart,json_write
+from src.UtilsMod import KNOTS_TO_MPS, json_write, polar_plot, sail_chart
+
+logger = logging.getLogger(__name__)
+debug_mode = logging.getLogger().getEffectiveLevel() == logging.DEBUG
+
 
 class VPP(object):
     """A VPP Class that run an analysis on a given Yacht."""
@@ -45,7 +49,6 @@ class VPP(object):
                 "ignore", "The iteration is not making good progress"
             )
 
-
     def set_analysis(self, tws_range, twa_range):
         """
         Sets the analysis range.
@@ -58,54 +61,53 @@ class VPP(object):
         """
 
         if tws_range.max() <= 35.0 and tws_range.min() >= 2.0:
-            print("Analysis set for TWS: ", tws_range)
+            logging.debug("Analysis set for TWS: ", tws_range)
             self.tws_range = tws_range * KNOTS_TO_MPS
         else:
-            print("Anaylis only valid for TWS range : 2. < TWS < 35. knots.")
+            logging.debug("Analysis only valid for TWS range : 2. < TWS < 35. knots.")
 
         if twa_range.max() <= 180.0 and twa_range.min() >= 0.0:
             self.twa_range = twa_range
-            print("Analysis set for TWA: ", self.twa_range)
+            logging.debug("Analysis set for TWA: ", self.twa_range)
         else:
-            print("Anaylis only valid for TWA range : 0. < TWA < 180. degrees.")
+            logging.debug("Analysis only valid for TWA range : 0. < TWA < 180. degrees.")
 
         # prepare storage array
         self.Nsails = len(self.yacht.sails) - 1  # main not counted
-        self.store = np.zeros((len(self.tws_range),
-                               len(self.twa_range),
-                               self.Nsails,
-                               5))
-        self.sail_name = [self.yacht.sails[0].name+" + "+
-                          self.yacht.sails[n+1].name for n in range(self.Nsails)]
-        print("Using sail quiver ", self.sail_name)
+        self.store = np.zeros(
+            (len(self.tws_range), len(self.twa_range), self.Nsails, 5)
+        )
+        self.sail_name = [
+            self.yacht.sails[0].name + " + " + self.yacht.sails[n + 1].name
+            for n in range(self.Nsails)
+        ]
+        logging.debug("Using sail quiver ", self.sail_name)
         # tws bounds for downwind/upwind sails
-        self.lim_up = 60.0 
-        self.lim_dn = 135.0 if (self.Nsails != 1) else 200.
+        self.lim_up = 60.0
+        self.lim_dn = 135.0 if (self.Nsails != 1) else 200.0
 
         # minimzation bounds
-        self.bnds = ((0,None),(0.0,self.phi_max),(-2.,6.),(0.62,1.),(0,2.))
+        self.bnds = ((0, None), (0.0, self.phi_max), (-2.0, 6.0), (0.62, 1.0), (0, 2.0))
 
         # flag for later
         self.upToDate = True
-        
 
     def Vb(self, x, grad):
         # this should not be used
-        if(grad.size > 0):
-            grad =  0.0
+        if grad.size > 0:
+            grad = 0.0
         return self.vb0
-
 
     def SumForce(self, res, x, grad, twa_, tws_):
         # this should not be used
-        if(grad.size > 0):
-            grad[:,:] =  0.0
+        if grad.size > 0:
+            grad[:, :] = 0.0
 
         vb0 = x[0]
         phi0 = x[1]
-        leeway = x[2] 
-        flat=x[3]
-        red =x[4]
+        leeway = x[2]
+        flat = x[3]
+        red = x[4]
 
         Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
         Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws_, twa_, flat, red)
@@ -113,22 +115,22 @@ class VPP(object):
         res[0] = Fxh - Fxa
         res[1] = Mxh - Mxa
         res[2] = Fyh - Fya
-        
+
         return None
 
-
     def run_NLopt(self, verbose=False):
+        logging.info("Optimisation start")
 
         if not self.upToDate:
             raise "VPP run stop: no analysis set!"
 
-        # gradient-free optimization because the gradient of our 
+        # gradient-free optimization because the gradient of our
         # objective function cannot be evaluated
         opt = nlopt.opt(nlopt.LN_COBYLA, 5)
 
         # out three parameters are x = [v_b, hell, leeway, flat, red]
-        opt.set_lower_bounds([0.          ,0.          ,0., 0., 0.])
-        opt.set_upper_bounds([float('inf'),self.phi_max,6., 1., 2.])
+        opt.set_lower_bounds([0.0, 0.0, 0.0, 0.0, 0.0])
+        opt.set_upper_bounds([float("inf"), self.phi_max, 6.0, 1.0, 2.0])
 
         # the function we want to maximise
         opt.set_max_objective(self.Vb)
@@ -137,50 +139,53 @@ class VPP(object):
         opt.set_xtol_rel(1e-6)
 
         for i, tws in enumerate(self.tws_range):
-
-            print("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
+            logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
 
             for n in range(self.Nsails):
-
                 self.aero.sails[1] = self.yacht.sails[n + 1]
 
-                print(
+                logging.debug(
                     "Sail Config : ",
                     self.aero.sails[0].name + " + " + self.aero.sails[1].name,
                 )
 
                 self.aero.up = self.aero.sails[1].up
 
-                for j in trange(len(self.twa_range)):
-
+                for j in trange(len(self.twa_range), disable=not debug_mode):
                     twa = self.twa_range[j]
 
                     self.vb0 = 0.8 * tws
                     self.phi0 = 0
-                    self.leeway0 = 100.0 / twa if (twa > 1.0 and 100.0 / twa < 2 * tws) else 2 * tws
+                    self.leeway0 = (
+                        100.0 / twa
+                        if (twa > 1.0 and 100.0 / twa < 2 * tws)
+                        else 2 * tws
+                    )
 
                     # don't do low twa with downwind sails
                     if (self.aero.up == True) and (twa >= self.lim_dn):
                         continue
                     if (self.aero.up == False) and (twa <= self.lim_up):
                         continue
-                    
-                    # vector-valued constraint
-                    constrain = lambda res, x, grad: self.SumForce(res, x, grad, twa_=twa, tws_=tws)
-                    opt.add_equality_mconstraint(constrain, np.full(5,1e-8))
 
-                    x0 = np.array([self.vb0, self.phi0, self.leeway0, 1., 2.])
+                    # vector-valued constraint
+                    constrain = lambda res, x, grad: self.SumForce(
+                        res, x, grad, twa_=twa, tws_=tws
+                    )
+                    opt.add_equality_mconstraint(constrain, np.full(5, 1e-8))
+
+                    x0 = np.array([self.vb0, self.phi0, self.leeway0, 1.0, 2.0])
                     res = opt.optimize(x0)
 
                     # store data for later
-                    self.store[i, j, n, :] = res[:] * np.array([1.0/KNOTS_TO_MPS, 1, 1, 1, 1])
+                    self.store[i, j, n, :] = res[:] * np.array(
+                        [1.0 / KNOTS_TO_MPS, 1, 1, 1, 1]
+                    )
 
                     # clean up
                     opt.remove_equality_constraints()
 
-            print()
-        print("Optimization successful.")
-
+        logging.info("Optimization successful.")
 
     def run(self, verbose=False):
         """
@@ -195,27 +200,28 @@ class VPP(object):
             raise "VPP run stop: no analysis set!"
 
         for i, tws in enumerate(self.tws_range):
-
-            print("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
+            logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
 
             for n in range(self.Nsails):
-
                 self.aero.sails[1] = self.yacht.sails[n + 1]
 
-                print(
+                logging.debug(
                     "Sail Config : ",
                     self.aero.sails[0].name + " + " + self.aero.sails[1].name,
                 )
 
                 self.aero.up = self.aero.sails[1].up
 
-                for j in trange(len(self.twa_range)):
-
+                for j in trange(len(self.twa_range), disable=not debug_mode):
                     twa = self.twa_range[j]
 
                     self.vb0 = 0.8 * tws
                     self.phi0 = 0
-                    self.leeway0 = 100.0 / twa if (twa > 1.0 and 100.0 / twa < 2 * tws) else 2 * tws
+                    self.leeway0 = (
+                        100.0 / twa
+                        if (twa > 1.0 and 100.0 / twa < 2 * tws)
+                        else 2 * tws
+                    )
                     self.flat = 1.0
                     self.red = 2.0
 
@@ -225,8 +231,12 @@ class VPP(object):
                     if (self.aero.up == False) and (twa <= self.lim_up):
                         continue
 
-                    sol = root(self.resid, [self.vb0, self.phi0, self.leeway0],
-                               args=(twa, tws), method='lm')
+                    sol = root(
+                        self.resid,
+                        [self.vb0, self.phi0, self.leeway0],
+                        args=(twa, tws),
+                        method="lm",
+                    )
                     self.vb0, self.phi0, self.leeway0 = res = sol.x
                     if verbose and not sol.success:
                         print(sol.message)
@@ -248,16 +258,17 @@ class VPP(object):
                     # # get result
                     # self.vb0, self.phi0, self.leeway0, self.flat, self.red = res = sol.x
 
-                    # display the residual
-                    if verbose:
-                        print("Equilibrium residuals (Fx, Fy, Mx): ", self.resid(sol.x, twa, tws))
+                    logging.debug(
+                        "Equilibrium residuals (Fx, Fy, Mx): ",
+                        self.resid(sol.x, twa, tws),
+                    )
 
                     # store data for later
-                    self.store[i, j, n, :len(res)] = res[:] * np.array([1.0/KNOTS_TO_MPS, 1, 1, 1, 1])[:len(res)]
+                    self.store[i, j, n, : len(res)] = (
+                        res[:] * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])[: len(res)]
+                    )
 
-            print()
-        print("Optimization successful.")
-
+        logging.info("Optimization successful.")
 
     def resid(self, x0, twa, tws):
         """
@@ -277,10 +288,10 @@ class VPP(object):
         """
 
         vb0 = x0[0]
-        phi0 = x0[1] # min(x0[1], self.phi_max)
+        phi0 = x0[1]  # min(x0[1], self.phi_max)
         leeway = x0[2]
-        flat = 1. #x0[3]
-        red = 1. #x0[4]
+        flat = 1.0  # x0[3]
+        red = 1.0  # x0[4]
 
         Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
         Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, flat, 2.0)
@@ -289,40 +300,44 @@ class VPP(object):
 
     def objective(self, x0, twa, tws):
         return -x0[0]
+
     def Fx(self, x0, twa, tws):
         return self.resid(x0, twa, tws)[0]
+
     def Fy(self, x0, twa, tws):
         return self.resid(x0, twa, tws)[1]
+
     def Mx(self, x0, twa, tws):
         return self.resid(x0, twa, tws)[2]
-
 
     def results(self):
         """
         Return a dict of the VPP results.
         """
         lab = ["Speed", "Heel", "Leeway", "flat", "RED"]
-        data = [ {"name": self.yacht.Name,
-                  "tws": self.tws_range.tolist(),
-                  "twa": self.twa_range.tolist(),
-                  "Sails":self.sail_name} ]
-        for i in range(len(self.tws_range)):
-            for j in range(len(self.twa_range)):
-                for n in range(self.Nsails):
-                    dic={}
-                    for k in range(5):
-                        dic.update( {lab[k]: self.store[i,j,n,k]} )
-                    data.append(dic)
+        results = [
+            {lab[k]: self.store[i, j, n, k]
+            for k in range(5)}
+            for i in range(len(self.tws_range))
+            for j in range(len(self.twa_range))
+            for n in range(self.Nsails)
+        ]
+        data = [
+            {
+                "name": self.yacht.Name,
+                "tws": self.tws_range.tolist(),
+                "twa": self.twa_range.tolist(),
+                "sails": self.sail_name,
+                "results": results
+            }
+        ]
         return data
-
 
     def write(self, fname):
         json_write(self.results(), fname)
 
-
     def polar(self, n=1, save=False):
-        polar_plot([self], n, save, "Figure.png")
-
+        polar_plot([self], n, save)
 
     def SailChart(self, save=False):
         sail_chart(self, save)

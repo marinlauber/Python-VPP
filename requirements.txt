@@ -1,0 +1,7 @@
+numpy
+matplotlib
+scipy
+pip
+nlopt
+streamlit
+tqdm
