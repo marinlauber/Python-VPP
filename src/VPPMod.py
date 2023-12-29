@@ -7,8 +7,8 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
-import warnings
 import logging
+import warnings
 
 import nlopt
 import numpy as np
@@ -70,7 +70,9 @@ class VPP(object):
             self.twa_range = twa_range
             logging.debug("Analysis set for TWA: ", self.twa_range)
         else:
-            logging.debug("Analysis only valid for TWA range : 0. < TWA < 180. degrees.")
+            logging.debug(
+                "Analysis only valid for TWA range : 0. < TWA < 180. degrees."
+            )
 
         # prepare storage array
         self.Nsails = len(self.yacht.sails) - 1  # main not counted
@@ -316,28 +318,25 @@ class VPP(object):
         """
         lab = ["Speed", "Heel", "Leeway", "flat", "RED"]
         results = [
-            {lab[k]: self.store[i, j, n, k]
-            for k in range(5)}
+            {lab[k]: self.store[i, j, n, k] for k in range(5)}
             for i in range(len(self.tws_range))
             for j in range(len(self.twa_range))
             for n in range(self.Nsails)
         ]
-        data = [
-            {
-                "name": self.yacht.Name,
-                "tws": self.tws_range.tolist(),
-                "twa": self.twa_range.tolist(),
-                "sails": self.sail_name,
-                "results": results
-            }
-        ]
+        data = {
+            "name": self.yacht.Name,
+            "tws": self.tws_range.tolist(),
+            "twa": self.twa_range.tolist(),
+            "sails": self.sail_name,
+            "results": results,
+        }
         return data
 
     def write(self, fname):
         json_write(self.results(), fname)
 
-    def polar(self, n=1, save=False):
-        polar_plot([self], n, save)
+    def polar(self, n=1, save=False, fname="Polars.png"):
+        polar_plot([self], n, save, fname)
 
-    def SailChart(self, save=False):
-        sail_chart(self, save)
+    def SailChart(self, save=False, fname="SailChart.png"):
+        sail_chart(self, save, fname)

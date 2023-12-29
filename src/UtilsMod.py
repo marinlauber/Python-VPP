@@ -153,11 +153,12 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
             ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
     plt.tight_layout()
     if save:
-        plt.savefig(fname, dpi=96)
-    plt.show()
+        plt.savefig(fname, dpi=20)
+    else:
+        plt.show()
 
 
-def sail_chart(VPP, save):
+def sail_chart(VPP, save, fname="SailChart.png"):
     sailset = _get_best_sails(VPP.store)
 
     twa = VPP.twa_range
@@ -191,8 +192,9 @@ def sail_chart(VPP, save):
     ax[0].legend(h, VPP.sail_name, title=r"Sail Set", loc=1, bbox_to_anchor=(1.05, 0.7))
     plt.tight_layout()
     if save:
-        plt.savefig("SailChart.png", dpi=96)
-    plt.show()
+        plt.savefig(fname, dpi=20)
+    else:
+        plt.show()
 
 
 def _get_best_sails(store):
@@ -243,16 +245,3 @@ class VPPResults(object):
 
     def polar_comp(self, other, n=1, save=False):
         polar_plot([self, other], n, save, "VPP_comparison.png")
-
-    # def print(self):
-    #     print('self.store.shape',self.store.shape); print()
-    #     print('self.twa_range', self.twa_range); print()
-    #     print('self.tws_range', self.tws_range); print()
-    #     print('self.sails', self.sails)
-    #     print('self.store', self.store)
-
-    # def test_umod():
-    #     res1 = VPPResults("results")
-    #     res2 = VPPResults("results")
-    #     res2.store *= 1.01
-    #     res1.polar_comp(res2, n=1, save=True)

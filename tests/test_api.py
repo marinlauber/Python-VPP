@@ -12,7 +12,7 @@ def test_ping_route():
     assert response.data.decode("utf-8") == "Pong! The server is up and running."
 
 
-def test_vpp_route():
+def make_yd41():
     yacht = dict(
         {
             "Name": "YD41",
@@ -35,8 +35,9 @@ def test_vpp_route():
     main = dict({"Name": "MN1", "P": 16.60, "E": 5.60, "Roach": 0.1, "BAD": 1.0})
     jib = dict({"Name": "J1", "I": 16.20, "J": 5.10, "LPG": 5.40, "HBI": 1.8})
     kite = dict({"Name": "A2", "area": 150.0, "vce": 9.55})
-    tws_range = np.array([10.0]).tolist()
-    twa_range = [i for i in np.linspace(30.0, 180.0, 5)]
+    tws_range = np.arange(4.0, 7.0, 2.0).tolist()
+    twa_range = np.linspace(30.0, 180.0, 5).tolist()
+
     d = {
         "name": yacht["Name"],
         "yacht": yacht,
@@ -48,10 +49,28 @@ def test_vpp_route():
         "tws_range": tws_range,
         "twa_range": twa_range,
     }
+    return d
+
+
+def test_vpp_simulation():
+    d = make_yd41()
+
     json_string = json.dumps(d)
     headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
 
     client = app.test_client()
     response = client.post("/api/vpp/", data=json_string, headers=headers)
+
+    assert response.status_code == 200
+
+
+def test_vpp_graphs():
+    d = make_yd41()
+
+    json_string = json.dumps(d)
+    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
+
+    client = app.test_client()
+    response = client.post("/api/vpp/plots", data=json_string, headers=headers)
 
     assert response.status_code == 200
