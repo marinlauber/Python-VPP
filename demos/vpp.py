@@ -2,16 +2,14 @@ import json
 import logging
 import os
 import sys
-import io
-import tempfile
-import zipfile
-from PIL import Image
 
 import numpy as np
 import streamlit as st
+import matplotlib.pyplot as plt
 
 sys.path.append(os.path.realpath("."))
 from src.api import app
+from src.UtilsMod import _get_vmg, _get_cross, _polar, KNOTS_TO_MPS, cols, stl
 
 yacht = {
     "Name": "YD41",
@@ -64,7 +62,7 @@ for key, value in kite.items():
 
 def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
     tws_range = [6.0, 10.0]
-    twa_range = [i for i in np.linspace(30.0, 180.0, 5)]
+    twa_range = [i for i in np.linspace(30.0, 180.0, 31)]
 
     data = {
         "name": yacht["Name"],
@@ -83,7 +81,7 @@ def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
 
     logging.info("Starting VPP simulation")
     client = app.test_client()
-    response = client.post("/api/vpp/plots", data=json_string, headers=headers)
+    response = client.post("/api/vpp/", data=json_string, headers=headers)
     logging.info("VPP simulation completed")
     return response
 
@@ -91,5 +89,48 @@ def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
 if st.button("Process Specifications"):
     response = process_yacht_specifications(yacht, keel, rudder, main, jib, kite)
 
-    # TODO: Implement post-processing functions to create polars and sail chart plots
-    # TODO: Create equivalent plots for webapp
+    name = response.json["name"]
+    sails = response.json["sails"]
+    twa_range = np.array(response.json["twa"])
+    tws_range = np.array(response.json["tws"])
+    results = np.array(response.json["results"])
+
+    n = 1
+
+    # polar plot
+    fig, ax = _polar(n)
+    for i in range(len(tws_range)):
+        vmg, ids = _get_vmg(results[i, :, :, :], twa_range)
+        for k in range(len(sails)):
+            idx = _get_cross(results[i, :, :, :], k)
+            for j in range(n):
+                lab = "_nolegend_"
+                if k == 0:
+                    lab = name + " " + f"{tws_range[i]/KNOTS_TO_MPS:.1f}"
+
+                ax[j].plot(
+                    twa_range[idx[0] : idx[1]] / 180 * np.pi,
+                    results[i, idx[0] : idx[1], k, j],
+                    color=cols[k % 7],
+                    lw=np.where(i < 7, 1.5, 2.5),
+                    linestyle=stl[i % 7],
+                    label=lab,
+                )
+
+        # add VMG points
+        for pts in range(2):
+            ax[0].plot(
+                twa_range[vmg[pts]] / 180 * np.pi,
+                results[i, vmg[pts], ids[pts], 0],
+                "o",
+                color=cols[ids[pts] % 7],
+                lw=1,
+                markersize=4,
+                mfc="None",
+            )
+
+        # add legend only on first axis
+        ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+    plt.tight_layout()
+
+    st.pyplot(fig)

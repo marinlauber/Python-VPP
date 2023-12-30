@@ -46,7 +46,7 @@ def build_interp_func(fname, i=1, kind="linear"):
     return interpolate.interp1d(a[0, :], a[i, :], kind=kind, fill_value="extrapolate")
 
 
-def _polar(n):
+def _polar(n) -> plt.Figure:
     fig, ax = plt.subplots(1, n, subplot_kw=dict(polar=True), figsize=(16 / 3 * n, 7.5))
     # allows to simplify polar plot function
     if n == 1:

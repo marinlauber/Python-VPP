@@ -18,6 +18,7 @@ from tqdm import trange
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
 from src.UtilsMod import KNOTS_TO_MPS, json_write, polar_plot, sail_chart
+from src.YachtMod import Yacht as YachtClass
 
 logger = logging.getLogger(__name__)
 debug_mode = logging.getLogger().getEffectiveLevel() == logging.DEBUG
@@ -35,7 +36,7 @@ class VPP(object):
             A Yacht object with Appendages and Sails
         """
         # build model
-        self.yacht = Yacht
+        self.yacht: YachtClass = Yacht
         self.aero = AeroMod(self.yacht)
         self.hydro = HydroMod(self.yacht)
 
@@ -240,8 +241,9 @@ class VPP(object):
                         method="lm",
                     )
                     self.vb0, self.phi0, self.leeway0 = res = sol.x
+                    
                     if verbose and not sol.success:
-                        print(sol.message)
+                        logger.debug(sol.message)
 
                     # # contraints
                     # con1 = {'type': 'eq', 'fun': self.Fx, 'args': (twa, tws)}
@@ -300,7 +302,8 @@ class VPP(object):
 
         return [(Fxh - Fxa) ** 2, (Mxh - Mxa) ** 2, (Fyh - Fya) ** 2]
 
-    def objective(self, x0, twa, tws):
+    @staticmethod
+    def objective(x0):
         return -x0[0]
 
     def Fx(self, x0, twa, tws):
@@ -316,21 +319,13 @@ class VPP(object):
         """
         Return a dict of the VPP results.
         """
-        lab = ["Speed", "Heel", "Leeway", "flat", "RED"]
-        results = [
-            {lab[k]: self.store[i, j, n, k] for k in range(5)}
-            for i in range(len(self.tws_range))
-            for j in range(len(self.twa_range))
-            for n in range(self.Nsails)
-        ]
-        data = {
+        return {
             "name": self.yacht.Name,
             "tws": self.tws_range.tolist(),
             "twa": self.twa_range.tolist(),
             "sails": self.sail_name,
-            "results": results,
+            "results": self.store.tolist(),
         }
-        return data
 
     def write(self, fname):
         json_write(self.results(), fname)
