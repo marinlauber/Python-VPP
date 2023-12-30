@@ -12,20 +12,20 @@ jobs:
         os: ["ubuntu-latest"]
         python-version: ["3.10"]
     steps:
-      - name: Configure conda
-        uses: conda-incubator/setup-miniconda@v3
-        with:
-          auto-update-conda: true
-          python-version: ${{ matrix.python-version }}
-      - name: Check repo out
-        uses: actions/checkout@v4
-        with:
-          ref: ${{ github.head_ref }}
-          fetch-depth: 0
-      - name: Install dependencies
-        run: |
-          $CONDA/bin/conda env update --file environment.yml --name base
-      - name: Test with pytest
-        shell: bash -l {0}
-        run: |
-          $CONDA/bin/pytest --verbose
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Check repo out
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ github.head_ref }}
+        fetch-depth: 0
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt  # Adjust this to your requirements file name
+    - name: Test with pytest
+      shell: bash -l {0}
+      run: |
+        pytest --verbose
