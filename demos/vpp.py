@@ -2,67 +2,18 @@ import json
 import logging
 import os
 import sys
+from typing import Any, Dict
 
+import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
-import matplotlib.pyplot as plt
 
 sys.path.append(os.path.realpath("."))
 from src.api import app
-from src.UtilsMod import _get_vmg, _get_cross, _polar, KNOTS_TO_MPS, cols, stl
-
-yacht = {
-    "Name": "YD41",
-    "Lwl": 11.90,
-    "Vol": 6.05,
-    "Bwl": 3.18,
-    "Tc": 0.4,
-    "WSA": 28.20,
-    "Tmax": 2.30,
-    "Amax": 1.051,
-    "Mass": 6500,
-    "Ff": 1.5,
-    "Fa": 1.5,
-    "Boa": 4.2,
-    "Loa": 12.5,
-}
-
-keel = {"Cu": 1.00, "Cl": 0.78, "Span": 1.90}
-rudder = {"Cu": 0.48, "Cl": 0.22, "Span": 1.15}
-main = {"Name": "MN1", "P": 16.60, "E": 5.60, "Roach": 0.1, "BAD": 1.0}
-jib = {"Name": "J1", "I": 16.20, "J": 5.10, "LPG": 5.40, "HBI": 1.8}
-kite = {"Name": "A2", "area": 150.0, "vce": 9.55}
-
-st.title("Yacht VPP")
-
-st.subheader("Yacht")
-for key, value in yacht.items():
-    yacht[key] = st.text_input(f"{key}:", value)
-
-st.subheader("Keel")
-for key, value in keel.items():
-    keel[key] = st.text_input(f"{key}:", value)
-
-st.subheader("Rudder")
-for key, value in rudder.items():
-    rudder[key] = st.text_input(f"{key}:", value)
-
-st.subheader("Main Sail")
-for key, value in main.items():
-    main[key] = st.text_input(f"{key}:", value)
-
-st.subheader("Jib")
-for key, value in jib.items():
-    jib[key] = st.text_input(f"{key}:", value)
-
-st.subheader("Kite (Spinnaker)")
-for key, value in kite.items():
-    kite[key] = st.text_input(f"{key}:", value)
+from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, stl
 
 
-def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
-    tws_range = [6.0, 10.0]
-    twa_range = [i for i in np.linspace(30.0, 180.0, 31)]
+def process_yacht_specifications(tws_range, twa_range, yacht, keel, rudder, main, jib, kite):
 
     data = {
         "name": yacht["Name"],
@@ -86,9 +37,7 @@ def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
     return response
 
 
-if st.button("Process Specifications"):
-    response = process_yacht_specifications(yacht, keel, rudder, main, jib, kite)
-
+def plot_single_polar(response: Dict[str, Any]) -> plt.Figure:
     name = response.json["name"]
     sails = response.json["sails"]
     twa_range = np.array(response.json["twa"])
@@ -129,8 +78,73 @@ if st.button("Process Specifications"):
                 mfc="None",
             )
 
-        # add legend only on first axis
         ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
     plt.tight_layout()
+    return fig
 
-    st.pyplot(fig)
+
+if __name__ == "__main__":
+    yacht = {
+        "Name": "YD41",
+        "Lwl": 11.90,
+        "Vol": 6.05,
+        "Bwl": 3.18,
+        "Tc": 0.4,
+        "WSA": 28.20,
+        "Tmax": 2.30,
+        "Amax": 1.051,
+        "Mass": 6500,
+        "Ff": 1.5,
+        "Fa": 1.5,
+        "Boa": 4.2,
+        "Loa": 12.5,
+    }
+
+    keel = {"Cu": 1.00, "Cl": 0.78, "Span": 1.90}
+    rudder = {"Cu": 0.48, "Cl": 0.22, "Span": 1.15}
+    main = {"Name": "MN1", "P": 16.60, "E": 5.60, "Roach": 0.1, "BAD": 1.0}
+    jib = {"Name": "J1", "I": 16.20, "J": 5.10, "LPG": 5.40, "HBI": 1.8}
+    kite = {"Name": "A2", "area": 150.0, "vce": 9.55}
+
+    st.set_page_config(page_title="Yacht VPP", page_icon="⛵")
+
+    st.title("Yacht VPP")
+
+    st.subheader("Yacht")
+    for key, value in yacht.items():
+        yacht[key] = st.text_input(f"{key}:", value)
+
+    st.subheader("Keel")
+    for key, value in keel.items():
+        keel[key] = st.text_input(f"{key}:", value)
+
+    st.subheader("Rudder")
+    for key, value in rudder.items():
+        rudder[key] = st.text_input(f"{key}:", value)
+
+    st.subheader("Main Sail")
+    for key, value in main.items():
+        main[key] = st.text_input(f"{key}:", value)
+
+    st.subheader("Jib")
+    for key, value in jib.items():
+        jib[key] = st.text_input(f"{key}:", value)
+
+    st.subheader("Kite (Spinnaker)")
+    for key, value in kite.items():
+        kite[key] = st.text_input(f"{key}:", value)
+
+    st.subheader("Environment")
+    twa_slider = st.slider("True wind angle (TWA) range", 35.0, 175.0, (35.0, 175.0), step=2.0)
+    twa_range=np.arange(twa_slider[0], twa_slider[1], 2.0).tolist()
+
+    tws_slider = st.slider("True wind speed (TWS) range", 2.0, 25.0, (8.0, 12.0), step=2.0)
+    tws_range=np.arange(tws_slider[0], tws_slider[1], 2.0).tolist()
+    
+    if st.button("Process Specifications"):
+        with st.spinner("Running optimisation, this can take a minute or two."):
+            response = process_yacht_specifications(
+                tws_range, twa_range, yacht, keel, rudder, main, jib, kite
+            )
+            fig = plot_single_polar(response)
+            st.pyplot(fig)
