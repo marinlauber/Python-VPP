@@ -5,12 +5,10 @@ API for calling VPPMod
 import logging
 import os
 import sys
-import tempfile
-import zipfile
 from typing import Any, Dict
 
 import numpy as np
-from flask import Flask, jsonify, request, send_file
+from flask import Flask, jsonify, request
 
 sys.path.append(os.path.realpath("."))
 from src.SailMod import Jib, Kite, Main

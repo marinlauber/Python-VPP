@@ -1,8 +1,10 @@
 numpy
 matplotlib
 scipy
-pip
 nlopt
 streamlit
 tqdm
-pillow
+black
+flask
+isort
+mypy
