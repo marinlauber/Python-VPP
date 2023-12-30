@@ -91,19 +91,5 @@ def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
 if st.button("Process Specifications"):
     response = process_yacht_specifications(yacht, keel, rudder, main, jib, kite)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        zip_content = io.BytesIO(response.data)
-
-        with zipfile.ZipFile(zip_content, 'r') as zip_ref:
-            zip_ref.extractall(temp_dir)
-
-        polars_path = os.path.join(temp_dir, 'polars.png')
-        sailchart_path = os.path.join(temp_dir, 'sail_chart.png')
-
-        polars = Image.open(polars_path)
-
-        st.image(polars, caption='Polars', use_column_width=True)
-
-        sailchart = Image.open(sailchart_path)
-
-        st.image(sailchart, caption='Sail Chart', use_column_width=True)
+    # TODO: Implement post-processing functions to create polars and sail chart plots
+    # TODO: Create equivalent plots for webapp

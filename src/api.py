@@ -98,37 +98,5 @@ def makevppresults():
 
     return jsonify(vpp.results())
 
-# TODO: Remove this - it can't actually send large files
-@app.route("/api/vpp/plots", methods=["POST"])
-def make_vpp_plots():
-    data = request.get_json()
-
-    vpp: VPP = data_to_vpp(data)
-    vpp.run(verbose=True)
-
-    with tempfile.TemporaryDirectory() as temp_dir:
-
-        polars_path = os.path.join(temp_dir, 'polars.png')
-        sailchart_path = os.path.join(temp_dir, 'sail_chart.png')
-
-        vpp.polar(3, True, polars_path)
-        vpp.SailChart(True, sailchart_path)
-
-        zipf_name = f'{data["yacht"]["Name"]}.zip'
-        zipf_path = os.path.join(temp_dir, zipf_name)
-
-        with zipfile.ZipFile(zipf_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
-            for root, dirs, files in os.walk(temp_dir):
-                for file in files:
-                    zipf.write(os.path.join(temp_dir, file), arcname=file)
-                zipf.close()
-        
-        return send_file(zipf_path,
-            mimetype='application/zip',
-            download_name=zipf_name,
-            as_attachment = True,
-            conditional=True,
-        )
-
 if __name__ == "__main__":
     app.run(debug=True)
