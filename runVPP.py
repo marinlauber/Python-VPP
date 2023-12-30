@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 import numpy as np
 
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+
 from src.SailMod import Jib, Kite, Main
 from src.VPPMod import VPP
 from src.YachtMod import Keel, Rudder, Yacht

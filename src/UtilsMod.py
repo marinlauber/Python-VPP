@@ -153,7 +153,7 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
             ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
     plt.tight_layout()
     if save:
-        plt.savefig(fname, dpi=20)
+        plt.savefig(fname, dpi=96)
     else:
         plt.show()
 
@@ -192,7 +192,7 @@ def sail_chart(VPP, save, fname="SailChart.png"):
     ax[0].legend(h, VPP.sail_name, title=r"Sail Set", loc=1, bbox_to_anchor=(1.05, 0.7))
     plt.tight_layout()
     if save:
-        plt.savefig(fname, dpi=20)
+        plt.savefig(fname, dpi=96)
     else:
         plt.show()
 

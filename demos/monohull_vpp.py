@@ -2,15 +2,16 @@ import json
 import logging
 import os
 import sys
+import io
+import tempfile
+import zipfile
+from PIL import Image
 
 import numpy as np
-import pandas as pd
-import plotly.graph_objects as go
 import streamlit as st
 
 sys.path.append(os.path.realpath("."))
 from src.api import app
-from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg
 
 yacht = {
     "Name": "YD41",
@@ -62,7 +63,7 @@ for key, value in kite.items():
 
 
 def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
-    tws_range = [10.0]
+    tws_range = [6.0, 10.0]
     twa_range = [i for i in np.linspace(30.0, 180.0, 5)]
 
     data = {
@@ -82,6 +83,27 @@ def process_yacht_specifications(yacht, keel, rudder, main, jib, kite):
 
     logging.info("Starting VPP simulation")
     client = app.test_client()
-    response = client.post("/api/vpp/", data=json_string, headers=headers)
+    response = client.post("/api/vpp/plots", data=json_string, headers=headers)
     logging.info("VPP simulation completed")
     return response
+
+
+if st.button("Process Specifications"):
+    response = process_yacht_specifications(yacht, keel, rudder, main, jib, kite)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        zip_content = io.BytesIO(response.data)
+
+        with zipfile.ZipFile(zip_content, 'r') as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        polars_path = os.path.join(temp_dir, 'polars.png')
+        sailchart_path = os.path.join(temp_dir, 'sail_chart.png')
+
+        polars = Image.open(polars_path)
+
+        st.image(polars, caption='Polars', use_column_width=True)
+
+        sailchart = Image.open(sailchart_path)
+
+        st.image(sailchart, caption='Sail Chart', use_column_width=True)

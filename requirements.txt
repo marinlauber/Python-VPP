@@ -5,3 +5,4 @@ pip
 nlopt
 streamlit
 tqdm
+pillow

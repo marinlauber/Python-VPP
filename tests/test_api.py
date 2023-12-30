@@ -1,6 +1,12 @@
+import io
 import json
+import os
+import tempfile
+import zipfile
 
 import numpy as np
+import pytest
+from PIL import Image
 
 from src.api import app
 
@@ -64,6 +70,18 @@ def test_vpp_simulation():
     assert response.status_code == 200
 
 
+def check_image_file(image_path):
+    assert os.path.isfile(image_path), f"Image file not found: {image_path}"
+
+    try:
+        with Image.open(image_path) as img:
+            assert img.width > 0, "Image width is not greater than 0"
+            assert img.height > 0, "Image height is not greater than 0"
+
+    except Exception as e:
+        pytest.fail(f"Failed to load the image: {e}")
+
+
 def test_vpp_graphs():
     d = make_yd41()
 
@@ -74,3 +92,15 @@ def test_vpp_graphs():
     response = client.post("/api/vpp/plots", data=json_string, headers=headers)
 
     assert response.status_code == 200
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        zip_content = io.BytesIO(response.data)
+
+        with zipfile.ZipFile(zip_content, "r") as zip_ref:
+            zip_ref.extractall(temp_dir)
+
+        polars_path = os.path.join(temp_dir, "polars.png")
+        check_image_file(polars_path)
+
+        sailchart_path = os.path.join(temp_dir, "sail_chart.png")
+        check_image_file(sailchart_path)

@@ -98,6 +98,7 @@ def makevppresults():
 
     return jsonify(vpp.results())
 
+# TODO: Remove this - it can't actually send large files
 @app.route("/api/vpp/plots", methods=["POST"])
 def make_vpp_plots():
     data = request.get_json()
@@ -105,8 +106,7 @@ def make_vpp_plots():
     vpp: VPP = data_to_vpp(data)
     vpp.run(verbose=True)
 
-    try:
-        temp_dir = tempfile.mkdtemp()
+    with tempfile.TemporaryDirectory() as temp_dir:
 
         polars_path = os.path.join(temp_dir, 'polars.png')
         sailchart_path = os.path.join(temp_dir, 'sail_chart.png')
@@ -116,26 +116,19 @@ def make_vpp_plots():
 
         zipf_name = f'{data["yacht"]["Name"]}.zip'
         zipf_path = os.path.join(temp_dir, zipf_name)
-        zipf = zipfile.ZipFile(zipf_path, 'w', zipfile.ZIP_DEFLATED)
-        for root, dirs, files in os.walk(temp_dir):
-            for file in files:
-                zipf.write(os.path.join(temp_dir, file))
-            zipf.close()
-        return send_file(zipf_path,
-            mimetype = 'zip',
-            download_name=zipf_name,
-            as_attachment = True)
 
-    finally:
-        if os.path.exists(temp_dir):
-            for file_name in os.listdir(temp_dir):
-                file_path = os.path.join(temp_dir, file_name)
-                try:
-                    if os.path.isfile(file_path):
-                        os.unlink(file_path)
-                except Exception as e:
-                    print(f"Error deleting file {file_path}: {e}")
-            os.rmdir(temp_dir)
+        with zipfile.ZipFile(zipf_path, 'w', zipfile.ZIP_DEFLATED, compresslevel=9) as zipf:
+            for root, dirs, files in os.walk(temp_dir):
+                for file in files:
+                    zipf.write(os.path.join(temp_dir, file), arcname=file)
+                zipf.close()
+        
+        return send_file(zipf_path,
+            mimetype='application/zip',
+            download_name=zipf_name,
+            as_attachment = True,
+            conditional=True,
+        )
 
 if __name__ == "__main__":
     app.run(debug=True)
