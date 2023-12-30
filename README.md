@@ -12,12 +12,12 @@
 3. ~~optimize the boat velocity with the 3-DOF equlibrium as constraints (Lagrange multipliers)~~
 4. Add all the windage contributions (mast, crew, rigging, etc.)
 5. Optional Delft hydro model
-6. Add dagerboards to the possible appendages  
+6. Add dagger boards to the possible appendages  
 6. ~~tidy plotting and results~~
 
 ### Prerequisites
 
-There are only a few prerequisites to run this code, most python instalation will have them. We advise to use the `environment.yml` file provided in this repo to set-up a new conda environment to use the code (this keeps you machine nice and tidy).
+There are only a few prerequisites to run this code, most python installations will have them. We advise to use the `environment.yml` file provided in this repo to set-up a new conda environment to use the code (this keeps you machine nice and tidy).
 
 To create the environment simply run from the cloned/downloaded repo
 
@@ -34,9 +34,9 @@ $ conda activate Python-VPP
 
 ### Running the tests
 
-You can run a benchmark agains the YD-41 results from WinVPP by running the `benchmark.py` script.
+You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script.
 
-```python
+```bash
 $ python benchmark/benchmark.py -g -o
 ```
 
@@ -46,7 +46,7 @@ with the `graph` and `output` optional keyboard arguments.
 
 To use the code, forst clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
 
-```python
+```bash
 $ python runVPP.py
 ```
 
@@ -69,13 +69,13 @@ This is a crude list of all the input variables and their meaning, as well as th
 1. Yacht : 
     * Lwl : Length waterline (m)
     * Vol : Displ. volume of canoebody (m^3)
-    * Bwl : Beam waterine (m)
-    * Tc : Canoebody draft (m)
+    * Bwl : Beam waterline (m)
+    * Tc : Canoe body draft (m)
     * WSA : Wetted surface area (m^2)
     * Tmax : Draft max, i.e. Keel (m)
     * Amax : Max. section area (m^2)
-    * Mass : Total mass of the yacht, includeing keel (kg)
-    * Ff : Freeboard heigt fore (m)
+    * Mass : Total mass of the yacht, including keel (kg)
+    * Ff : Freeboard height fore (m)
     * Fa : Freeboard height aft (m)
     * Boa : Beam overall (m)
     * Loa : Length overall (m)
@@ -83,7 +83,7 @@ This is a crude list of all the input variables and their meaning, as well as th
     * Sails : List of Sails
 1. Sails:
     Standard measurements, except Roach is defined as 1-A/(0.5PE)
-    Kite only takes area and vce esitmate (this is very rough)
+    Kite only takes area and vce estimate (this is very rough)
 1. VPP.set_analysis()
     * TWA range : range of TWA to use
     * TWS range : range of TWS, must be between [2, 35]
@@ -93,7 +93,7 @@ This is a crude list of all the input variables and their meaning, as well as th
 
 * **[Otto Villani](https://www.linkedin.com/in/otto-villani-552760108/)** - *Initial idea, model selection* - [github](https://github.com/ottovillani)
 * **[Marin Lauber](https://www.linkedin.com/in/marin-lauber/)** - *Initial idea, developement* - [github](https://github.com/marinlauber)
-* **[Thomas Dickson](tajd.github.io)** - *Developer*
+* **[Thomas Dickson](https://tajd.co.uk/about)** - *Developer* - [github](http://github.com/TAJD)
 
 ## License
 

@@ -2,8 +2,6 @@ import nlopt
 import numpy as np
 import matplotlib.pyplot as plt
 
-plt.style.use("mystyle")
-
 def myfunc(x, grad):
     if(grad.size > 0):
         # modify in place, not used for gadient-free algorithms
