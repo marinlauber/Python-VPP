@@ -7,7 +7,7 @@ from typing import Any, Dict, List
 import matplotlib.pyplot as plt
 import numpy as np
 import streamlit as st
-from utils import return_footer
+from utils import footer, header
 
 sys.path.append(os.path.realpath("."))
 from src.api import app
@@ -116,6 +116,8 @@ main = {"Name": "MN1", "P": 16.60, "E": 5.60, "Roach": 0.1, "BAD": 1.0}
 jib = {"Name": "J1", "I": 16.20, "J": 5.10, "LPG": 5.40, "HBI": 1.8}
 kite = {"Name": "A2", "area": 150.0, "vce": 9.55}
 
+header()
+
 st.markdown(
     """
     # Yacht VPP
@@ -168,4 +170,4 @@ if st.button("Process Specifications"):
         fig = plot_single_polar(response)
         st.pyplot(fig)
 
-return_footer()
+footer()

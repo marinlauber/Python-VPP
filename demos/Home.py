@@ -1,10 +1,12 @@
 import streamlit as st
-from utils import return_footer
+from utils import footer, header
 
 st.set_page_config(
     page_title="Home - Yacht VPP",
     page_icon="👋",
 )
+
+header()
 
 st.write("# Welcome to Yacht VPP 👋")
 
@@ -20,4 +22,4 @@ st.markdown(
 """
 )
 
-return_footer()
+footer()

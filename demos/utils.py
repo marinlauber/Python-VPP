@@ -1,7 +1,16 @@
 import streamlit as st
+import streamlit.components.v1 as components
 
 
-def return_footer():
+def header():
+    header = """
+    <script data-goatcounter="https://yacht-vpp.goatcounter.com/count"
+        async src="//gc.zgo.at/count.js"></script>
+    """
+    return components.html(header)
+
+
+def footer():
     footer = """
         <div style="text-align: center; margin-top: 50px;">
             <hr>
