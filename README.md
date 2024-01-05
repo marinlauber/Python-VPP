@@ -36,7 +36,7 @@ $ conda activate Python-VPP
 
 You can run a benchmark agains the YD-41 results from WinVPP by running the `benchmark.py` script.
 
-```python
+```bash
 $ python benchmark/benchmark.py -g -o
 ```
 
@@ -46,7 +46,7 @@ with the `graph` and `output` optional keyboard arguments.
 
 To use the code, forst clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
 
-```python
+```bash
 $ python runVPP.py
 ```
 
