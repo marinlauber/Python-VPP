@@ -83,7 +83,7 @@ This is a crude list of all the input variables and their meaning, as well as th
     * Sails : List of Sails
 1. Sails:
     Standard measurements, except Roach is defined as 1-A/(0.5PE)
-    Kite only takes area and vce esitmate (this is very rough)
+    Kite only takes area and vce estimate (this is very rough)
 1. VPP.set_analysis()
     * TWA range : range of TWA to use
     * TWS range : range of TWS, must be between [2, 35]
