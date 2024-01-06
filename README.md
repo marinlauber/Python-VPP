@@ -37,10 +37,10 @@ $ conda activate Python-VPP
 You can run a benchmark agains the YD-41 results from WinVPP by running the `benchmark.py` script.
 
 ```python
-$ python benchmark/benchmark.py -g -o
+$ python benchmark/benchmark.py -s -g -o [output_name]
 ```
 
-with the `graph` and `output` optional keyboard arguments.
+with `save`, `graph` and `output` as optional keyboard arguments and `output` only working in combination with `save`.
 
 ## Using the code
 
