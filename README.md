@@ -74,7 +74,7 @@ This is a crude list of all the input variables and their meaning, as well as th
     * WSA : Wetted surface area (m^2)
     * Tmax : Draft max, i.e. Keel (m)
     * Amax : Max. section area (m^2)
-    * Mass : Total mass of the yacht, includeing keel (kg)
+    * Mass : Total mass of the yacht, including keel (kg)
     * Ff : Freeboard heigt fore (m)
     * Fa : Freeboard height aft (m)
     * Boa : Beam overall (m)
