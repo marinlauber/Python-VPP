@@ -57,6 +57,46 @@ class Sail(object):
 
 class Main(Sail):
     def __init__(self, name, P, E, Roach, BAD):
+        """
+        Initialize mainsail
+    
+        This function initializes an object of class Main which inherits the class Sail. 
+        It calculates the area, the Vertical Center of Effort (vce), 
+        sets CE = 1 and calls the super class constructor. 
+    
+        Parameters
+        ----------
+        name : string
+            Of the sail
+            
+        P : Float
+            Height of the Mainsail  in meters
+            
+        E: Float
+            Length (Foot) of the Mainsail  in meters
+            
+        Roach: Float
+            Percentage by which the triangular area is increased in order to obtain the mainsail area. 
+            This is area behind the line from clew to head. 
+            To get this number you have to calculate  Mainsail_area / (P*E/2) -1
+            
+        BAD: Float
+            Boom Above Deck: Distance between boom and Deck  in meters
+        
+        Returns
+        -------
+        Main
+            Object of type Main( Sail )
+    
+        See Also
+        --------
+        Jib( Sail )
+    
+        Examples
+        --------
+        >>> Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0)
+        <src.SailMod.Main object at 0xFFFFFFFFF>
+        """
         self.name = name
         self.type = "main"
         self.P = P
