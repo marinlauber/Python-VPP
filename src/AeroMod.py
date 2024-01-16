@@ -80,7 +80,7 @@ class AeroMod(object):
         self.phi = max(0, phi)
         self.tws = tws
         self.twa = twa
-        # gradual flatening of the sails with tws increase, min is 0.62 from 17 knots
+        # gradual flattening of the sails with tws increase, min is 0.62 from 17 knots
         self.flat = flat #np.where(tws<2.5, 1, np.where(tws < 8.5, 0.81 + 0.19 * np.cos((tws - 2.5) / 6 * np.pi), 0.62))
         self.ftj = max(RED-1., 0.)
         self.rfm = min(RED, 1.)

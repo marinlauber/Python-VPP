@@ -2,7 +2,7 @@
 
 ![Upload Python Package](https://github.com/TAJD/Python-VPP/workflows/Upload%20Python%20Package/badge.svg)
 
-3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code make use of Object-oriented-Programming to be as general as possible.
+3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code makes use of Object-oriented-Programming to be as general as possible.
 
 
 ## Getting Started
@@ -37,10 +37,10 @@ $ conda activate Python-VPP
 You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script.
 
 ```bash
-$ python benchmark/benchmark.py -g -o
+$ python benchmark/benchmark.py -s -g -o [output_name]
 ```
 
-with the `graph` and `output` optional keyboard arguments.
+with `save`, `graph` and `output` as optional keyboard arguments and `output` only working in combination with `save`.
 
 ## Using the code
 
