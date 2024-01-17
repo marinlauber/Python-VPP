@@ -17,7 +17,7 @@
 
 ### Prerequisites
 
-There are only a few prerequisites to run this code, most python instalation will have them. We advise to use the `environment.yml` file provided in this repo to set-up a new conda environment to use the code (this keeps you machine nice and tidy).
+There are only a few prerequisites to run this code, most python installations will have them. We advise to use the `environment.yml` file provided in this repo to set-up a new conda environment to use the code (this keeps you machine nice and tidy).
 
 To create the environment simply run from the cloned/downloaded repo
 
@@ -34,9 +34,9 @@ $ conda activate Python-VPP
 
 ### Running the tests
 
-You can run a benchmark agains the YD-41 results from WinVPP by running the `benchmark.py` script.
+You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script.
 
-```python
+```bash
 $ python benchmark/benchmark.py -s -g -o [output_name]
 ```
 
@@ -44,9 +44,9 @@ with `save`, `graph` and `output` as optional keyboard arguments and `output` on
 
 ## Using the code
 
-To use the code, forst clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
+To use the code, first clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
 
-```python
+```bash
 $ python runVPP.py
 ```
 
@@ -93,7 +93,7 @@ This is a crude list of all the input variables and their meaning, as well as th
 
 * **[Otto Villani](https://www.linkedin.com/in/otto-villani-552760108/)** - *Initial idea, model selection* - [github](https://github.com/ottovillani)
 * **[Marin Lauber](https://www.linkedin.com/in/marin-lauber/)** - *Initial idea, developement* - [github](https://github.com/marinlauber)
-* **[Thomas Dickson](tajd.github.io)** - *Developer*
+* **[Thomas Dickson](https://tajd.co.uk/about)** - *Developer*
 
 ## License
 

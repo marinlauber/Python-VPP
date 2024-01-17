@@ -2,11 +2,12 @@ name: Python-VPP
 channels:
     - conda-forge
 dependencies:
-    - python=3.9
+    - python>=3.9
     - numpy
     - matplotlib
     - scipy
     - pip
     - nlopt
+    - pytest
     - pip:
       - tqdm
