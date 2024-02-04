@@ -1,38 +1,33 @@
 # Python-VPP
 
-![Upload Python Package](https://github.com/TAJD/Python-VPP/workflows/Upload%20Python%20Package/badge.svg)
-
 3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code make use of Object-oriented-Programming to be as general as possible.
 
+## Contributing
 
-## Getting Started
-### To Do List (prioritized)
-1. ~~wrap rig into yacht class~~, and update measure functions
-2. validate on YD-41 (Principle of Yacht Design), and write tests
-3. ~~optimize the boat velocity with the 3-DOF equlibrium as constraints (Lagrange multipliers)~~
-4. Add all the windage contributions (mast, crew, rigging, etc.)
-5. Optional Delft hydro model
-6. Add dagger boards to the possible appendages  
-6. ~~tidy plotting and results~~
+### Installing dependencies
 
-### Prerequisites
+Install the required dependencies from the `requirements.txt` file.
 
-There are only a few prerequisites to run this code, most python installations will have them. We advise to use the `environment.yml` file provided in this repo to set-up a new conda environment to use the code (this keeps you machine nice and tidy).
+If using `pip` then `pip install requirements.txt`.
 
-To create the environment simply run from the cloned/downloaded repo
+If using `conda` then follow these steps to create an environment with the right dependencies:
 
 ```bash
-$ conda env create -f environment.yml
+conda create --name Python-VPP \
+    && conda config --add channels conda-forge \
+    && conda activate Python-VPP \
+    && conda install -y --file requirements.txt
 ```
-and then active the new environment
+
+### Running tests
+
+Tests are implemented using [pytest](https://docs.pytest.org/en/8.0.x/).
+
+You can run tests with
 
 ```bash
-$ conda activate Python-VPP
+pytest -vv
 ```
-
-> **_NOTE:_** If you want to change the conda environment name, edit the first line of the `environment.yml` file.
-
-### Running the tests
 
 You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script.
 
