@@ -1,43 +1,38 @@
 # Python-VPP
 
-![Upload Python Package](https://github.com/TAJD/Python-VPP/workflows/Upload%20Python%20Package/badge.svg)
-
 3-DOF Velocity Prediction Program base on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. The code makes use of Object-oriented-Programming to be as general as possible.
 
+## Contributing
 
-## Getting Started
-### To Do List (prioritized)
-1. ~~wrap rig into yacht class~~, and update measure functions
-2. validate on YD-41 (Principle of Yacht Design), and write tests
-3. ~~optimize the boat velocity with the 3-DOF equlibrium as constraints (Lagrange multipliers)~~
-4. Add all the windage contributions (mast, crew, rigging, etc.)
-5. Optional Delft hydro model
-6. Add dagerboards to the possible appendages  
-6. ~~tidy plotting and results~~
+### Installing dependencies
 
-### Prerequisites
+Install the required dependencies from the `requirements.txt` file.
 
-There are only a few prerequisites to run this code, most python instalation will have them. We advise to use the `environment.yml` file provided in this repo to set-up a new conda environment to use the code (this keeps you machine nice and tidy).
+If using `pip` then `pip install requirements.txt`.
 
-To create the environment simply run from the cloned/downloaded repo
+If using `conda` then follow these steps to create an environment with the right dependencies:
 
 ```bash
-$ conda env create -f environment.yml
+conda create --name Python-VPP \
+    && conda config --add channels conda-forge \
+    && conda activate Python-VPP \
+    && conda install -y --file requirements.txt
 ```
-and then active the new environment
+
+### Running tests
+
+Tests are implemented using [pytest](https://docs.pytest.org/en/8.0.x/).
+
+You can run tests with
 
 ```bash
-$ conda activate Python-VPP
+pytest -vv
 ```
 
-> **_NOTE:_** If you want to change the conda environment name, edit the first line of the `environment.yml` file.
+You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script.
 
-### Running the tests
-
-You can run a benchmark agains the YD-41 results from WinVPP by running the `benchmark.py` script.
-
-```python
-$ python benchmark/benchmark.py -s -g -o [output_name]
+```bash
+$ python benchmark/benchmark.py -g -o
 ```
 
 with `save`, `graph` and `output` as optional keyboard arguments and `output` only working in combination with `save`.
@@ -46,7 +41,7 @@ with `save`, `graph` and `output` as optional keyboard arguments and `output` on
 
 To use the code, forst clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
 
-```python
+```bash
 $ python runVPP.py
 ```
 
@@ -69,13 +64,13 @@ This is a crude list of all the input variables and their meaning, as well as th
 1. Yacht : 
     * Lwl : Length waterline (m)
     * Vol : Displ. volume of canoebody (m^3)
-    * Bwl : Beam waterine (m)
-    * Tc : Canoebody draft (m)
+    * Bwl : Beam waterline (m)
+    * Tc : Canoe body draft (m)
     * WSA : Wetted surface area (m^2)
     * Tmax : Draft max, i.e. Keel (m)
     * Amax : Max. section area (m^2)
-    * Mass : Total mass of the yacht, includeing keel (kg)
-    * Ff : Freeboard heigt fore (m)
+    * Mass : Total mass of the yacht, including keel (kg)
+    * Ff : Freeboard height fore (m)
     * Fa : Freeboard height aft (m)
     * Boa : Beam overall (m)
     * Loa : Length overall (m)
@@ -83,7 +78,7 @@ This is a crude list of all the input variables and their meaning, as well as th
     * Sails : List of Sails
 1. Sails:
     Standard measurements, except Roach is defined as 1-A/(0.5PE)
-    Kite only takes area and vce esitmate (this is very rough)
+    Kite only takes area and vce estimate (this is very rough)
 1. VPP.set_analysis()
     * TWA range : range of TWA to use
     * TWS range : range of TWS, must be between [2, 35]
@@ -93,7 +88,7 @@ This is a crude list of all the input variables and their meaning, as well as th
 
 * **[Otto Villani](https://www.linkedin.com/in/otto-villani-552760108/)** - *Initial idea, model selection* - [github](https://github.com/ottovillani)
 * **[Marin Lauber](https://www.linkedin.com/in/marin-lauber/)** - *Initial idea, developement* - [github](https://github.com/marinlauber)
-* **[Thomas Dickson](tajd.github.io)** - *Developer*
+* **[Thomas Dickson](https://tajd.co.uk/about)** - *Developer* - [github](http://github.com/TAJD)
 
 ## License
 
