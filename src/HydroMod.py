@@ -184,7 +184,7 @@ class HydroMod(object):
     #         a[i] = self.interp_a[i](fn)
     #     return a
 
-    def show_resistance(self, vb):
+    def show_resistance(self, vb, file_name="None"):
         resV, resR = np.empty_like(vb), np.empty_like(vb)
         for i, v in enumerate(vb):
             self.vb = v * 0.5144
@@ -200,8 +200,8 @@ class HydroMod(object):
         plt.ylabel(r"$R$ (N)")
         plt.legend()
         plt.tight_layout()
-        if fn!="None":
-            plt.savefig(fn, dpi=300)
+        if file_name != "None":
+            plt.savefig(file_name, dpi=300)
         plt.show()
 
     def _test_gz(self):

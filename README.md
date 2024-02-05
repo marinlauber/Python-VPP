@@ -39,7 +39,7 @@ with `save`, `graph` and `output` as optional keyboard arguments and `output` on
 
 ## Using the code
 
-To use the code, forst clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
+To use the code, first clone or download this repository onto your own machine. The main file that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). To run the code simply type
 
 ```bash
 $ python runVPP.py
