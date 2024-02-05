@@ -105,8 +105,8 @@ class Yacht(object):
         Lwl : waterline length (m)
         Vol : volume of canoe body (m^3)
         Bwl : waterline beam (m)
-        Tc : Caonoe body draft (m)
-        WSA : Wtter surface area (m^2)
+        Tc : Canoe body draft (m)
+        WSA : Wetted surface area (m^2)
         Tmax : Maximum draft of yacht (m)
         Amax  : Max section area (m^2)
         Mass : total mass of the yacht (kg)
@@ -146,7 +146,7 @@ class Yacht(object):
         # righting moment interpolation function
         self._interp_rm = self._build_rm_interp()
 
-        # pupulate everything
+        # populate everything
         self.update()
 
 
@@ -173,7 +173,7 @@ class Yacht(object):
 
 
     def _get_RmH(self, phi):
-        # RM default is equal to RM hyrostatic
+        # RM default is equal to RM hydrostatic
         return self._interp_rm(phi) * self.mass * self.g  # + 1./3.*self.rm_default
 
 
@@ -209,9 +209,3 @@ class Yacht(object):
                     vals.update(dict({attr: value}))
             sails.update(dict({sail.type: vals}))
         return dic.update(dict({'Appendages': app, 'Sails': sails}))
-
-
-# if __name__ == "__main__":
-
-#     keel = Keel(Cu=1, Cl=1, Span=1)
-#     keel._print()

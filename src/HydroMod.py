@@ -212,17 +212,6 @@ class HydroMod(object):
         plt.plot(phi, res)
         plt.show()
 
-    def _test_interp(self):
-        print("Check that interpolation correspond at the eight corners of cube")
-        print(self._interp_Rr((0.125, 3.0, 2.5)), 0.0487)
-        print(self._interp_Rr((0.125, 3.0, 9.0)), 0.0487)
-        print(self._interp_Rr((0.125, 9.0, 2.5)), 0.0393)
-        print(self._interp_Rr((0.125, 9.0, 9.0)), 0.0613)
-        print(self._interp_Rr((0.700, 3.0, 2.5)), 357.062)
-        print(self._interp_Rr((0.700, 3.0, 9.0)), 357.062)
-        print(self._interp_Rr((0.700, 9.0, 2.5)), 38.0526)
-        print(self._interp_Rr((0.700, 9.0, 9.0)), 42.2353)
-
     def print_state(self):
         self.update(self.vb, self.phi, self.leeway)
         print("HydroMod state :")
@@ -237,15 +226,3 @@ class HydroMod(object):
         print(" Rtot is :  %.2f (N)" % self.Fx)
         print(" KSF is :   %.2f (N)" % self.Fy)
         print(" RM is :    %.2f (Nm)" % self.Mx)
-
-
-# if __name__ == "__main__":
-# # Bare hull (Appendages in intialized as zeros)
-# YD41 = HydroMod(Yacht(Lwl=11.90,Vol=6.05,
-#                       Bwl=3.18,Tc=0.4,
-#                       WSA=28.20,Tmax=2.30,
-#                       Amax=1.051,Mass=6500,
-#                       Ff=1.5,Fa=1.5,
-#                       Boa=4.2,Loa=12.5))
-# YD41.print_state()
-# YD41.show_resistance(np.linspace(0, 12, 24))
