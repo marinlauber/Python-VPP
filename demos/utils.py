@@ -1,5 +1,13 @@
 import streamlit as st
 import streamlit.components.v1 as components
+import subprocess
+
+def get_git_hash():
+    try:
+        git_hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD']).strip().decode('utf-8')
+        return git_hash
+    except subprocess.CalledProcessError:
+        return None
 
 
 def header():
@@ -20,15 +28,17 @@ def header():
 
 
 def footer():
-    footer = """
+    git_hash = get_git_hash()
+    footer = f"""
         <div style="text-align: center; margin-top: 50px;">
             <hr>
             <p>Yacht VPP</p>
-            <p>Contact: <a href="mailto:tajdickson@protonmail.com">tajdickson@protonmail.com</a></p>
             <p style="font-size: 12px; color: gray;">
-                This application is provided as is and without warranty. The source code is available on <a href="https://github.com/marinlauber/Python-VPP">GitHub</a>.
+                This application is provided as is and without warranty. 
+                The source code is available on <a href="https://github.com/marinlauber/Python-VPP">GitHub</a>.
                 Please file bug reports as an <a href="https://github.com/marinlauber/Python-VPP/issues">issue here</a>.
             </p>
+            <p style="font-size: 12px; color: gray;">Version {git_hash}</p>
         </div>
     """
 
