@@ -5,10 +5,13 @@ import streamlit.components.v1 as components
 def header():
     header = """
     <script>
-        // Make sure this is *before* you load the count.js script; otherwise
-        // the pageview may get sent before this is loaded and this will just
-        // overwrite the object.
-        window.goatcounter = {allow_local: true}
+        window.goatcounter = {no_onload: true}
+
+        window.addEventListener('hashchange', function(e) {
+            window.goatcounter.count({
+                path: location.pathname + location.search + location.hash,
+            })
+        })
     </script>
     <script data-goatcounter="https://yacht-vpp.goatcounter.com/count"
             async src="//gc.zgo.at/count.js"></script>

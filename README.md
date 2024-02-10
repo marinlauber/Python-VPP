@@ -2,6 +2,8 @@
 
 3-DOF Velocity Prediction Program based on the [ORC](https://www.orc.org/index.asp?id=21) aero and hydro dynamic models. 
 
+Please see the demo hosted at [https://yacht-vpp.streamlit.app/](https://yacht-vpp.streamlit.app/) and go for a test sail!
+
 ## Using the code
 
 To use the code, first clone or download this repository then install the required dependencies (see below). 
