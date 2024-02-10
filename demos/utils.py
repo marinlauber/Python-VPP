@@ -4,8 +4,14 @@ import streamlit.components.v1 as components
 
 def header():
     header = """
+    <script>
+        // Make sure this is *before* you load the count.js script; otherwise
+        // the pageview may get sent before this is loaded and this will just
+        // overwrite the object.
+        window.goatcounter = {allow_local: true}
+    </script>
     <script data-goatcounter="https://yacht-vpp.goatcounter.com/count"
-        async src="//gc.zgo.at/count.js"></script>
+            async src="//gc.zgo.at/count.js"></script>
     """
     return components.html(header)
 
