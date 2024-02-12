@@ -16,9 +16,7 @@ st.markdown(
 
     It is based on the [ORC model](https://orc.org/uploads/files/ORC-VPP-Documentation-2023.pdf).
 
-    The source code can be [found here](https://github.com/marinlauber/Python-VPP) and any and all contributions are welcome 😊.
-
-    If you have a question, feature request or perhaps a bug report then please open an issue here or [send me an email](mailto:tajdickson@protonmail.com).
+    If you have a question, feature request or perhaps a bug report then please open an issue [here](https://github.com/marinlauber/Python-VPP) or [send me an email](mailto:tajdickson@protonmail.com).
 """
 )
 
