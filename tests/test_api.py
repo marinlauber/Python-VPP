@@ -1,15 +1,8 @@
-import io
 import json
-import os
-import tempfile
-import zipfile
 
 import numpy as np
-import pytest
-from PIL import Image
 
 from src.api import app
-
 
 def test_ping_route():
     client = app.test_client()
