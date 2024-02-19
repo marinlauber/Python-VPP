@@ -74,7 +74,7 @@ def _get_vmg(dat, twa_range):
     if dat.shape[1] == 1:  # if only one sails, it has both VMGs
         up = np.argmax(dat[:, 0, 0] * np.cos(twa_range / 180 * np.pi))
         dn = np.argmax(-dat[:, 0, 0] * np.cos(twa_range / 180 * np.pi))
-        return np.array([up, dn]), 0, 0
+        return np.array([up, dn]), np.array([0, 0])
     else:
         up = np.zeros(dat.shape[1])
         dn = np.zeros(dat.shape[1])
