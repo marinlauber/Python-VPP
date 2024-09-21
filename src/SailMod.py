@@ -129,9 +129,9 @@ class Jib(Sail):
         super().__init__(self.name, self.type, self.area, self.vce)
         self.measure()
 
-    def measure(self, rfm=1, fjt=1):
-        self.LPG_r = self.LPG*fjt
-        self.IG_r = self.IG*fjt
+    def measure(self, rfm=1, ftj=1):
+        self.LPG_r = self.LPG*ftj
+        self.IG_r = self.IG*ftj
         self.area = 0.5 * self.I * max(self.J, self.LPG_r)
 
 
