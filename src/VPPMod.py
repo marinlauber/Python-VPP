@@ -19,6 +19,7 @@ from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
 from src.UtilsMod import KNOTS_TO_MPS, json_write, polar_plot, sail_chart
 from src.YachtMod import Yacht as YachtClass
+from rich.progress import track  # For progress bar
 
 logger = logging.getLogger(__name__)
 debug_mode = logging.getLogger().getEffectiveLevel() == logging.DEBUG
@@ -202,7 +203,7 @@ class VPP(object):
         if not self.upToDate:
             raise "VPP run stop: no analysis set!"
 
-        for i, tws in enumerate(self.tws_range):
+        for i, tws in track(enumerate(self.tws_range), description="Analysing...", total=len(self.tws_range)):
             logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
 
             for n in range(self.Nsails):
