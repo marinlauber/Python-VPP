@@ -66,7 +66,7 @@ Follow the steps below to contribute to this project.
 
 Install the required dependencies from the `requirements.txt` file.
 
-If using `pip` then `pip install requirements.txt`.
+If using `pip` then `pip install -r requirements.txt`.
 
 If using `conda` then follow these steps to create an environment with the right dependencies:
 
