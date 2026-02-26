@@ -14,7 +14,23 @@ from scipy import interpolate
 
 class Sail(object):
     def __init__(self, name, type, area, vce, up=True):
+        """
+        Base sail class.
 
+        Parameters
+        ----------
+        name : str
+            Sail identifier (e.g. "J1", "A2").
+        type : str
+            Sail type, used to load coefficient data from ``dat/<type>.dat``.
+            One of ``"main"``, ``"jib"``, or ``"kite"``.
+        area : float
+            Sail area (m^2).
+        vce : float
+            Vertical centre of effort above deck (m).
+        up : bool, optional
+            Whether this is an upwind sail. Default is True.
+        """
         self.name = name
         self.type = type
         self.area = area
@@ -42,6 +58,9 @@ class Sail(object):
     def cd(self, awa):
         awa = max(0, min(awa, 180))
         return self.interp_cd(awa)
+
+    def measure(self, rfm, ftj):
+        """Update sail dimensions for current reef/furl state."""
 
     def debbug_coeffs(self, N=256):
         awa = np.linspace(0, 180, N)
@@ -109,6 +128,17 @@ class Main(Sail):
         self.measure()
 
     def measure(self, rfm=1, ftj=1):
+        """
+        Update mainsail dimensions for reef state.
+
+        Parameters
+        ----------
+        rfm : float
+            Reef factor for mainsail (0 to 1). 1 = fully unreefed.
+        ftj : float
+            Furl factor for jib (unused for mainsail, present for interface
+            compatibility).
+        """
         self.P_r = self.P*rfm
         self.vce = self.P_r / 3.0 * (1 + self.roach) + self.BAD
         self.area = self.area0*rfm**2
@@ -117,6 +147,25 @@ class Main(Sail):
 
 class Jib(Sail):
     def __init__(self, name, I, J, LPG, HBI):
+        """
+        Headsail (jib/genoa).
+
+        Parameters
+        ----------
+        name : str
+            Sail identifier (e.g. "J1").
+        I : float
+            Forestay height — vertical distance from the sheer line to the
+            forestay attachment point at the mast (m). Standard ORC measurement.
+        J : float
+            Base of the foretriangle — horizontal distance from the forestay
+            tack fitting to the front of the mast at deck level (m).
+        LPG : float
+            Luff perpendicular — shortest distance from the luff to the clew,
+            measured perpendicular to the luff (m). Determines sail overlap.
+        HBI : float
+            Height of the jib tack above deck (m).
+        """
         self.name = name
         self.type = "jib"
         self.I = I
@@ -130,6 +179,17 @@ class Jib(Sail):
         self.measure()
 
     def measure(self, rfm=1, ftj=1):
+        """
+        Update jib dimensions for furl state.
+
+        Parameters
+        ----------
+        rfm : float
+            Reef factor for mainsail (unused for jib, present for interface
+            compatibility).
+        ftj : float
+            Furl factor for jib (0 to 1). 0 = fully unfurled.
+        """
         self.LPG_r = self.LPG*ftj
         self.IG_r = self.IG*ftj
         self.area = 0.5 * self.I * max(self.J, self.LPG_r)
@@ -137,6 +197,18 @@ class Jib(Sail):
 
 class Kite(Sail):
     def __init__(self, name, area, vce):
+        """
+        Spinnaker or asymmetric downwind sail.
+
+        Parameters
+        ----------
+        name : str
+            Sail identifier (e.g. "A2", "A5").
+        area : float
+            Sail area (m^2).
+        vce : float
+            Vertical centre of effort above deck (m).
+        """
         self.name = name
         self.type = "kite"
         self.area = area
