@@ -24,3 +24,13 @@ def test_single_sail_set():
     vpp.write("results")
     vpp.polar(3, False)
     vpp.SailChart(False)
+
+
+def test_run_without_analysis_raises():
+    """Issue #46: raise with string literal should be a proper exception."""
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(RuntimeError, match="no analysis set"):
+        vpp.run()

@@ -49,6 +49,7 @@ class VPP(object):
             warnings.filterwarnings(
                 "ignore", "The iteration is not making good progress"
             )
+        self.upToDate = False
 
     def set_analysis(self, tws_range, twa_range):
         """
@@ -125,7 +126,7 @@ class VPP(object):
         logging.info("Optimisation start")
 
         if not self.upToDate:
-            raise "VPP run stop: no analysis set!"
+            raise RuntimeError("VPP run stop: no analysis set!")
 
         # gradient-free optimization because the gradient of our
         # objective function cannot be evaluated
@@ -200,7 +201,7 @@ class VPP(object):
         """
 
         if not self.upToDate:
-            raise "VPP run stop: no analysis set!"
+            raise RuntimeError("VPP run stop: no analysis set!")
 
         for i, tws in enumerate(self.tws_range):
             logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
