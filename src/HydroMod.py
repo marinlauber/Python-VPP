@@ -16,6 +16,24 @@ from scipy.interpolate import RegularGridInterpolator
 
 class HydroMod(object):
     def __init__(self, Yacht, rho=1025.0, mu=0.00119, g=9.81):
+        """
+        Hydrodynamic resistance and righting moment model.
+
+        Computes total resistance (viscous + residuary + induced), side force
+        from appendage lift, and righting moment using ORC methods and
+        interpolated resistance surfaces.
+
+        Parameters
+        ----------
+        Yacht : Yacht
+            Yacht object containing hull geometry and appendage definitions.
+        rho : float, optional
+            Seawater density (kg/m^3). Default is 1025.0.
+        mu : float, optional
+            Dynamic viscosity of seawater (Pa.s). Default is 1.19e-3.
+        g : float, optional
+            Gravitational acceleration (m/s^2). Default is 9.81.
+        """
 
         # physical parameters
         self.rho = rho
@@ -123,8 +141,7 @@ class HydroMod(object):
 
     def _cf(self, L):
         """
-        Flate plate turbulent boudnary layer friction coefficient.
-        Take a length scale, such that it can be used for appendags as well
+        Flat plate turbulent boundary layer friction coefficient (ITTC 1957). Takes a length scale so it can be used for hull and appendages.
         """
         Re = max(
             1e4, self.vb * L / self.nu
@@ -132,6 +149,24 @@ class HydroMod(object):
         return 0.066 * (np.log10(Re) - 2.03) ** (-2)
 
     def update(self, vb, phi, leeway):
+        """
+        Update hydrodynamic forces for current sailing state.
+
+        Parameters
+        ----------
+        vb : float
+            Boat speed (m/s).
+        phi : float
+            Heel angle (degrees).
+        leeway : float
+            Leeway angle (degrees).
+
+        Returns
+        -------
+        tuple of float
+            (Fx, Fy, Mx) — total resistance (N), side force (N),
+            total righting moment (N.m).
+        """
 
         self.vb = max(0, vb)
         self.phi = max(0, phi)
