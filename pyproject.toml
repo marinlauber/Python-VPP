@@ -4,7 +4,7 @@ version = "0.0.2"
 description = "OOP Velocity Prediction Program"
 readme = "README.md"
 license = "MIT"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 authors = [
     { name = "Marin Lauber", email = "M.Lauber@soton.ac.uk" },
     { name = "Otto Villani" },
