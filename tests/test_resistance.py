@@ -43,3 +43,14 @@ def test_Rr_interpolation():
     np_testing.assert_approx_equal(YD41._interp_Rr((0.700, 3.0, 9.0)), 357.062, 4)
     np_testing.assert_approx_equal(YD41._interp_Rr((0.700, 9.0, 2.5)), 38.0526, 4)
     np_testing.assert_approx_equal(YD41._interp_Rr((0.700, 9.0, 9.0)), 42.2353, 4)
+
+
+def test_build_interp_func_no_deprecation():
+    """Verify build_interp_func doesn't use deprecated interp1d."""
+    import warnings
+    from src.UtilsMod import build_interp_func
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        func = build_interp_func("main", i=1)
+        result = func(30.0)
+        assert isinstance(float(result), float)

@@ -39,11 +39,17 @@ def json_write(data, fname):
 
 def build_interp_func(fname, i=1, kind="linear"):
     """
-    build interpolatison function and returns it in a list
+    build interpolation function and returns it in a list
     """
     a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
-    # linear for now, this is not good, might need to polish data outside
-    return interpolate.interp1d(a[0, :], a[i, :], kind=kind, fill_value="extrapolate")
+    # Filter out NaN values for make_interp_spline compatibility
+    mask = ~(np.isnan(a[0, :]) | np.isnan(a[i, :]))
+    x = a[0, mask]
+    y = a[i, mask]
+    k = {"linear": 1, "quadratic": 2, "cubic": 3}.get(kind, 1)
+    spline = interpolate.make_interp_spline(x, y, k=k)
+    spline.extrapolate = True
+    return spline
 
 
 def _polar(n) -> plt.Figure:
