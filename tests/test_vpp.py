@@ -26,6 +26,26 @@ def test_single_sail_set():
     vpp.SailChart(False)
 
 
+def test_sail_chart_no_deprecation_warning():
+    """Verify sail_chart doesn't use deprecated interp2d."""
+    import warnings
+
+    yacht = return_YD41_particulars()
+    yacht.sails = [
+        Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+        Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
+    ]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(
+        tws_range=np.array([6.0, 10.0]),
+        twa_range=np.linspace(30.0, 180.0, 16),
+    )
+    vpp.run(verbose=False)
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        vpp.SailChart(save=True, fname="test_sailchart.png")
+
+
 def test_run_without_analysis_raises():
     """Issue #46: raise with string literal should be a proper exception."""
     import pytest

@@ -6,6 +6,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
+from scipy.interpolate import RegularGridInterpolator
 
 KNOTS_TO_MPS = 0.5144
 stl = [
@@ -184,9 +185,12 @@ def sail_chart(VPP, save, fname="SailChart.png"):
             for j in range(ntwa):
                 if sailset[i, j] == id:
                     sail[i + 1, j + 1] = 1.0
-        func = interpolate.interp2d(twas, twss, sail, kind="cubic")
-        data = func(xnew, ynew)
-        data = np.where(data > 1.0, 1.0, data)
+        func = RegularGridInterpolator(
+            (twss, twas), sail, method="cubic", bounds_error=False, fill_value=0.0
+        )
+        yy, xx = np.meshgrid(ynew, xnew, indexing="ij")
+        data = func((yy, xx))
+        data = np.clip(data, 0.0, 1.0)
         ax[0].contour(
             np.radians(xnew), ynew, data, levels=[0.4], colors=cols[id], alpha=0.8
         )
