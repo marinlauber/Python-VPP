@@ -48,6 +48,7 @@ def test_Rr_interpolation():
 def test_build_interp_func_no_deprecation():
     """Verify build_interp_func doesn't use deprecated interp1d."""
     import warnings
+
     from src.UtilsMod import build_interp_func
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)

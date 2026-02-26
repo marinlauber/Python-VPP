@@ -7,11 +7,10 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
-import numpy as np
-from scipy.interpolate import interp1d
-from scipy.optimize import fsolve
-from scipy.optimize import root
 import matplotlib.pyplot as plt
+import numpy as np
+from scipy.optimize import fsolve
+
 from src.UtilsMod import build_interp_func
 
 
@@ -112,7 +111,7 @@ class AeroMod(object):
 
         # side-force is horizontal component of Fh
         self.Fy *= np.cos(np.radians(self.phi))
-        
+
         # heeling moment
         self.Mx = self.Fy * self._vce()
 
@@ -178,7 +177,7 @@ class AeroMod(object):
             (self.tws * np.sin(self.twa / 180.0 * np.pi)) ** 2
             + (self.tws * np.cos(self.twa / 180.0 * np.pi) + self.vb) ** 2
         )
-        # self.awa = np.arccos((self.tws*np.cos(np.radians(self.twa)) + self.vb) / np.sqrt((self.tws**2) + (self.vb**2) + 
+        # self.awa = np.arccos((self.tws*np.cos(np.radians(self.twa)) + self.vb) / np.sqrt((self.tws**2) + (self.vb**2) +
         #              2*self.tws*self.vb * np.cos(np.radians(self.twa))))
         # self.aws = (self.tws * np.sin(np.radians(self.twa))) / np.sin(self.awa)
 

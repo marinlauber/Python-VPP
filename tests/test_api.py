@@ -4,6 +4,7 @@ import numpy as np
 
 from src.api import app
 
+
 def test_ping_route():
     client = app.test_client()
     response = client.get("/ping")

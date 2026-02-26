@@ -8,8 +8,10 @@ __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from src.UtilsMod import build_interp_func,json_read,json_write
 from scipy import interpolate
+
+from src.UtilsMod import build_interp_func, json_read, json_write
+
 
 class Appendage(object):
     def __init__(self, type, chord, area, span, vol, ce):

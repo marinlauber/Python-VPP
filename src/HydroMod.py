@@ -7,10 +7,11 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
+import warnings
+
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
-import warnings
-import matplotlib.pyplot as plt
 
 
 class HydroMod(object):

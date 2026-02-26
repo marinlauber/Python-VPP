@@ -242,7 +242,7 @@ class VPP(object):
                         method="lm",
                     )
                     self.vb0, self.phi0, self.leeway0 = res = sol.x
-                    
+
                     if verbose and not sol.success:
                         logger.debug(sol.message)
 

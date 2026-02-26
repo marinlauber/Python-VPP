@@ -1,9 +1,10 @@
 
 import numpy as np
 
-from tests.test_utils import return_YD41_particulars
-from src.VPPMod import VPP
 from src.SailMod import Jib, Main
+from src.VPPMod import VPP
+from tests.test_utils import return_YD41_particulars
+
 
 def test_single_sail_set():
     YD41 = return_YD41_particulars()

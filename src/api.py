@@ -27,15 +27,15 @@ def ping():
 
 
 def data_to_vpp(data: Dict[str, Any]) -> VPP:
-    
+
     keel = Keel(
-        Cu=float(data["keel"]["Cu"]), 
-        Cl=float(data["keel"]["Cl"]), 
+        Cu=float(data["keel"]["Cu"]),
+        Cl=float(data["keel"]["Cl"]),
         Span=float(data["keel"]["Span"])
     )
     rudder = Rudder(
-        Cu=float(data["rudder"]["Cu"]), 
-        Cl=float(data["rudder"]["Cu"]), 
+        Cu=float(data["rudder"]["Cu"]),
+        Cl=float(data["rudder"]["Cu"]),
         Span=float(data["rudder"]["Span"])
     )
     yacht = Yacht(
@@ -75,14 +75,14 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
             ),
         ],
     )
-    
+
     vpp = VPP(Yacht=yacht)
     vpp.set_analysis(
         tws_range=np.array(data["tws_range"]),
         twa_range=np.array(data["twa_range"]),
     )
     return vpp
-    
+
 
 @app.route("/api/vpp/", methods=["POST"])
 def makevppresults():

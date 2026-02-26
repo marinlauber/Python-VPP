@@ -7,8 +7,8 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 from scipy import interpolate
 
 
@@ -107,7 +107,7 @@ class Main(Sail):
         self.vce = P / 3.0 * (1 + self.roach) + self.BAD
         super().__init__(self.name, self.type, self.area0, self.vce)
         self.measure()
-    
+
     def measure(self, rfm=1, ftj=1):
         self.P_r = self.P*rfm
         self.vce = self.P_r / 3.0 * (1 + self.roach) + self.BAD
