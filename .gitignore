@@ -20,6 +20,9 @@ sphinx/_build/
 # pytest
 .pytest_cache/
 
+# Claude Code
+.claude/
+
 # Project
 ORC_VPP_2019.pdf
 dev.py
