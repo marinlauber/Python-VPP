@@ -79,6 +79,37 @@ def test_daring_boat_speed_sanity():
     assert 3.0 < max_speed < 7.0, f"Max speed {max_speed:.1f} kts outside expected range"
 
 
+def test_daring_heel_limited():
+    """With phi_max=30, no heel angle should exceed 30 degrees."""
+    daring = return_daring()
+    vpp = VPP(Yacht=daring)
+    vpp.set_analysis(
+        tws_range=np.arange(8.0, 22.0, 4.0),
+        twa_range=np.linspace(35.0, 175.0, 15),
+        phi_max=30.0,
+    )
+    vpp.run(verbose=False)
+    results = np.array(vpp.results()["results"])
+    heel_angles = results[:, :, :, 1]
+    max_heel = np.max(heel_angles)
+    assert max_heel <= 31.0, f"Max heel {max_heel:.1f} exceeds phi_max=30"
+
+
+def test_daring_depower_values_stored():
+    """At high TWS with heel limit, flat/red should be < 1.0."""
+    daring = return_daring()
+    vpp = VPP(Yacht=daring)
+    vpp.set_analysis(
+        tws_range=np.array([18.0]),
+        twa_range=np.array([60.0]),
+        phi_max=25.0,
+    )
+    vpp.run(verbose=False)
+    results = np.array(vpp.results()["results"])
+    flat = results[0, 0, 0, 3]
+    assert flat < 1.0, f"Expected depowering at 18 kts / 60 TWA, got flat={flat}"
+
+
 def test_daring_polars_saved(tmp_path):
     """Daring should produce polar plot and sail chart files."""
     daring = return_daring()

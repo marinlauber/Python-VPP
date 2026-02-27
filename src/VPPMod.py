@@ -12,7 +12,7 @@ import warnings
 
 import nlopt
 import numpy as np
-from scipy.optimize import root
+from scipy.optimize import least_squares, root
 from tqdm import trange
 
 from src.AeroMod import AeroMod
@@ -237,47 +237,63 @@ class VPP(object):
                     if (self.aero.up == False) and (twa <= self.lim_up):
                         continue
 
-                    flat = 1.0
-                    red = 2.0
-                    sol = root(
-                        self.resid,
-                        [self.vb0, self.phi0, self.leeway0],
-                        args=(twa, tws, flat, red),
-                        method="lm",
-                    )
-                    self.vb0, self.phi0, self.leeway0 = res = sol.x
-
-                    if verbose and not sol.success:
-                        logger.debug(sol.message)
-
-                    # # contraints
-                    # con1 = {'type': 'eq', 'fun': self.Fx, 'args': (twa, tws)}
-                    # con2 = {'type': 'eq', 'fun': self.Fy, 'args': (twa, tws)}
-                    # con3 = {'type': 'eq', 'fun': self.Mx, 'args': (twa, tws)}
-                    # con = (con1, con2, con3)
-
-                    # # initial guess at this twa/tws
-                    # x0 = [self.vb0, self.phi0, self.leeway0, self.flat, self.red]
-
-                    # # minimize
-                    # sol = minimize(self.objective, args=(twa, tws), x0=x0, method='SLSQP',
-                    #                constraints=con, bounds=self.bnds, tol=1e-2,
-                    #                options={"maxiter": 100, "disp": verbose})
-
-                    # # get result
-                    # self.vb0, self.phi0, self.leeway0, self.flat, self.red = res = sol.x
+                    vb, phi, leeway, flat, red = self._depower_solve(twa, tws)
+                    self.vb0, self.phi0, self.leeway0 = vb, phi, leeway
 
                     logging.debug(
                         "Equilibrium residuals (Fx, Fy, Mx): ",
-                        self.resid(sol.x, twa, tws),
+                        self.resid([vb, phi, leeway], twa, tws, flat, red),
                     )
 
                     # store data for later
-                    self.store[i, j, n, : len(res)] = (
-                        res[:] * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])[: len(res)]
-                    )
+                    res = np.array([vb, phi, leeway, flat, red])
+                    self.store[i, j, n, :] = res * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])
 
         logging.info("Optimization successful.")
+
+    def _depower_solve(self, twa, tws):
+        """Solve 3-DOF equilibrium, depowering iteratively if heel exceeds phi_max.
+
+        Depowering follows real sailing practice:
+        1. Flatten sails (flat: 1.0 -> 0.62)
+        2. Reef main / furl jib (RED: 2.0 -> 0.5)
+        """
+        flat = 1.0
+        red = 2.0
+
+        sol = root(self.resid, [self.vb0, self.phi0, self.leeway0],
+                   args=(twa, tws, flat, red), method="lm")
+        vb, phi, leeway = sol.x
+
+        if phi <= self.phi_max:
+            return vb, phi, leeway, flat, red
+
+        # Heel exceeds limit — use bounded solver to enforce phi <= phi_max
+        # Stage 1: Flatten sails (1.0 -> 0.62)
+        for flat in np.arange(0.95, 0.60, -0.05):
+            sol = least_squares(
+                self.resid, [vb, self.phi_max, leeway],
+                args=(twa, tws, flat, red),
+                bounds=([0, 0, -2], [np.inf, self.phi_max, 6]),
+            )
+            vb, phi, leeway = sol.x
+            if phi <= self.phi_max:
+                return vb, phi, leeway, flat, red
+
+        # Stage 2: Reef main / furl jib (RED: 2.0 -> 0.5)
+        flat = 0.62
+        for red in np.arange(1.8, 0.45, -0.2):
+            sol = least_squares(
+                self.resid, [vb, self.phi_max, leeway],
+                args=(twa, tws, flat, red),
+                bounds=([0, 0, -2], [np.inf, self.phi_max, 6]),
+            )
+            vb, phi, leeway = sol.x
+            if phi <= self.phi_max:
+                return vb, phi, leeway, flat, red
+
+        # If still over, return best we got
+        return vb, phi, leeway, flat, red
 
     def resid(self, x0, twa, tws, flat=1.0, red=2.0):
         """
