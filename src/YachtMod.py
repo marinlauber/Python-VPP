@@ -161,7 +161,7 @@ class Bulb(Appendage):
 
 class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
-                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[]):
+                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None):
         """
         Yacht hull and rig definition.
 
@@ -197,6 +197,10 @@ class Yacht(object):
             Underwater appendages (keels, rudders, bulbs). Default is [].
         Sails : list of Sail, optional
             Sail inventory. Default is [].
+        GZ : dict, optional
+            Righting arm curve as ``{"Heel": [...], "GZ": [...]}``.
+            Heel in degrees, GZ in metres. If *None*, loads from
+            ``righting_moment.json`` (backward compatible).
         """
         self.g = 9.81
         self.Name = Name
@@ -229,6 +233,9 @@ class Yacht(object):
         self.appendages = App
         self.sails = Sails
 
+        # GZ data (righting arm curve)
+        self._gz_data = GZ
+
         # righting moment interpolation function
         self._interp_rm = self._build_rm_interp()
 
@@ -237,7 +244,10 @@ class Yacht(object):
 
 
     def _build_rm_interp(self):
-        a = json_read('righting_moment')
+        if self._gz_data is not None:
+            a = self._gz_data
+        else:
+            a = json_read('righting_moment')
         return interpolate.interp1d(np.array(a["Heel"]), np.array(a["GZ"]),
                                     kind="linear", fill_value="extrapolate")
 
