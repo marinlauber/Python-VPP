@@ -235,10 +235,12 @@ class VPP(object):
                     if (self.aero.up == False) and (twa <= self.lim_up):
                         continue
 
+                    flat = 1.0
+                    red = 2.0
                     sol = root(
                         self.resid,
                         [self.vb0, self.phi0, self.leeway0],
-                        args=(twa, tws),
+                        args=(twa, tws, flat, red),
                         method="lm",
                     )
                     self.vb0, self.phi0, self.leeway0 = res = sol.x
@@ -275,7 +277,7 @@ class VPP(object):
 
         logging.info("Optimization successful.")
 
-    def resid(self, x0, twa, tws):
+    def resid(self, x0, twa, tws, flat=1.0, red=2.0):
         """
         Computes the residuals of the force/moment equilibrium at the given state.
         Parameters
@@ -286,6 +288,10 @@ class VPP(object):
             A float of the TWA at which to compute the residuals.
         tws
             A float of the TWs at which to compute the residuals.
+        flat
+            Sail flattening factor (0.62 to 1.0). Default 1.0 (no flattening).
+        red
+            Reef/reduction factor. Default 2.0 (full sails, no reef/furl).
         Returns
         -------
         Numpy.Array
@@ -293,13 +299,11 @@ class VPP(object):
         """
 
         vb0 = x0[0]
-        phi0 = x0[1]  # min(x0[1], self.phi_max)
+        phi0 = x0[1]
         leeway = x0[2]
-        flat = 1.0  # x0[3]
-        red = 1.0  # x0[4]
 
         Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
-        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, flat, 2.0)
+        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, flat, red)
 
         return [(Fxh - Fxa) ** 2, (Mxh - Mxa) ** 2, (Fyh - Fya) ** 2]
 
