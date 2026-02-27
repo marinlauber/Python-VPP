@@ -51,7 +51,7 @@ class VPP(object):
             )
         self.upToDate = False
 
-    def set_analysis(self, tws_range, twa_range):
+    def set_analysis(self, tws_range, twa_range, phi_max=35.0):
         """
         Sets the analysis range.
         Parameters
@@ -61,6 +61,8 @@ class VPP(object):
         twa_range
             A numpy.array with the different TWA to run the analysis at.
         """
+
+        self.phi_max = phi_max
 
         if tws_range.max() <= 35.0 and tws_range.min() >= 2.0:
             logging.debug("Analysis set for TWS: ", tws_range)

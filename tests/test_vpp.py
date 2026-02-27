@@ -55,6 +55,17 @@ def test_sail_chart_no_deprecation_warning(tmp_path):
     assert os.path.exists(fname), "Sail chart was not created"
 
 
+def test_phi_max_configurable():
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(tws_range=np.array([10.0]),
+                     twa_range=np.linspace(30.0, 180.0, 3),
+                     phi_max=25.0)
+    assert vpp.phi_max == 25.0
+
+
 def test_run_without_analysis_raises():
     """Issue #46: raise with string literal should be a proper exception."""
     import pytest
