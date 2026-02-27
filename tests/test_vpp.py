@@ -1,3 +1,4 @@
+import os
 
 import numpy as np
 
@@ -6,7 +7,7 @@ from src.VPPMod import VPP
 from tests.test_utils import return_YD41_particulars
 
 
-def test_single_sail_set():
+def test_single_sail_set(tmp_path):
     YD41 = return_YD41_particulars()
 
     YD41_no_kite = YD41
@@ -23,11 +24,16 @@ def test_single_sail_set():
 
     vpp.run(verbose=False)
     vpp.write("results")
-    vpp.polar(3, False)
-    vpp.SailChart(False)
+
+    polar_path = str(tmp_path / "test_polar.png")
+    sail_path = str(tmp_path / "test_sail.png")
+    vpp.polar(3, True, fname=polar_path)
+    vpp.SailChart(True, fname=sail_path)
+    assert os.path.exists(polar_path), "Polar plot was not created"
+    assert os.path.exists(sail_path), "Sail chart was not created"
 
 
-def test_sail_chart_no_deprecation_warning():
+def test_sail_chart_no_deprecation_warning(tmp_path):
     """Verify sail_chart doesn't use deprecated interp2d."""
     import warnings
 
@@ -42,9 +48,11 @@ def test_sail_chart_no_deprecation_warning():
         twa_range=np.linspace(30.0, 180.0, 16),
     )
     vpp.run(verbose=False)
+    fname = str(tmp_path / "test_sailchart.png")
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
-        vpp.SailChart(save=True, fname="test_sailchart.png")
+        vpp.SailChart(save=True, fname=fname)
+    assert os.path.exists(fname), "Sail chart was not created"
 
 
 def test_run_without_analysis_raises():
