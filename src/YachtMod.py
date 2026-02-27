@@ -161,7 +161,7 @@ class Bulb(Appendage):
 
 class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
-                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None):
+                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None, crew_weight=None):
         """
         Yacht hull and rig definition.
 
@@ -201,6 +201,9 @@ class Yacht(object):
             Righting arm curve as ``{"Heel": [...], "GZ": [...]}``.
             Heel in degrees, GZ in metres. If *None*, loads from
             ``righting_moment.json`` (backward compatible).
+        crew_weight : float, optional
+            Total crew weight (kg). If *None*, uses empirical formula
+            ``25.8 * Lwl ** 1.4262``.
         """
         self.g = 9.81
         self.Name = Name
@@ -221,7 +224,7 @@ class Yacht(object):
         self.Rm4 = 0.43 * self.tmax
 
         # standard crew weight
-        self.cw = 25.8 * self.l ** 1.4262
+        self.cw = crew_weight if crew_weight is not None else 25.8 * self.l ** 1.4262
         self.carm = 0.8 * self.bmax  # must be average of rail where crew sits
 
         # rough estimate of projected area of the hull

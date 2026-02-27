@@ -32,3 +32,16 @@ def test_yacht_falls_back_to_file_when_no_gz():
     yacht = _minimal_yacht()
     rm_10 = yacht._get_RmH(10.0)
     assert rm_10 > 0
+
+
+def test_yacht_accepts_crew_weight():
+    """Yacht should accept an optional crew_weight to override the empirical formula."""
+    yacht = _minimal_yacht(crew_weight=240.0)
+    assert yacht.cw == 240.0
+
+
+def test_yacht_default_crew_weight():
+    """Without crew_weight param, should use empirical formula."""
+    yacht = _minimal_yacht()
+    expected = 25.8 * 7.01 ** 1.4262
+    assert abs(yacht.cw - expected) < 0.1
