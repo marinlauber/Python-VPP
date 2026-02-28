@@ -87,12 +87,20 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
 @app.route("/api/vpp/", methods=["POST"])
 def makevppresults():
     data = request.get_json()
+    if data is None:
+        return jsonify({"error": "Request body must be valid JSON."}), 400
 
-    # TODO: Support multiple implementations of different sails: require API design
-    # TODO: Error handling incorrect ranges
+    try:
+        vpp = data_to_vpp(data)
+    except (KeyError, TypeError, ValueError) as e:
+        logging.warning("Invalid VPP input: %s", e)
+        return jsonify({"error": f"Invalid input: {e}"}), 400
 
-    vpp = data_to_vpp(data)
-    vpp.run(verbose=True)
+    try:
+        vpp.run(verbose=True)
+    except Exception as e:
+        logging.exception("VPP simulation failed")
+        return jsonify({"error": f"Simulation failed: {e}"}), 500
 
     return jsonify(vpp.results())
 

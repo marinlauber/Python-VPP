@@ -64,19 +64,26 @@ class VPP(object):
 
         self.phi_max = phi_max
 
-        if tws_range.max() <= 35.0 and tws_range.min() >= 2.0:
-            logging.debug("Analysis set for TWS: ", tws_range)
-            self.tws_range = tws_range * KNOTS_TO_MPS
-        else:
-            logging.debug("Analysis only valid for TWS range : 2. < TWS < 35. knots.")
+        if tws_range.size == 0:
+            raise ValueError("TWS range is empty. Ensure min and max TWS are not equal.")
+        if twa_range.size == 0:
+            raise ValueError("TWA range is empty. Ensure min and max TWA are not equal.")
 
-        if twa_range.max() <= 180.0 and twa_range.min() >= 0.0:
-            self.twa_range = twa_range
-            logging.debug("Analysis set for TWA: ", self.twa_range)
-        else:
-            logging.debug(
-                "Analysis only valid for TWA range : 0. < TWA < 180. degrees."
+        if tws_range.min() < 2.0 or tws_range.max() > 35.0:
+            raise ValueError(
+                f"TWS range [{tws_range.min():.1f}, {tws_range.max():.1f}] "
+                f"is outside valid bounds [2.0, 35.0] knots."
             )
+        self.tws_range = tws_range * KNOTS_TO_MPS
+        logger.debug("Analysis set for TWS: %s", tws_range)
+
+        if twa_range.min() < 0.0 or twa_range.max() > 180.0:
+            raise ValueError(
+                f"TWA range [{twa_range.min():.1f}, {twa_range.max():.1f}] "
+                f"is outside valid bounds [0.0, 180.0] degrees."
+            )
+        self.twa_range = twa_range
+        logger.debug("Analysis set for TWA: %s", self.twa_range)
 
         # prepare storage array
         self.Nsails = len(self.yacht.sails) - 1  # main not counted

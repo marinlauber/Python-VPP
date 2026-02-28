@@ -6,12 +6,13 @@ from typing import Any, Dict, List
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import streamlit as st
 from utils import footer, header
 
 sys.path.append(os.path.realpath("."))
 from src.api import app
-from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, stl
+from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, lab, stl
 
 st.set_page_config(page_title="VPP", page_icon="⛵")
 
@@ -92,6 +93,77 @@ def plot_single_polar(response: Dict[str, Any]) -> plt.Figure:
         ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
     plt.tight_layout()
     return fig
+
+
+def plot_depowering_polar(response: Dict[str, Any]) -> plt.Figure:
+    """Plot flat and red depowering values on polar axes."""
+    name = response.json["name"]
+    sails = response.json["sails"]
+    twa_range = np.array(response.json["twa"])
+    tws_range = np.array(response.json["tws"])
+    results = np.array(response.json["results"])
+
+    fig, axes = plt.subplots(1, 2, subplot_kw=dict(polar=True), figsize=(12, 6))
+    for ax_i, (idx, title) in enumerate([(3, "Flat"), (4, "RED")]):
+        ax = axes[ax_i]
+        ax.set_xticks(np.linspace(0, np.pi, 5))
+        ax.set_theta_direction(-1)
+        ax.set_theta_offset(np.pi / 2.0)
+        ax.set_thetamin(0)
+        ax.set_thetamax(180)
+        ax.set_rmin(0.0)
+        ax.set_xlabel(r"TWA ($^\circ$)")
+        ax.set_ylabel(title, labelpad=-40)
+
+        for i in range(len(tws_range)):
+            for k in range(len(sails)):
+                cross = _get_cross(results[i, :, :, :], k)
+                label = "_nolegend_"
+                if k == 0:
+                    label = f"{tws_range[i]/KNOTS_TO_MPS:.1f}"
+                ax.plot(
+                    twa_range[cross[0] : cross[1]] / 180 * np.pi,
+                    results[i, cross[0] : cross[1], k, idx],
+                    color=cols[k % 7],
+                    lw=np.where(i < 7, 1.5, 2.5),
+                    linestyle=stl[i % 7],
+                    label=label,
+                )
+        if ax_i == 0:
+            ax.legend(title=r"TWS (kts)", loc=1, bbox_to_anchor=(1.05, 1.05))
+    plt.tight_layout()
+    return fig
+
+
+def build_depowering_table(response: Dict[str, Any]) -> pd.DataFrame:
+    """Build a table of depowering values for the best sail at each TWS/TWA."""
+    sails = response.json["sails"]
+    twa_range = np.array(response.json["twa"])
+    tws_range = np.array(response.json["tws"])
+    results = np.array(response.json["results"])
+
+    rows = []
+    for i, tws in enumerate(tws_range):
+        tws_kts = tws / KNOTS_TO_MPS
+        for j, twa in enumerate(twa_range):
+            best_sail = int(np.argmax(results[i, j, :, 0]))
+            vb = results[i, j, best_sail, 0]
+            flat = results[i, j, best_sail, 3]
+            red = results[i, j, best_sail, 4]
+            if flat < 1.0 or red < 2.0:
+                rows.append(
+                    {
+                        "TWS (kts)": f"{tws_kts:.0f}",
+                        "TWA (°)": f"{twa:.0f}",
+                        "Sail": sails[best_sail],
+                        "Vb (kts)": f"{vb:.2f}",
+                        "Flat": f"{flat:.2f}",
+                        "RED": f"{red:.2f}",
+                    }
+                )
+    if not rows:
+        return pd.DataFrame({"Info": ["No depowering applied at these wind speeds"]})
+    return pd.DataFrame(rows)
 
 
 PRESETS = {
@@ -197,11 +269,29 @@ tws_slider = st.slider("True wind speed (TWS) range", 2.0, 25.0, (8.0, 12.0), st
 tws_range = np.arange(tws_slider[0], tws_slider[1], 2.0).tolist()
 
 if st.button("Process Specifications"):
-    with st.spinner("Running optimisation, this can take a minute or two."):
-        response = process_yacht_specifications(
-            tws_range, twa_range, yacht, keel, rudder, main, jib, kite
-        )
-        fig = plot_single_polar(response)
-        st.pyplot(fig)
+    if not tws_range:
+        st.error("TWS range is empty. Make sure the min and max wind speeds are not equal.")
+    elif not twa_range:
+        st.error("TWA range is empty. Make sure the min and max wind angles are not equal.")
+    else:
+        with st.spinner("Running optimisation, this can take a minute or two."):
+            response = process_yacht_specifications(
+                tws_range, twa_range, yacht, keel, rudder, main, jib, kite
+            )
+            if response.status_code != 200:
+                error_msg = response.json.get("error", "Unknown error") if response.json else "Unknown error"
+                st.error(f"Simulation failed: {error_msg}")
+                logging.error("VPP API returned %d: %s", response.status_code, error_msg)
+            else:
+                fig = plot_single_polar(response)
+                st.pyplot(fig)
+
+                st.subheader("Depowering (Flat & RED)")
+                dep_fig = plot_depowering_polar(response)
+                st.pyplot(dep_fig)
+
+                with st.expander("Depowering data table"):
+                    df = build_depowering_table(response)
+                    st.dataframe(df, use_container_width=True)
 
 footer()
