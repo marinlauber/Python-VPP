@@ -136,3 +136,21 @@ def test_fin_keel_with_type_field():
     response = post_vpp(d)
     assert response.status_code == 200
 
+
+def test_api_5dof_method():
+    """API accepts method='5dof' and returns results."""
+    d = make_yd41()
+    d["method"] = "5dof"
+    response = post_vpp(d)
+    assert response.status_code == 200
+    results = np.array(response.json["results"])
+    assert np.any(results[:, :, :, 0] > 0), "5-DOF should produce non-zero speeds"
+
+
+def test_api_data_source():
+    """API accepts data_source parameter."""
+    d = make_yd41()
+    d["data_source"] = "orc"
+    response = post_vpp(d)
+    assert response.status_code == 200
+

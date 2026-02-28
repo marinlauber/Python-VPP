@@ -64,10 +64,34 @@ def render_keel_inputs(keel: dict, key_prefix: str = "") -> dict:
     return result
 
 
+def render_solver_method(key_prefix: str = "") -> str:
+    """Render solver method selectbox, return selected method string."""
+    return st.selectbox(
+        "Solver method",
+        ["iterative", "5dof"],
+        index=0,
+        key=f"{key_prefix}_solver_method",
+        help="'iterative' = 3-DOF with depowering loop; '5dof' = scipy SLSQP 5-DOF optimizer",
+    )
+
+
+def render_data_source(key_prefix: str = "") -> str:
+    """Render data source selectbox, return selected data source string."""
+    return st.selectbox(
+        "Sail coefficient data source",
+        ["orc"],
+        index=0,
+        key=f"{key_prefix}_data_source",
+        help="Coefficient data directory under dat/",
+    )
+
+
 def run_vpp(
     config: Dict,
     tws_range: List[float],
     twa_range: List[float],
+    method: str = "iterative",
+    data_source: str = "orc",
 ):
     """Post a yacht configuration to the VPP API and return the response."""
     data = {
@@ -80,6 +104,8 @@ def run_vpp(
         "kite": config["kite"],
         "tws_range": tws_range,
         "twa_range": twa_range,
+        "method": method,
+        "data_source": data_source,
     }
     logging.info("Starting VPP simulation")
     json_string = json.dumps(data)

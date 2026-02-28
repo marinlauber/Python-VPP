@@ -11,8 +11,10 @@ from presets import PRESETS
 from utils import (
     footer,
     header,
+    render_data_source,
     render_environment_inputs,
     render_keel_inputs,
+    render_solver_method,
     run_vpp,
     validate_ranges,
 )
@@ -223,12 +225,16 @@ for idx, tab in enumerate(tabs):
 
 tws_range, twa_range = render_environment_inputs(key_prefix="cmp")
 
+st.subheader("Solver Settings")
+solver_method = render_solver_method(key_prefix="cmp")
+data_source = render_data_source(key_prefix="cmp")
+
 if st.button("Compare"):
     if validate_ranges(tws_range, twa_range):
         responses = []
         with st.spinner(f"Running {num} VPP simulations..."):
             for cfg in configs:
-                resp = run_vpp(cfg, tws_range, twa_range)
+                resp = run_vpp(cfg, tws_range, twa_range, method=solver_method, data_source=data_source)
                 if resp.status_code != 200:
                     st.error("A simulation failed. Check your inputs.")
                     break

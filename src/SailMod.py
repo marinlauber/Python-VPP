@@ -13,7 +13,8 @@ from scipy import interpolate
 
 
 class Sail(object):
-    def __init__(self, name, type, area, vce, up=True):
+    def __init__(self, name, type, area, vce, up=True, data_source="orc",
+                 cl_data=None, cd_data=None):
         """
         Base sail class.
 
@@ -30,26 +31,70 @@ class Sail(object):
             Vertical centre of effort above deck (m).
         up : bool, optional
             Whether this is an upwind sail. Default is True.
+        data_source : str, optional
+            Coefficient data source directory under ``dat/``. Default "orc".
+        cl_data : dict, optional
+            User-provided CL data: ``{"awa": [...], "values": [...]}``.
+        cd_data : dict, optional
+            User-provided CD data: ``{"awa": [...], "values": [...]}``.
         """
         self.name = name
         self.type = type
         self.area = area
         self.vce = vce
         # get sails coefficients
-        self._build_interp_func(self.type)
+        if cl_data is not None and cd_data is not None:
+            self._build_interp_func(self.type, data_source=data_source)
+            self._build_interp_from_arrays(cl_data, cd_data)
+        else:
+            self._build_interp_func(self.type, data_source=data_source)
         self.bk = 1.0  # always valid for main, only AWA<135 for jib
         self.up = up  # is that an upwind sail?
 
 
-    def _build_interp_func(self, fname):
+    def _build_interp_func(self, fname, data_source="orc"):
+        """Build cubic B-spline interpolation functions for CL and CD.
+
+        Falls back to linear (k=1) if fewer than 4 data points are available.
+        Tries ``dat/{data_source}/{fname}.dat`` first, then ``dat/{fname}.dat``.
         """
-        build interpolation function and returns it in a list
-        """
-        a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
+        import os
+        path = os.path.join("dat", data_source, fname + ".dat")
+        if not os.path.exists(path):
+            path = os.path.join("dat", fname + ".dat")
+        a = np.genfromtxt(path, delimiter=",", skip_header=1)
         self.kp = a[0, 0]
-        # linear for now, this is not good, might need to polish data outside
-        self.interp_cd = interpolate.interp1d(a[1, :], a[2, :], kind="linear")
-        self.interp_cl = interpolate.interp1d(a[1, :], a[3, :], kind="linear")
+        # Filter NaN values (trailing commas in CSV create NaNs)
+        mask = ~(np.isnan(a[1, :]) | np.isnan(a[2, :]) | np.isnan(a[3, :]))
+        x = a[1, mask]
+        cd = a[2, mask]
+        cl = a[3, mask]
+        k = 3 if len(x) >= 4 else 1
+        self.interp_cd = interpolate.make_interp_spline(x, cd, k=k)
+        self.interp_cd.extrapolate = True
+        self.interp_cl = interpolate.make_interp_spline(x, cl, k=k)
+        self.interp_cl.extrapolate = True
+
+    def _build_interp_from_arrays(self, cl_data, cd_data):
+        """Build interpolation from user-provided coefficient arrays.
+
+        Parameters
+        ----------
+        cl_data : dict
+            {"awa": [...], "values": [...]} for lift coefficients.
+        cd_data : dict
+            {"awa": [...], "values": [...]} for drag coefficients.
+        """
+        cl_awa = np.array(cl_data["awa"])
+        cl_vals = np.array(cl_data["values"])
+        cd_awa = np.array(cd_data["awa"])
+        cd_vals = np.array(cd_data["values"])
+        k_cl = 3 if len(cl_awa) >= 4 else 1
+        k_cd = 3 if len(cd_awa) >= 4 else 1
+        self.interp_cl = interpolate.make_interp_spline(cl_awa, cl_vals, k=k_cl)
+        self.interp_cl.extrapolate = True
+        self.interp_cd = interpolate.make_interp_spline(cd_awa, cd_vals, k=k_cd)
+        self.interp_cd.extrapolate = True
 
     def cl(self, awa):
         awa = max(0, min(awa, 180))
@@ -75,46 +120,29 @@ class Sail(object):
 
 
 class Main(Sail):
-    def __init__(self, name, P, E, Roach, BAD):
+    def __init__(self, name, P, E, Roach, BAD, data_source="orc",
+                 cl_data=None, cd_data=None):
         """
-        Initialize mainsail
-    
-        This function initializes an object of class Main which inherits the class Sail. 
-        It calculates the area, the Vertical Center of Effort (vce), 
-        sets CE = 1 and calls the super class constructor. 
-    
+        Initialize mainsail.
+
         Parameters
         ----------
-        name : string
-            Of the sail
-            
-        P : Float
-            Height of the Mainsail  in meters
-            
-        E: Float
-            Length (Foot) of the Mainsail  in meters
-            
-        Roach: Float
-            Percentage by which the triangular area is increased in order to obtain the mainsail area. 
-            This is area behind the line from clew to head. 
-            To get this number you have to calculate  Mainsail_area / (P*E/2) -1
-            
-        BAD: Float
-            Boom Above Deck: Distance between boom and Deck  in meters
-        
-        Returns
-        -------
-        Main
-            Object of type Main( Sail )
-    
-        See Also
-        --------
-        Jib( Sail )
-    
-        Examples
-        --------
-        >>> Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0)
-        <src.SailMod.Main object at 0xFFFFFFFFF>
+        name : str
+            Sail identifier.
+        P : float
+            Height of the Mainsail in meters.
+        E : float
+            Length (Foot) of the Mainsail in meters.
+        Roach : float
+            Roach factor (Mainsail_area / (P*E/2) - 1).
+        BAD : float
+            Boom Above Deck in meters.
+        data_source : str, optional
+            Coefficient data source. Default "orc".
+        cl_data : dict, optional
+            User-provided CL data.
+        cd_data : dict, optional
+            User-provided CD data.
         """
         self.name = name
         self.type = "main"
@@ -124,7 +152,8 @@ class Main(Sail):
         self.BAD = BAD
         self.area0 = 0.5 * P * E * (1 + self.roach)
         self.vce = P / 3.0 * (1 + self.roach) + self.BAD
-        super().__init__(self.name, self.type, self.area0, self.vce)
+        super().__init__(self.name, self.type, self.area0, self.vce,
+                         data_source=data_source, cl_data=cl_data, cd_data=cd_data)
         self.measure()
 
     def measure(self, rfm=1, ftj=1):
@@ -146,7 +175,8 @@ class Main(Sail):
 
 
 class Jib(Sail):
-    def __init__(self, name, I, J, LPG, HBI):
+    def __init__(self, name, I, J, LPG, HBI, data_source="orc",
+                 cl_data=None, cd_data=None):
         """
         Headsail (jib/genoa).
 
@@ -155,16 +185,19 @@ class Jib(Sail):
         name : str
             Sail identifier (e.g. "J1").
         I : float
-            Forestay height — vertical distance from the sheer line to the
-            forestay attachment point at the mast (m). Standard ORC measurement.
+            Forestay height (m).
         J : float
-            Base of the foretriangle — horizontal distance from the forestay
-            tack fitting to the front of the mast at deck level (m).
+            Base of the foretriangle (m).
         LPG : float
-            Luff perpendicular — shortest distance from the luff to the clew,
-            measured perpendicular to the luff (m). Determines sail overlap.
+            Luff perpendicular (m).
         HBI : float
             Height of the jib tack above deck (m).
+        data_source : str, optional
+            Coefficient data source. Default "orc".
+        cl_data : dict, optional
+            User-provided CL data.
+        cd_data : dict, optional
+            User-provided CD data.
         """
         self.name = name
         self.type = "jib"
@@ -175,7 +208,8 @@ class Jib(Sail):
         self.HBI = HBI
         self.area = 0.5 * I * max(J, LPG)
         self.vce = I / 3.0 + HBI
-        super().__init__(self.name, self.type, self.area, self.vce)
+        super().__init__(self.name, self.type, self.area, self.vce,
+                         data_source=data_source, cl_data=cl_data, cd_data=cd_data)
         self.measure()
 
     def measure(self, rfm=1, ftj=1):
@@ -196,7 +230,8 @@ class Jib(Sail):
 
 
 class Kite(Sail):
-    def __init__(self, name, area, vce):
+    def __init__(self, name, area, vce, data_source="orc",
+                 cl_data=None, cd_data=None):
         """
         Spinnaker or asymmetric downwind sail.
 
@@ -208,13 +243,20 @@ class Kite(Sail):
             Sail area (m^2).
         vce : float
             Vertical centre of effort above deck (m).
+        data_source : str, optional
+            Coefficient data source. Default "orc".
+        cl_data : dict, optional
+            User-provided CL data.
+        cd_data : dict, optional
+            User-provided CD data.
         """
         self.name = name
         self.type = "kite"
         self.area = area
         self.min_area = self.area
         self.vce = vce
-        super().__init__(self.name, self.type, self.area, self.vce, up=False)
+        super().__init__(self.name, self.type, self.area, self.vce, up=False,
+                         data_source=data_source, cl_data=cl_data, cd_data=cd_data)
         self.measure()
 
     def measure(self, rfm=1, ftj=1):

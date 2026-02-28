@@ -70,6 +70,9 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
                 E=float(data["main"]["E"]),
                 Roach=float(data["main"]["Roach"]),
                 BAD=float(data["main"]["BAD"]),
+                data_source=data.get("data_source", "orc"),
+                cl_data=data["main"].get("cl_data"),
+                cd_data=data["main"].get("cd_data"),
             ),
             Jib(
                 name=data["jib"]["Name"],
@@ -77,11 +80,17 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
                 J=float(data["jib"]["J"]),
                 LPG=float(data["jib"]["LPG"]),
                 HBI=float(data["jib"]["HBI"]),
+                data_source=data.get("data_source", "orc"),
+                cl_data=data["jib"].get("cl_data"),
+                cd_data=data["jib"].get("cd_data"),
             ),
             Kite(
                 name=data["kite"]["Name"],
                 area=float(data["kite"]["area"]),
                 vce=float(data["kite"]["vce"]),
+                data_source=data.get("data_source", "orc"),
+                cl_data=data["kite"].get("cl_data"),
+                cd_data=data["kite"].get("cd_data"),
             ),
         ],
     )
@@ -91,7 +100,7 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
         tws_range=np.array(data["tws_range"]),
         twa_range=np.array(data["twa_range"]),
     )
-    return vpp
+    return vpp, data.get("method", "iterative")
 
 
 @app.route("/api/vpp/", methods=["POST"])
@@ -101,13 +110,13 @@ def makevppresults():
         return jsonify({"error": "Request body must be valid JSON."}), 400
 
     try:
-        vpp = data_to_vpp(data)
+        vpp, method = data_to_vpp(data)
     except (KeyError, TypeError, ValueError) as e:
         logging.warning("Invalid VPP input: %s", e)
         return jsonify({"error": f"Invalid input: {e}"}), 400
 
     try:
-        vpp.run(verbose=True)
+        vpp.run(verbose=True, method=method)
     except Exception as e:
         logging.exception("VPP simulation failed")
         return jsonify({"error": f"Simulation failed: {e}"}), 500

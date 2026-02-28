@@ -10,9 +10,8 @@ __email__ = "M.Lauber@soton.ac.uk"
 import logging
 import warnings
 
-import nlopt
 import numpy as np
-from scipy.optimize import least_squares, root
+from scipy.optimize import least_squares, minimize, root
 from tqdm import trange
 
 from src.AeroMod import AeroMod
@@ -105,109 +104,22 @@ class VPP(object):
         # flag for later
         self.upToDate = True
 
-    def Vb(self, x, grad):
-        # this should not be used
-        if grad.size > 0:
-            grad = 0.0
-        return self.vb0
-
-    def SumForce(self, res, x, grad, twa_, tws_):
-        # this should not be used
-        if grad.size > 0:
-            grad[:, :] = 0.0
-
-        vb0 = x[0]
-        phi0 = x[1]
-        leeway = x[2]
-        flat = x[3]
-        red = x[4]
-
-        Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
-        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws_, twa_, flat, red)
-
-        res[0] = Fxh - Fxa
-        res[1] = Mxh - Mxa
-        res[2] = Fyh - Fya
-
-        return None
-
-    def run_NLopt(self, verbose=False):
-        logging.info("Optimisation start")
-
-        if not self.upToDate:
-            raise RuntimeError("VPP run stop: no analysis set!")
-
-        # gradient-free optimization because the gradient of our
-        # objective function cannot be evaluated
-        opt = nlopt.opt(nlopt.LN_COBYLA, 5)
-
-        # out three parameters are x = [v_b, hell, leeway, flat, red]
-        opt.set_lower_bounds([0.0, 0.0, 0.0, 0.0, 0.0])
-        opt.set_upper_bounds([float("inf"), self.phi_max, 6.0, 1.0, 2.0])
-
-        # the function we want to maximise
-        opt.set_max_objective(self.Vb)
-
-        # set solver tolerance
-        opt.set_xtol_rel(1e-6)
-
-        for i, tws in enumerate(self.tws_range):
-            logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
-
-            for n in range(self.Nsails):
-                self.aero.sails[1] = self.yacht.sails[n + 1]
-
-                logging.debug(
-                    "Sail Config : ",
-                    self.aero.sails[0].name + " + " + self.aero.sails[1].name,
-                )
-
-                self.aero.up = self.aero.sails[1].up
-
-                for j in trange(len(self.twa_range), disable=not debug_mode):
-                    twa = self.twa_range[j]
-
-                    self.vb0 = 0.8 * tws
-                    self.phi0 = 0
-                    self.leeway0 = (
-                        100.0 / twa
-                        if (twa > 1.0 and 100.0 / twa < 2 * tws)
-                        else 2 * tws
-                    )
-
-                    # don't do low twa with downwind sails
-                    if (self.aero.up == True) and (twa >= self.lim_dn):
-                        continue
-                    if (self.aero.up == False) and (twa <= self.lim_up):
-                        continue
-
-                    # vector-valued constraint
-                    constrain = lambda res, x, grad: self.SumForce(
-                        res, x, grad, twa_=twa, tws_=tws
-                    )
-                    opt.add_equality_mconstraint(constrain, np.full(5, 1e-8))
-
-                    x0 = np.array([self.vb0, self.phi0, self.leeway0, 1.0, 2.0])
-                    res = opt.optimize(x0)
-
-                    # store data for later
-                    self.store[i, j, n, :] = res[:] * np.array(
-                        [1.0 / KNOTS_TO_MPS, 1, 1, 1, 1]
-                    )
-
-                    # clean up
-                    opt.remove_equality_constraints()
-
-        logging.info("Optimization successful.")
-
-    def run(self, verbose=False):
+    def run(self, verbose=False, method="iterative"):
         """
         Run the analysis for the given analysis range.
         Parameters
         ----------
         verbose
             A logical, if True, prints results of equilibrium at each TWA/TWS.
+        method
+            Solver method: "iterative" (3-DOF with depowering loop) or
+            "5dof" (scipy SLSQP 5-DOF constrained optimizer).
         """
+
+        if method == "5dof":
+            return self._run_5dof(verbose)
+        elif method != "iterative":
+            raise ValueError(f"Unknown method '{method}'. Use 'iterative' or '5dof'.")
 
         if not self.upToDate:
             raise RuntimeError("VPP run stop: no analysis set!")
@@ -311,6 +223,84 @@ class VPP(object):
 
         # If still over, return best we got
         return vb, phi, leeway, flat, red
+
+    def _run_5dof(self, verbose=False):
+        """Run 5-DOF constrained optimization using scipy SLSQP.
+
+        Simultaneously optimizes [vb, phi, leeway, flat, red] to maximize
+        boat speed subject to force/moment equilibrium constraints.
+        """
+        if not self.upToDate:
+            raise RuntimeError("VPP run stop: no analysis set!")
+
+        for i, tws in enumerate(self.tws_range):
+            logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
+
+            for n in range(self.Nsails):
+                self.aero.sails[1] = self.yacht.sails[n + 1]
+                self.aero.up = self.aero.sails[1].up
+
+                for j in trange(len(self.twa_range), disable=not debug_mode):
+                    twa = self.twa_range[j]
+
+                    # don't do low twa with downwind sails
+                    if (self.aero.up == True) and (twa >= self.lim_dn):
+                        continue
+                    if (self.aero.up == False) and (twa <= self.lim_up):
+                        continue
+
+                    vb_guess = 0.8 * tws
+                    leeway_guess = (
+                        100.0 / twa
+                        if (twa > 1.0 and 100.0 / twa < 2 * tws)
+                        else 2 * tws
+                    )
+                    x0 = np.array([vb_guess, 0.0, leeway_guess, 1.0, 2.0])
+
+                    def _forces(x):
+                        vb, phi, leeway, flat, red = x
+                        Fxh, Fyh, Mxh = self.hydro.update(vb, phi, leeway)
+                        Fxa, Fya, Mxa = self.aero.update(vb, phi, tws, twa, flat, red)
+                        return Fxh, Fyh, Mxh, Fxa, Fya, Mxa
+
+                    constraints = [
+                        {"type": "eq", "fun": lambda x: _forces(x)[0] - _forces(x)[3]},
+                        {"type": "eq", "fun": lambda x: _forces(x)[2] - _forces(x)[5]},
+                        {"type": "eq", "fun": lambda x: _forces(x)[1] - _forces(x)[4]},
+                    ]
+
+                    # Cache forces to avoid redundant evaluations
+                    _cache = {}
+
+                    def _cached_forces(x):
+                        key = tuple(x)
+                        if key not in _cache:
+                            _cache[key] = _forces(x)
+                        return _cache[key]
+
+                    constraints = [
+                        {"type": "eq", "fun": lambda x: _cached_forces(x)[0] - _cached_forces(x)[3]},
+                        {"type": "eq", "fun": lambda x: _cached_forces(x)[2] - _cached_forces(x)[5]},
+                        {"type": "eq", "fun": lambda x: _cached_forces(x)[1] - _cached_forces(x)[4]},
+                    ]
+
+                    result = minimize(
+                        lambda x: -x[0],
+                        x0,
+                        method="SLSQP",
+                        bounds=self.bnds,
+                        constraints=constraints,
+                        options={"maxiter": 200, "ftol": 1e-8},
+                    )
+
+                    _cache.clear()
+
+                    res = result.x
+                    self.store[i, j, n, :] = res * np.array(
+                        [1.0 / KNOTS_TO_MPS, 1, 1, 1, 1]
+                    )
+
+        logging.info("5-DOF optimization successful.")
 
     def resid(self, x0, twa, tws, flat=1.0, red=2.0):
         """

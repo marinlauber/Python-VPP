@@ -11,8 +11,10 @@ from presets import PRESETS
 from utils import (
     footer,
     header,
+    render_data_source,
     render_environment_inputs,
     render_keel_inputs,
+    render_solver_method,
     run_vpp,
     validate_ranges,
 )
@@ -187,11 +189,15 @@ for key, value in kite.items():
 
 tws_range, twa_range = render_environment_inputs(key_prefix="vpp")
 
+st.subheader("Solver Settings")
+solver_method = render_solver_method(key_prefix="vpp")
+data_source = render_data_source(key_prefix="vpp")
+
 if st.button("Process Specifications"):
     if validate_ranges(tws_range, twa_range):
         config = {"yacht": yacht, "keel": keel, "rudder": rudder, "main": main, "jib": jib, "kite": kite}
         with st.spinner("Running optimisation, this can take a minute or two."):
-            response = run_vpp(config, tws_range, twa_range)
+            response = run_vpp(config, tws_range, twa_range, method=solver_method, data_source=data_source)
             if response.status_code != 200:
                 error_msg = response.json.get("error", "Unknown error") if response.json else "Unknown error"
                 st.error(f"Simulation failed: {error_msg}")

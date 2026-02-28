@@ -19,7 +19,7 @@ dependencies = [
     "numpy>=2.0",
     "matplotlib>=3.8",
     "scipy>=1.12",
-    "nlopt>=2.9.1",
+
     "tqdm>=4.66",
     "flask",
     "streamlit>=1.37",
