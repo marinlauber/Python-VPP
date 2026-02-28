@@ -196,7 +196,14 @@ for key, value in yacht.items():
 st.subheader("Keel")
 keel_type = keel.pop("type", "fin")
 keel_type = st.selectbox("Keel type", ["fin", "short"], index=["fin", "short"].index(keel_type))
-for key, value in keel.items():
+FIN_DEFAULTS = {"Cu": 1.00, "Cl": 0.78, "Span": 1.90}
+SHORT_DEFAULTS = {"Length": 1.2, "Depth": 0.90, "Tc_ratio": 0.15}
+if keel_type == "short":
+    keel_fields = {k: keel.get(k, v) for k, v in SHORT_DEFAULTS.items()}
+else:
+    keel_fields = {k: keel.get(k, v) for k, v in FIN_DEFAULTS.items()}
+keel = {}
+for key, value in keel_fields.items():
     keel[key] = st.text_input(f"{key}:", value)
 keel["type"] = keel_type
 
