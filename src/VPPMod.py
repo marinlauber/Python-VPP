@@ -264,6 +264,10 @@ class VPP(object):
         Depowering follows real sailing practice:
         1. Flatten sails (flat: 1.0 -> 0.62)
         2. Reef main / furl jib (RED: 2.0 -> 0.5)
+
+        The bounded solver pins phi at phi_max, so we check for genuine
+        margin (1 degree) before accepting a solution — otherwise the boat
+        is still overpowered and needs more depowering.
         """
         flat = 1.0
         red = 2.0
@@ -278,30 +282,31 @@ class VPP(object):
         # Heel exceeds limit — use bounded solver to enforce phi <= phi_max
         lo = [0, 0, -2]
         hi = [np.inf, self.phi_max, 6]
+        margin = self.phi_max - 1.0
 
         def _clamp_guess(vb_, phi_, leeway_):
             return [max(vb_, 0), min(max(phi_, 0), self.phi_max),
                     min(max(leeway_, -2), 6)]
 
         # Stage 1: Flatten sails (1.0 -> 0.62)
-        for flat in np.arange(0.95, 0.60, -0.05):
+        for flat in np.arange(0.98, 0.60, -0.02):
             sol = least_squares(
                 self.resid, _clamp_guess(vb, self.phi_max, leeway),
                 args=(twa, tws, flat, red), bounds=(lo, hi),
             )
             vb, phi, leeway = sol.x
-            if phi <= self.phi_max:
+            if phi <= margin:
                 return vb, phi, leeway, flat, red
 
         # Stage 2: Reef main / furl jib (RED: 2.0 -> 0.5)
         flat = 0.62
-        for red in np.arange(1.8, 0.45, -0.2):
+        for red in np.arange(1.9, 0.45, -0.1):
             sol = least_squares(
                 self.resid, _clamp_guess(vb, self.phi_max, leeway),
                 args=(twa, tws, flat, red), bounds=(lo, hi),
             )
             vb, phi, leeway = sol.x
-            if phi <= self.phi_max:
+            if phi <= margin:
                 return vb, phi, leeway, flat, red
 
         # If still over, return best we got
