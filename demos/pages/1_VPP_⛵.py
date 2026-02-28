@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from presets import PRESETS
-from utils import footer, header
+from utils import footer, header, render_keel_inputs
 
 sys.path.append(os.path.realpath("."))
 from src.api import app
@@ -194,18 +194,7 @@ for key, value in yacht.items():
     yacht[key] = st.text_input(f"{key}:", value)
 
 st.subheader("Keel")
-keel_type = keel.pop("type", "fin")
-keel_type = st.selectbox("Keel type", ["fin", "short"], index=["fin", "short"].index(keel_type))
-FIN_DEFAULTS = {"Cu": 1.00, "Cl": 0.78, "Span": 1.90}
-SHORT_DEFAULTS = {"Length": 1.2, "Depth": 0.90, "Tc_ratio": 0.15}
-if keel_type == "short":
-    keel_fields = {k: keel.get(k, v) for k, v in SHORT_DEFAULTS.items()}
-else:
-    keel_fields = {k: keel.get(k, v) for k, v in FIN_DEFAULTS.items()}
-keel = {}
-for key, value in keel_fields.items():
-    keel[key] = st.text_input(f"{key}:", value)
-keel["type"] = keel_type
+keel = render_keel_inputs(keel, key_prefix="vpp")
 
 st.subheader("Rudder")
 for key, value in rudder.items():

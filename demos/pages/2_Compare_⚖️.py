@@ -10,7 +10,7 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from presets import PRESETS
-from utils import footer, header
+from utils import footer, header, render_keel_inputs
 
 sys.path.append(os.path.realpath("."))
 from src.api import app
@@ -71,15 +71,19 @@ def render_config_tab(key_prefix: str, default_index: int = 1, baseline: Dict = 
     for title, section_key in SECTIONS:
         section = copy.deepcopy(preset[section_key])
         with st.expander(title, expanded=False):
-            for field, value in section.items():
-                input_key = f"{key_prefix}_{section_key}_{field}"
-                section[field] = st.text_input(f"{field}:", value, key=input_key)
+            if section_key == "keel":
+                section = render_keel_inputs(section, key_prefix=key_prefix)
+            else:
+                for field, value in section.items():
+                    input_key = f"{key_prefix}_{section_key}_{field}"
+                    section[field] = st.text_input(f"{field}:", value, key=input_key)
 
-                # Track which fields differ from baseline
-                if baseline is not None:
+            # Track which fields differ from baseline
+            if baseline is not None:
+                for field, value in section.items():
                     base_val = str(baseline.get(section_key, {}).get(field, ""))
-                    if str(section[field]) != base_val:
-                        changed_fields.append((section_key, field, section[field], base_val))
+                    if str(value) != base_val:
+                        changed_fields.append((section_key, field, value, base_val))
 
         config[section_key] = section
 

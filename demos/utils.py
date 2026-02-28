@@ -27,6 +27,33 @@ def header():
     return components.html(header)
 
 
+FIN_KEEL_DEFAULTS = {"Cu": 1.00, "Cl": 0.78, "Span": 1.90}
+SHORT_KEEL_DEFAULTS = {"Length": 1.2, "Depth": 0.90, "Tc_ratio": 0.15}
+
+
+def render_keel_inputs(keel: dict, key_prefix: str = "") -> dict:
+    """Render keel type selector and matching parameter inputs.
+
+    Pops the ``type`` key from *keel*, shows a selectbox, then renders
+    only the fields appropriate for that keel type.  Returns a new dict
+    with the selected type and parameter values.
+    """
+    keel_type = keel.pop("type", "fin")
+    keel_type = st.selectbox(
+        "Keel type",
+        ["fin", "short"],
+        index=["fin", "short"].index(keel_type),
+        key=f"{key_prefix}_keel_type",
+    )
+    defaults = SHORT_KEEL_DEFAULTS if keel_type == "short" else FIN_KEEL_DEFAULTS
+    result = {}
+    for field, default in defaults.items():
+        input_key = f"{key_prefix}_keel_{field}"
+        result[field] = st.text_input(f"{field}:", keel.get(field, default), key=input_key)
+    result["type"] = keel_type
+    return result
+
+
 def footer():
     git_hash = get_git_hash()
     footer = f"""
