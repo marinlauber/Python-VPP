@@ -173,9 +173,25 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
                     markersize=4,
                     mfc="None",
                 )
-        # add legend to every axis
+        # TWS legend on first axis
+        ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+
+        # Sail colour legend on middle axis (or first if n==1)
+        from matplotlib.lines import Line2D
+        sail_handles = [
+            Line2D([0], [0], color=cols[k % 7], lw=2, label=VPP.sail_name[k])
+            for k in range(VPP.Nsails)
+        ]
+        mid = n // 2
+        ax[mid].legend(
+            handles=sail_handles, title="Sail set",
+            loc=1, bbox_to_anchor=(1.05, 1.05),
+        )
+
+        # TWS legend on remaining axes (skip first and mid, already done)
         for j in range(n):
-            ax[j].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+            if j != 0 and j != mid:
+                ax[j].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
     plt.tight_layout()
     if save:
         plt.savefig(fname, dpi=96)
