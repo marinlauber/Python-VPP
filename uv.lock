@@ -1155,10 +1155,12 @@ name = "python-vpp"
 version = "0.0.2"
 source = { editable = "." }
 dependencies = [
+    { name = "flask" },
     { name = "matplotlib" },
     { name = "nlopt" },
     { name = "numpy" },
     { name = "scipy" },
+    { name = "streamlit" },
     { name = "tqdm" },
 ]
 
@@ -1177,6 +1179,7 @@ dev = [
 
 [package.metadata]
 requires-dist = [
+    { name = "flask" },
     { name = "flask", marker = "extra == 'api'" },
     { name = "matplotlib", specifier = ">=3.8" },
     { name = "mypy", marker = "extra == 'dev'" },
@@ -1185,6 +1188,7 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'" },
     { name = "ruff", marker = "extra == 'dev'" },
     { name = "scipy", specifier = ">=1.12" },
+    { name = "streamlit", specifier = ">=1.37" },
     { name = "streamlit", marker = "extra == 'demo'", specifier = ">=1.37" },
     { name = "tqdm", specifier = ">=4.66" },
 ]
