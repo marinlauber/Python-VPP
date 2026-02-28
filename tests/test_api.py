@@ -112,3 +112,27 @@ def test_invalid_json_returns_400():
     response = client.post("/api/vpp/", data="not json", headers=HEADERS)
     assert response.status_code == 400
 
+
+def test_short_keel_with_type_field():
+    """Short keel payload with explicit type='short' should succeed."""
+    d = make_yd41()
+    d["keel"] = {"type": "short", "Length": 1.2, "Depth": 0.90, "Tc_ratio": 0.15}
+    response = post_vpp(d)
+    assert response.status_code == 200
+
+
+def test_short_keel_without_type_field():
+    """Short keel payload detected from keys alone (no type field)."""
+    d = make_yd41()
+    d["keel"] = {"Length": 1.2, "Depth": 0.90, "Tc_ratio": 0.15}
+    response = post_vpp(d)
+    assert response.status_code == 200
+
+
+def test_fin_keel_with_type_field():
+    """Fin keel payload with explicit type='fin' should succeed."""
+    d = make_yd41()
+    d["keel"] = {"type": "fin", "Cu": 1.00, "Cl": 0.78, "Span": 1.90}
+    response = post_vpp(d)
+    assert response.status_code == 200
+
