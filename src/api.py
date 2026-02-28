@@ -30,7 +30,8 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
 
     keel_data = data["keel"]
     keel_type = keel_data.get("type", "fin")
-    if keel_type == "short":
+    # Also detect from keys if type is missing or inconsistent
+    if keel_type == "short" or "Length" in keel_data:
         keel = ShortKeel(
             Length=float(keel_data["Length"]),
             Depth=float(keel_data["Depth"]),
