@@ -67,7 +67,7 @@ def plot_single_polar(response: Dict[str, Any]) -> plt.Figure:
             for j in range(n):
                 lab = "_nolegend_"
                 if k == 0:
-                    lab = name + " " + f"{tws_range[i]/KNOTS_TO_MPS:.1f}"
+                    lab = f"{tws_range[i]/KNOTS_TO_MPS:.1f}"
 
                 ax[j].plot(
                     twa_range[idx[0] : idx[1]] / 180 * np.pi,
@@ -220,8 +220,8 @@ st.markdown(
     # Yacht VPP
 
     This is a 3 D.O.F. VPP for a mono hull displacement sailing yacht.
-
-    The default parameters are pre-set particulars for the YD-41 yacht.
+    The performance model is based on the
+    [ORC VPP documentation](https://www.orc.org/rules/ORC%20VPP%20Documentation%202024.pdf).
 
 """
 )
