@@ -13,7 +13,7 @@ from flask import Flask, jsonify, request
 sys.path.append(os.path.realpath("."))
 from src.SailMod import Jib, Kite, Main
 from src.VPPMod import VPP
-from src.YachtMod import Keel, Rudder, Yacht
+from src.YachtMod import Keel, Rudder, ShortKeel, Yacht
 
 app = Flask(__name__)
 
@@ -27,15 +27,25 @@ def ping():
 
 
 def data_to_vpp(data: Dict[str, Any]) -> VPP:
-    
-    keel = Keel(
-        Cu=float(data["keel"]["Cu"]), 
-        Cl=float(data["keel"]["Cl"]), 
-        Span=float(data["keel"]["Span"])
-    )
+
+    keel_data = data["keel"]
+    keel_type = keel_data.get("type", "fin")
+    # Also detect from keys if type is missing or inconsistent
+    if keel_type == "short" or "Length" in keel_data:
+        keel = ShortKeel(
+            Length=float(keel_data["Length"]),
+            Depth=float(keel_data["Depth"]),
+            Tc_ratio=float(keel_data.get("Tc_ratio", 0.15)),
+        )
+    else:
+        keel = Keel(
+            Cu=float(keel_data["Cu"]),
+            Cl=float(keel_data["Cl"]),
+            Span=float(keel_data["Span"]),
+        )
     rudder = Rudder(
-        Cu=float(data["rudder"]["Cu"]), 
-        Cl=float(data["rudder"]["Cu"]), 
+        Cu=float(data["rudder"]["Cu"]),
+        Cl=float(data["rudder"]["Cu"]),
         Span=float(data["rudder"]["Span"])
     )
     yacht = Yacht(
@@ -60,6 +70,9 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
                 E=float(data["main"]["E"]),
                 Roach=float(data["main"]["Roach"]),
                 BAD=float(data["main"]["BAD"]),
+                data_source=data.get("data_source", "orc"),
+                cl_data=data["main"].get("cl_data"),
+                cd_data=data["main"].get("cd_data"),
             ),
             Jib(
                 name=data["jib"]["Name"],
@@ -67,32 +80,46 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
                 J=float(data["jib"]["J"]),
                 LPG=float(data["jib"]["LPG"]),
                 HBI=float(data["jib"]["HBI"]),
+                data_source=data.get("data_source", "orc"),
+                cl_data=data["jib"].get("cl_data"),
+                cd_data=data["jib"].get("cd_data"),
             ),
             Kite(
                 name=data["kite"]["Name"],
                 area=float(data["kite"]["area"]),
                 vce=float(data["kite"]["vce"]),
+                data_source=data.get("data_source", "orc"),
+                cl_data=data["kite"].get("cl_data"),
+                cd_data=data["kite"].get("cd_data"),
             ),
         ],
     )
-    
+
     vpp = VPP(Yacht=yacht)
     vpp.set_analysis(
         tws_range=np.array(data["tws_range"]),
         twa_range=np.array(data["twa_range"]),
     )
-    return vpp
-    
+    return vpp, data.get("method", "iterative")
+
 
 @app.route("/api/vpp/", methods=["POST"])
 def makevppresults():
     data = request.get_json()
+    if data is None:
+        return jsonify({"error": "Request body must be valid JSON."}), 400
 
-    # TODO: Support multiple implementations of different sails: require API design
-    # TODO: Error handling incorrect ranges
+    try:
+        vpp, method = data_to_vpp(data)
+    except (KeyError, TypeError, ValueError) as e:
+        logging.warning("Invalid VPP input: %s", e)
+        return jsonify({"error": f"Invalid input: {e}"}), 400
 
-    vpp = data_to_vpp(data)
-    vpp.run(verbose=True)
+    try:
+        vpp.run(verbose=True, method=method)
+    except Exception as e:
+        logging.exception("VPP simulation failed")
+        return jsonify({"error": f"Simulation failed: {e}"}), 500
 
     return jsonify(vpp.results())
 

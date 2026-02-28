@@ -8,13 +8,31 @@ __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
 import numpy as np
-from src.UtilsMod import build_interp_func,json_read,json_write
 from scipy import interpolate
+
+from src.UtilsMod import build_interp_func, json_read, json_write
+
 
 class Appendage(object):
     def __init__(self, type, chord, area, span, vol, ce):
         """
-        
+        Base class for underwater appendages (keels, rudders, bulbs).
+
+        Parameters
+        ----------
+        type : str
+            Appendage type (``"keel"``, ``"rudder"``, or ``"bulb"``).
+            Controls residuary resistance coefficient lookup.
+        chord : float
+            Mean chord length (m).
+        area : float
+            Planform (wetted) area (m^2).
+        span : float
+            Appendage span (m). Set to 0 for non-lifting bodies (bulbs).
+        vol : float
+            Displaced volume (m^3). Used for residuary resistance calculation.
+        ce : float
+            Centre of effort — depth below waterline (m, positive downward).
         """
         self.type = type
         self.chord = chord
@@ -36,9 +54,6 @@ class Appendage(object):
         if self.type == "bulb":
             self._interp_cr = build_interp_func("rrk", i=2)
 
-    def _cl(self, leeway):
-        return self.dclda * np.radians(leeway)
-
     def _cr(self, fn):
         return self._interp_cr(max(0.0, min(fn, 0.6)))
 
@@ -56,6 +71,21 @@ class Appendage(object):
 
 class Keel(Appendage):
     def __init__(self, Cu=1, Cl=1, Span=0):
+        """
+        Trapezoidal keel appendage.
+
+        Computes area, mean chord, span, volume, and centre of effort from
+        the root and tip chord lengths assuming a trapezoidal planform.
+
+        Parameters
+        ----------
+        Cu : float, optional
+            Root (upper) chord length (m). Default is 1.
+        Cl : float, optional
+            Tip (lower) chord length (m). Default is 1.
+        Span : float, optional
+            Keel span (m). Default is 0.
+        """
         self.type = "keel"
         self.cu = Cu
         self.cl = Cl
@@ -70,6 +100,18 @@ class Keel(Appendage):
 
 class Rudder(Appendage):
     def __init__(self, Cu=1, Cl=1, Span=0):
+        """
+        Trapezoidal rudder appendage.
+
+        Parameters
+        ----------
+        Cu : float, optional
+            Root (upper) chord length (m). Default is 1.
+        Cl : float, optional
+            Tip (lower) chord length (m). Default is 1.
+        Span : float, optional
+            Rudder span (m). Default is 0.
+        """
         self.type = "rudder"
         self.cu = Cu
         self.cl = Cl
@@ -88,6 +130,23 @@ class Rudder(Appendage):
 
 class Bulb(Appendage):
     def __init__(self, Chord, area, vol, CG):
+        """
+        Keel bulb appendage.
+
+        A non-lifting body attached to the keel tip. Contributes wetted
+        surface area and residuary resistance but no side force.
+
+        Parameters
+        ----------
+        Chord : float
+            Bulb chord length (m).
+        area : float
+            Wetted surface area (m^2).
+        vol : float
+            Displaced volume (m^3).
+        CG : float
+            Centre of gravity depth below waterline (m).
+        """
         self.type = "bulb"
         self.chord = Chord
         self.area = area
@@ -97,20 +156,88 @@ class Bulb(Appendage):
         super().__init__(self.type, self.chord, self.area, 0.0, self.vol, self.ce)
 
 
+class ShortKeel(Appendage):
+    def __init__(self, Length=1.0, Depth=0.5, Tc_ratio=0.15):
+        """
+        Short/integrated keel appendage.
+
+        For traditional or hull-integrated keels with low aspect ratio.
+        Uses the Jones low-AR lift formula instead of Prandtl correction,
+        higher form drag, and zero appendage residuary resistance (hull
+        resistance surfaces capture it).
+
+        Parameters
+        ----------
+        Length : float
+            Fore-aft keel length along hull bottom (m).
+        Depth : float
+            Keel depth below canoe body (m).
+        Tc_ratio : float
+            Average thickness-to-chord ratio. Default 0.15.
+        """
+        self.type = "short_keel"
+        self.length = Length
+        self.depth = Depth
+        self.tc_ratio = Tc_ratio
+        self.span = Depth
+        self.chord = Length
+        self.area = Length * Depth
+        self.ce = -Depth / 2.0
+        self.cof = 1.4 + 0.5 * Tc_ratio
+        self.vol = Length * Depth * Length * Tc_ratio * 0.7
+        super().__init__(self.type, self.chord, self.area, self.span, self.vol, self.ce)
+        # Override Prandtl lift model with Jones low-AR formula
+        ar = self.Ar
+        self.dclda = np.pi * ar / 2.0
+        self.cla = self.dclda * self.area
+        self.teff = 1.5 * self.span
+
+
 class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
-                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[]):
+                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None, crew_weight=None):
         """
-        Name : Name of particular design 
-        Lwl : waterline length (m)
-        Vol : volume of canoe body (m^3)
-        Bwl : waterline beam (m)
-        Tc : Canoe body draft (m)
-        WSA : Wetted surface area (m^2)
-        Tmax : Maximum draft of yacht (m)
-        Amax  : Max section area (m^2)
-        Mass : total mass of the yacht (kg)
-        App : appendages (Appendages object as list, i.e [Keel(...)] )
+        Yacht hull and rig definition.
+
+        Parameters
+        ----------
+        Name : str
+            Name of the yacht design.
+        Lwl : float
+            Waterline length (m).
+        Vol : float
+            Displaced volume of the canoe body (m^3).
+        Bwl : float
+            Waterline beam (m).
+        Tc : float
+            Canoe body draft (m).
+        WSA : float
+            Wetted surface area of the canoe body (m^2).
+        Tmax : float
+            Maximum draft including keel (m).
+        Amax : float
+            Maximum cross-section area (m^2).
+        Mass : float
+            Total displacement mass including keel (kg).
+        Loa : float
+            Length overall (m).
+        Boa : float
+            Beam overall (m).
+        Ff : float
+            Freeboard height at the bow (m).
+        Fa : float
+            Freeboard height at the stern (m).
+        App : list of Appendage, optional
+            Underwater appendages (keels, rudders, bulbs). Default is [].
+        Sails : list of Sail, optional
+            Sail inventory. Default is [].
+        GZ : dict, optional
+            Righting arm curve as ``{"Heel": [...], "GZ": [...]}``.
+            Heel in degrees, GZ in metres. If *None*, loads from
+            ``righting_moment.json`` (backward compatible).
+        crew_weight : float, optional
+            Total crew weight (kg). If *None*, uses empirical formula
+            ``25.8 * Lwl ** 1.4262``.
         """
         self.g = 9.81
         self.Name = Name
@@ -131,7 +258,7 @@ class Yacht(object):
         self.Rm4 = 0.43 * self.tmax
 
         # standard crew weight
-        self.cw = 25.8 * self.l ** 1.4262
+        self.cw = crew_weight if crew_weight is not None else 25.8 * self.l ** 1.4262
         self.carm = 0.8 * self.bmax  # must be average of rail where crew sits
 
         # rough estimate of projected area of the hull
@@ -143,6 +270,9 @@ class Yacht(object):
         self.appendages = App
         self.sails = Sails
 
+        # GZ data (righting arm curve)
+        self._gz_data = GZ
+
         # righting moment interpolation function
         self._interp_rm = self._build_rm_interp()
 
@@ -151,7 +281,10 @@ class Yacht(object):
 
 
     def _build_rm_interp(self):
-        a = json_read('righting_moment')
+        if self._gz_data is not None:
+            a = self._gz_data
+        else:
+            a = json_read('righting_moment')
         return interpolate.interp1d(np.array(a["Heel"]), np.array(a["GZ"]),
                                     kind="linear", fill_value="extrapolate")
 

@@ -1,11 +1,13 @@
+import os
 
 import numpy as np
 
-from tests.test_utils import return_YD41_particulars
-from src.VPPMod import VPP
 from src.SailMod import Jib, Main
+from src.VPPMod import VPP
+from tests.test_utils import return_YD41_particulars
 
-def test_single_sail_set():
+
+def test_single_sail_set(tmp_path):
     YD41 = return_YD41_particulars()
 
     YD41_no_kite = YD41
@@ -22,5 +24,152 @@ def test_single_sail_set():
 
     vpp.run(verbose=False)
     vpp.write("results")
-    vpp.polar(3, False)
-    vpp.SailChart(False)
+
+    polar_path = str(tmp_path / "test_polar.png")
+    sail_path = str(tmp_path / "test_sail.png")
+    vpp.polar(3, True, fname=polar_path)
+    vpp.SailChart(True, fname=sail_path)
+    assert os.path.exists(polar_path), "Polar plot was not created"
+    assert os.path.exists(sail_path), "Sail chart was not created"
+
+
+def test_sail_chart_no_deprecation_warning(tmp_path):
+    """Verify sail_chart doesn't use deprecated interp2d."""
+    import warnings
+
+    yacht = return_YD41_particulars()
+    yacht.sails = [
+        Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+        Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
+    ]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(
+        tws_range=np.array([6.0, 10.0]),
+        twa_range=np.linspace(30.0, 180.0, 16),
+    )
+    vpp.run(verbose=False)
+    fname = str(tmp_path / "test_sailchart.png")
+    with warnings.catch_warnings():
+        warnings.simplefilter("error", DeprecationWarning)
+        vpp.SailChart(save=True, fname=fname)
+    assert os.path.exists(fname), "Sail chart was not created"
+
+
+def test_phi_max_configurable():
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(tws_range=np.array([10.0]),
+                     twa_range=np.linspace(30.0, 180.0, 3),
+                     phi_max=25.0)
+    assert vpp.phi_max == 25.0
+
+
+def test_run_without_analysis_raises():
+    """Issue #46: raise with string literal should be a proper exception."""
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(RuntimeError, match="no analysis set"):
+        vpp.run()
+
+
+def test_set_analysis_empty_tws_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="TWS range is empty"):
+        vpp.set_analysis(tws_range=np.array([]), twa_range=np.linspace(30, 180, 5))
+
+
+def test_set_analysis_empty_twa_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="TWA range is empty"):
+        vpp.set_analysis(tws_range=np.array([6.0, 10.0]), twa_range=np.array([]))
+
+
+def test_set_analysis_tws_below_minimum_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="outside valid bounds"):
+        vpp.set_analysis(tws_range=np.array([1.0, 5.0]), twa_range=np.linspace(30, 180, 5))
+
+
+def test_set_analysis_tws_above_maximum_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="outside valid bounds"):
+        vpp.set_analysis(tws_range=np.array([10.0, 40.0]), twa_range=np.linspace(30, 180, 5))
+
+
+def test_set_analysis_twa_out_of_range_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="outside valid bounds"):
+        vpp.set_analysis(tws_range=np.array([6.0, 10.0]), twa_range=np.array([-5.0, 90.0]))
+
+
+def test_5dof_solver_runs():
+    """5-DOF solver produces non-zero speeds."""
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(tws_range=np.array([8.0]),
+                     twa_range=np.linspace(40.0, 160.0, 4))
+    vpp.run(method="5dof")
+    speeds = vpp.store[0, :, 0, 0]
+    assert np.any(speeds > 0), "5-DOF solver should produce non-zero speeds"
+
+
+def test_5dof_vs_iterative_comparable():
+    """5-DOF and iterative solvers should produce speeds within 15%."""
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
+
+    vpp_iter = VPP(Yacht=yacht)
+    vpp_iter.set_analysis(tws_range=np.array([8.0]),
+                          twa_range=np.linspace(40.0, 160.0, 4))
+    vpp_iter.run(method="iterative")
+
+    vpp_5dof = VPP(Yacht=yacht)
+    vpp_5dof.set_analysis(tws_range=np.array([8.0]),
+                          twa_range=np.linspace(40.0, 160.0, 4))
+    vpp_5dof.run(method="5dof")
+
+    speeds_iter = vpp_iter.store[0, :, 0, 0]
+    speeds_5dof = vpp_5dof.store[0, :, 0, 0]
+
+    # Compare only non-zero entries
+    mask = speeds_iter > 0.1
+    if np.any(mask):
+        ratio = speeds_5dof[mask] / speeds_iter[mask]
+        assert np.all(ratio > 0.85) and np.all(ratio < 1.15), (
+            f"5-DOF vs iterative speed ratio out of 15% band: {ratio}"
+        )
+
+
+def test_invalid_method_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(tws_range=np.array([8.0]),
+                     twa_range=np.linspace(40.0, 160.0, 3))
+    with pytest.raises(ValueError, match="Unknown method"):
+        vpp.run(method="bogus")
