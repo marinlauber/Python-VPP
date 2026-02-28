@@ -37,60 +37,6 @@ def json_write(data, fname):
         json.dump(data, json_file, ensure_ascii=False, indent=2, sort_keys=False)
 
 
-# def write_csv(VPP, fname):
-def csv_write(tws_range, twa_range, store, fname):
-    import csv
-    
-    # Init a counter for how many values have been used to average the boat speed for a given wind direction and speed:
-    avg_counter = np.zeros((37, 20))
-
-    with open(fname, mode="w", newline="") as file:
-        writer = csv.writer(file, delimiter=";")
-        # Write header with TWS in knots
-        writer.writerow(["TWA\TWS", "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40"])
-        # Loop through every degree from 0°to 180° in 5° increments
-        for angle in range(0, 181, 5):
-            # Init row to write
-            row = [None] * 21
-            # Set angle
-            row[0] = angle
-            # Go through each TWS and get the corresponding boat speed for the current angle
-            for i, tws in enumerate(tws_range):
-                # Change tws to knots
-                tws = tws / KNOTS_TO_MPS
-                for j, twa in enumerate(twa_range):
-                    # Get closest wind speed and find column in openCPN. Note we are stuck using these until this issue (https://github.com/rgleason/polar_pi/issues/34) gets dealt with
-                    closest_wind_speed_column = round(tws/2)
-                    # If closest wind speed column is zero, increment by one so we don't overwrite the angle column.
-                    if closest_wind_speed_column == 0:
-                        closest_wind_speed_column += 1
-                    # Get closest angle and find see if it matches the current angle we are looking for
-                    closest_angle = round(twa/5)*5
-                    # If the closest_angle matches the angle we're currently working with then get the speeds, otherwise, skip to next entry
-                    if closest_angle == angle:
-                        # Get boat speed for give wind angle and speed
-                        boat_speed = store[i, j, 0, 0]
-                        # Get row number
-                        row_number = int(angle/5)
-
-                        # Update the row with the boat speed for this angle and wind speed
-                        # If there has not been a value used yet, set the value to the boat speed, otherwise, average the current value with the new boat speed
-                        if row[closest_wind_speed_column] is None:
-                            row[closest_wind_speed_column] = boat_speed
-                        else:
-                            # Find out how many values have been used to make this average
-                            num_values = avg_counter[row_number, closest_wind_speed_column]
-                            # Average the current boat speed with the already logged average boat speed
-                            row[closest_wind_speed_column] = (row[closest_wind_speed_column] * num_values + boat_speed) / (num_values + 1)
-
-                        # Update the average counter for this angle and wind speed
-                        avg_counter[row_number, closest_wind_speed_column] += 1
-                        # Print out the speed of the vessel given the angle and wind speed
-
-            # Write the row to the csv file
-            writer.writerow(row)
-
-
 def build_interp_func(fname, i=1, kind="linear"):
     """
     build interpolatison function and returns it in a list
@@ -257,6 +203,43 @@ def _get_best_sails(store):
         for j in range(store.shape[1]):
             res[i, j] = store[i, j, :, 0].argmax()
     return res
+
+
+def csv_write(VPP, tws_range=None, twa_range=None, fname="polar.csv"):
+    """
+
+    Export the polar data to a csv file.
+    Parameters
+    ----------
+    VPP
+        A VPPResults object containing the polar data to export.
+    tws_range
+        An optional array of true wind speeds to use for the export. If not provided, the true wind speeds from the VPPResults object will be used.
+    twa_range
+        An optional array of true wind angles to use for the export. If not provided, the true wind angles from the VPPResults object will be used.
+    fname
+        The name of the csv file to create, default is "polar.csv".
+    """
+    if not hasattr(VPP, "store"):
+        raise ValueError("VPP object must have a 'store' attribute to use to export to csv.")
+    import csv
+    # if we specify tws_range and twa_range, we use them, otherwise we use the ones from VPP
+    tws = VPP.tws_range if tws_range is None else tws_range
+    twa = VPP.twa_range if twa_range is None else twa_range
+    store = np.max(VPP.store[:, :, :, 0], axis=2)/KNOTS_TO_MPS
+    # if we specify a custom TWA or TWS range, we make a custom structure and we interpolate the results in it
+    if tws_range is not None or twa_range is not None:
+        func = RectBivariateSpline(VPP.tws_range, VPP.twa_range, store)
+        store = func(tws, twa)
+    with open(fname, mode="w", newline="") as file:
+        # generate header for csv file
+        writer = csv.writer(file, delimiter=";")
+        # Write header with TWS in knots
+        writer.writerow(["TWA\TWS"] + [str(round(ws/KNOTS_TO_MPS, 2)) for ws in tws])
+        # Loop through every degree
+        for j, angle in enumerate(twa):
+            row = [str(angle)] + [str(round(store[i, j], 2)) for i in range(len(tws))]
+            writer.writerow(row)
 
 
 class VPPResults(object):
