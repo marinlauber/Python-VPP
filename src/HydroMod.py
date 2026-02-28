@@ -130,7 +130,7 @@ class HydroMod(object):
             self.Teff = np.hstack((self.Teff, appendage.teff))
 
         self.Ksfj = (
-            0.5 * self.rho * self.vb ** 2 * self.cla * self.leeway / 180.0 * np.pi
+            0.5 * self.rho * self.vb ** 2 * self.cla * np.radians(self.leeway)
         )
         self.Ksf = np.sum(self.Ksfj)
 
@@ -170,7 +170,7 @@ class HydroMod(object):
 
         self.vb = max(0, vb)
         self.phi = max(0, phi)
-        self.leeway = max(0, leeway)
+        self.leeway = leeway
         self.lsm, self.lvr, self.btr = self.yacht.measureLSM()
         self.fn = self.vb / (np.sqrt(self.g * self.lsm))
 

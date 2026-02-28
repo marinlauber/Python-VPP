@@ -54,9 +54,6 @@ class Appendage(object):
         if self.type == "bulb":
             self._interp_cr = build_interp_func("rrk", i=2)
 
-    def _cl(self, leeway):
-        return self.dclda * np.radians(leeway)
-
     def _cr(self, fn):
         return self._interp_cr(max(0.0, min(fn, 0.6)))
 

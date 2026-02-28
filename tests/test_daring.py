@@ -152,9 +152,9 @@ def test_short_keel_lower_lift_than_fin():
     # Use root/tip that give similar area to short keel
     fk = Keel(Cu=1.40, Cl=1.00, Span=0.90)  # area = 1.08, same span
     # At the same leeway, short keel should generate less lift coefficient
-    leeway = 5.0
-    cl_short = sk._cl(leeway)
-    cl_fin = fk._cl(leeway)
+    leeway_rad = np.radians(5.0)
+    cl_short = sk.dclda * leeway_rad
+    cl_fin = fk.dclda * leeway_rad
     assert cl_short < cl_fin, (
         f"ShortKeel cl={cl_short:.4f} should be less than Keel cl={cl_fin:.4f}"
     )
