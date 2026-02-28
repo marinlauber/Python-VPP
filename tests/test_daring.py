@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from src.SailMod import Jib, Kite, Main
 from src.VPPMod import VPP
-from src.YachtMod import Keel, Rudder, Yacht
+from src.YachtMod import Keel, Rudder, ShortKeel, Yacht
 
 
 # Daring GZ curve (estimated for classic 5.5m, ~50% ballast ratio, GM ~0.70m)
@@ -38,7 +38,7 @@ def return_daring():
         Ff=0.75,
         Fa=0.55,
         App=[
-            Keel(Cu=0.70, Cl=0.45, Span=0.90),
+            ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15),
             Rudder(Cu=0.32, Cl=0.18, Span=0.75),
         ],
         Sails=[
@@ -126,3 +126,35 @@ def test_daring_polars_saved(tmp_path):
     vpp.SailChart(True, fname=sail_path)
     assert os.path.exists(polar_path), "Polar plot was not created"
     assert os.path.exists(sail_path), "Sail chart was not created"
+
+
+# --- ShortKeel-specific unit tests ---
+
+def test_short_keel_jones_lift_formula():
+    """ShortKeel dclda should match Jones low-AR formula: pi*AR/2."""
+    sk = ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15)
+    ar = sk.span / sk.area  # = 0.90 / (1.2 * 0.90)
+    expected = np.pi * ar / 2.0
+    assert abs(sk.dclda - expected) < 1e-10, f"dclda={sk.dclda}, expected={expected}"
+
+
+def test_short_keel_no_appendage_residuary():
+    """ShortKeel should return zero appendage residuary resistance."""
+    sk = ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15)
+    for fn in [0.0, 0.2, 0.4, 0.6]:
+        assert sk._cr(fn) == 0.0, f"_cr({fn}) should be 0.0 for short_keel"
+
+
+def test_short_keel_lower_lift_than_fin():
+    """A ShortKeel with equivalent area should produce less lift than a fin Keel."""
+    sk = ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15)
+    # Fin keel with similar area: chord ~0.575, span 0.90 -> area ~0.5175
+    # Use root/tip that give similar area to short keel
+    fk = Keel(Cu=1.40, Cl=1.00, Span=0.90)  # area = 1.08, same span
+    # At the same leeway, short keel should generate less lift coefficient
+    leeway = 5.0
+    cl_short = sk._cl(leeway)
+    cl_fin = fk._cl(leeway)
+    assert cl_short < cl_fin, (
+        f"ShortKeel cl={cl_short:.4f} should be less than Keel cl={cl_fin:.4f}"
+    )

@@ -18,7 +18,7 @@ import numpy as np
 
 from src.SailMod import Jib, Kite, Main
 from src.VPPMod import VPP
-from src.YachtMod import Keel, Rudder, Yacht
+from src.YachtMod import Rudder, ShortKeel, Yacht
 
 logging.basicConfig(level=logging.INFO)
 
@@ -45,7 +45,7 @@ Daring = Yacht(
     Ff=0.75,        # (estimated) freeboard fore
     Fa=0.55,        # (estimated) freeboard aft
     App=[
-        Keel(Cu=0.70, Cl=0.45, Span=0.90),     # (estimated) classic fin
+        ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15),  # hull-integrated keel
         Rudder(Cu=0.32, Cl=0.18, Span=0.75),   # (estimated) separated rudder
     ],
     Sails=[

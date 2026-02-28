@@ -13,7 +13,7 @@ from flask import Flask, jsonify, request
 sys.path.append(os.path.realpath("."))
 from src.SailMod import Jib, Kite, Main
 from src.VPPMod import VPP
-from src.YachtMod import Keel, Rudder, Yacht
+from src.YachtMod import Keel, Rudder, ShortKeel, Yacht
 
 app = Flask(__name__)
 
@@ -28,11 +28,20 @@ def ping():
 
 def data_to_vpp(data: Dict[str, Any]) -> VPP:
 
-    keel = Keel(
-        Cu=float(data["keel"]["Cu"]),
-        Cl=float(data["keel"]["Cl"]),
-        Span=float(data["keel"]["Span"])
-    )
+    keel_data = data["keel"]
+    keel_type = keel_data.get("type", "fin")
+    if keel_type == "short":
+        keel = ShortKeel(
+            Length=float(keel_data["Length"]),
+            Depth=float(keel_data["Depth"]),
+            Tc_ratio=float(keel_data.get("Tc_ratio", 0.15)),
+        )
+    else:
+        keel = Keel(
+            Cu=float(keel_data["Cu"]),
+            Cl=float(keel_data["Cl"]),
+            Span=float(keel_data["Span"]),
+        )
     rudder = Rudder(
         Cu=float(data["rudder"]["Cu"]),
         Cl=float(data["rudder"]["Cu"]),

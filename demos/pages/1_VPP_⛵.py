@@ -194,8 +194,11 @@ for key, value in yacht.items():
     yacht[key] = st.text_input(f"{key}:", value)
 
 st.subheader("Keel")
+keel_type = keel.pop("type", "fin")
+keel_type = st.selectbox("Keel type", ["fin", "short"], index=["fin", "short"].index(keel_type))
 for key, value in keel.items():
     keel[key] = st.text_input(f"{key}:", value)
+keel["type"] = keel_type
 
 st.subheader("Rudder")
 for key, value in rudder.items():

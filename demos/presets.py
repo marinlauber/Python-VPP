@@ -39,7 +39,7 @@ PRESETS = {
             "Boa": 1.98,
             "Loa": 9.90,
         },
-        "keel": {"Cu": 0.70, "Cl": 0.45, "Span": 0.90},
+        "keel": {"type": "short", "Length": 1.2, "Depth": 0.90, "Tc_ratio": 0.15},
         "rudder": {"Cu": 0.32, "Cl": 0.18, "Span": 0.75},
         "main": {"Name": "MN1", "P": 10.80, "E": 3.30, "Roach": 0.1, "BAD": 0.80},
         "jib": {"Name": "J1", "I": 8.50, "J": 2.70, "LPG": 2.70, "HBI": 0.50},

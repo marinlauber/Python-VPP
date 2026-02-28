@@ -159,6 +159,43 @@ class Bulb(Appendage):
         super().__init__(self.type, self.chord, self.area, 0.0, self.vol, self.ce)
 
 
+class ShortKeel(Appendage):
+    def __init__(self, Length=1.0, Depth=0.5, Tc_ratio=0.15):
+        """
+        Short/integrated keel appendage.
+
+        For traditional or hull-integrated keels with low aspect ratio.
+        Uses the Jones low-AR lift formula instead of Prandtl correction,
+        higher form drag, and zero appendage residuary resistance (hull
+        resistance surfaces capture it).
+
+        Parameters
+        ----------
+        Length : float
+            Fore-aft keel length along hull bottom (m).
+        Depth : float
+            Keel depth below canoe body (m).
+        Tc_ratio : float
+            Average thickness-to-chord ratio. Default 0.15.
+        """
+        self.type = "short_keel"
+        self.length = Length
+        self.depth = Depth
+        self.tc_ratio = Tc_ratio
+        self.span = Depth
+        self.chord = Length
+        self.area = Length * Depth
+        self.ce = -Depth / 2.0
+        self.cof = 1.4 + 0.5 * Tc_ratio
+        self.vol = Length * Depth * Length * Tc_ratio * 0.7
+        super().__init__(self.type, self.chord, self.area, self.span, self.vol, self.ce)
+        # Override Prandtl lift model with Jones low-AR formula
+        ar = self.Ar
+        self.dclda = np.pi * ar / 2.0
+        self.cla = self.dclda * self.area
+        self.teff = 1.5 * self.span
+
+
 class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
                  Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None, crew_weight=None):
