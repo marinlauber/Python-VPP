@@ -1,4 +1,3 @@
-import json
 import logging
 import os
 import sys
@@ -9,45 +8,19 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from presets import PRESETS
-from utils import footer, header, render_keel_inputs
+from utils import (
+    footer,
+    header,
+    render_environment_inputs,
+    render_keel_inputs,
+    run_vpp,
+    validate_ranges,
+)
 
 sys.path.append(os.path.realpath("."))
-from src.api import app
 from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, lab, stl
 
 st.set_page_config(page_title="VPP", page_icon="⛵")
-
-
-def process_yacht_specifications(
-    tws_range: List[int],
-    twa_range: List[int],
-    yacht: Dict,
-    keel: Dict,
-    rudder: Dict,
-    main: Dict,
-    jib: Dict,
-    kite: Dict,
-):
-    data = {
-        "name": yacht["Name"],
-        "yacht": yacht,
-        "keel": keel,
-        "rudder": rudder,
-        "main": main,
-        "jib": jib,
-        "kite": kite,
-        "tws_range": tws_range,
-        "twa_range": twa_range,
-    }
-
-    logging.info("Starting VPP simulation")
-    json_string = json.dumps(data)
-    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
-    client = app.test_client()
-    response = client.post("/api/vpp/", data=json_string, headers=headers)
-
-    logging.info("VPP simulation completed")
-    return response
 
 
 def plot_single_polar(response: Dict[str, Any]) -> plt.Figure:
@@ -212,25 +185,13 @@ st.subheader("Kite (Spinnaker)")
 for key, value in kite.items():
     kite[key] = st.text_input(f"{key}:", value)
 
-st.subheader("Environment")
-twa_slider = st.slider(
-    "True wind angle (TWA) range", 35.0, 175.0, (35.0, 175.0), step=2.0
-)
-twa_range = np.arange(twa_slider[0], twa_slider[1], 2.0).tolist()
-
-tws_slider = st.slider("True wind speed (TWS) range", 2.0, 25.0, (8.0, 12.0), step=2.0)
-tws_range = np.arange(tws_slider[0], tws_slider[1], 2.0).tolist()
+tws_range, twa_range = render_environment_inputs(key_prefix="vpp")
 
 if st.button("Process Specifications"):
-    if not tws_range:
-        st.error("TWS range is empty. Make sure the min and max wind speeds are not equal.")
-    elif not twa_range:
-        st.error("TWA range is empty. Make sure the min and max wind angles are not equal.")
-    else:
+    if validate_ranges(tws_range, twa_range):
+        config = {"yacht": yacht, "keel": keel, "rudder": rudder, "main": main, "jib": jib, "kite": kite}
         with st.spinner("Running optimisation, this can take a minute or two."):
-            response = process_yacht_specifications(
-                tws_range, twa_range, yacht, keel, rudder, main, jib, kite
-            )
+            response = run_vpp(config, tws_range, twa_range)
             if response.status_code != 200:
                 error_msg = response.json.get("error", "Unknown error") if response.json else "Unknown error"
                 st.error(f"Simulation failed: {error_msg}")

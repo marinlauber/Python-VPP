@@ -1,6 +1,4 @@
 import copy
-import json
-import logging
 import os
 import sys
 from typing import Any, Dict, List
@@ -10,10 +8,16 @@ import numpy as np
 import pandas as pd
 import streamlit as st
 from presets import PRESETS
-from utils import footer, header, render_keel_inputs
+from utils import (
+    footer,
+    header,
+    render_environment_inputs,
+    render_keel_inputs,
+    run_vpp,
+    validate_ranges,
+)
 
 sys.path.append(os.path.realpath("."))
-from src.api import app
 from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, stl
 
 st.set_page_config(page_title="Compare", page_icon="⚖️", layout="wide")
@@ -30,29 +34,6 @@ SECTIONS = [
 # Colours and markers for up to 6 configs
 CONFIG_COLORS = ["C0", "C1", "C2", "C3", "C4", "C5"]
 CONFIG_MARKERS = ["o", "s", "^", "D", "v", "P"]
-
-
-def run_vpp(
-    tws_range: List[float],
-    twa_range: List[float],
-    config: Dict,
-):
-    data = {
-        "name": config["yacht"]["Name"],
-        "yacht": config["yacht"],
-        "keel": config["keel"],
-        "rudder": config["rudder"],
-        "main": config["main"],
-        "jib": config["jib"],
-        "kite": config["kite"],
-        "tws_range": tws_range,
-        "twa_range": twa_range,
-    }
-    json_string = json.dumps(data)
-    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
-    client = app.test_client()
-    response = client.post("/api/vpp/", data=json_string, headers=headers)
-    return response
 
 
 def render_config_tab(key_prefix: str, default_index: int = 1, baseline: Dict = None):
@@ -240,27 +221,14 @@ for idx, tab in enumerate(tabs):
             )
         configs.append(cfg)
 
-st.subheader("Environment")
-twa_slider = st.slider(
-    "True wind angle (TWA) range", 35.0, 175.0, (35.0, 175.0), step=2.0, key="cmp_twa"
-)
-twa_range = np.arange(twa_slider[0], twa_slider[1], 2.0).tolist()
-
-tws_slider = st.slider(
-    "True wind speed (TWS) range", 2.0, 25.0, (8.0, 12.0), step=2.0, key="cmp_tws"
-)
-tws_range = np.arange(tws_slider[0], tws_slider[1], 2.0).tolist()
+tws_range, twa_range = render_environment_inputs(key_prefix="cmp")
 
 if st.button("Compare"):
-    if not tws_range:
-        st.error("TWS range is empty. Make sure the min and max wind speeds are not equal.")
-    elif not twa_range:
-        st.error("TWA range is empty. Make sure the min and max wind angles are not equal.")
-    else:
+    if validate_ranges(tws_range, twa_range):
         responses = []
         with st.spinner(f"Running {num} VPP simulations..."):
             for cfg in configs:
-                resp = run_vpp(tws_range, twa_range, cfg)
+                resp = run_vpp(cfg, tws_range, twa_range)
                 if resp.status_code != 200:
                     st.error("A simulation failed. Check your inputs.")
                     break

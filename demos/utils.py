@@ -1,6 +1,16 @@
+import json
+import logging
+import os
+import sys
+from typing import Dict, List, Tuple
+
+import numpy as np
 import streamlit as st
 import streamlit.components.v1 as components
 import subprocess
+
+sys.path.append(os.path.realpath("."))
+from src.api import app
 
 def get_git_hash():
     try:
@@ -52,6 +62,62 @@ def render_keel_inputs(keel: dict, key_prefix: str = "") -> dict:
         result[field] = st.text_input(f"{field}:", keel.get(field, default), key=input_key)
     result["type"] = keel_type
     return result
+
+
+def run_vpp(
+    config: Dict,
+    tws_range: List[float],
+    twa_range: List[float],
+):
+    """Post a yacht configuration to the VPP API and return the response."""
+    data = {
+        "name": config["yacht"]["Name"],
+        "yacht": config["yacht"],
+        "keel": config["keel"],
+        "rudder": config["rudder"],
+        "main": config["main"],
+        "jib": config["jib"],
+        "kite": config["kite"],
+        "tws_range": tws_range,
+        "twa_range": twa_range,
+    }
+    logging.info("Starting VPP simulation")
+    json_string = json.dumps(data)
+    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
+    client = app.test_client()
+    response = client.post("/api/vpp/", data=json_string, headers=headers)
+    logging.info("VPP simulation completed")
+    return response
+
+
+def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[float]]:
+    """Render TWA/TWS sliders and return (tws_range, twa_range) as lists."""
+    st.subheader("Environment")
+    twa_slider = st.slider(
+        "True wind angle (TWA) range",
+        35.0, 175.0, (35.0, 175.0), step=2.0,
+        key=f"{key_prefix}_twa",
+    )
+    twa_range = np.arange(twa_slider[0], twa_slider[1], 2.0).tolist()
+
+    tws_slider = st.slider(
+        "True wind speed (TWS) range",
+        2.0, 25.0, (8.0, 12.0), step=2.0,
+        key=f"{key_prefix}_tws",
+    )
+    tws_range = np.arange(tws_slider[0], tws_slider[1], 2.0).tolist()
+    return tws_range, twa_range
+
+
+def validate_ranges(tws_range: List[float], twa_range: List[float]) -> bool:
+    """Show error messages if ranges are empty. Returns True if valid."""
+    if not tws_range:
+        st.error("TWS range is empty. Make sure the min and max wind speeds are not equal.")
+        return False
+    if not twa_range:
+        st.error("TWA range is empty. Make sure the min and max wind angles are not equal.")
+        return False
+    return True
 
 
 def footer():
