@@ -1,16 +1,8 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__author__ = "Marin Lauber"
-__copyright__ = "Copyright 2020, Marin Lauber"
-__license__ = "GPL"
-__version__ = "1.0.1"
-__email__ = "M.Lauber@soton.ac.uk"
-
 import numpy as np
-from scipy.interpolate import interp1d
 from scipy.optimize import fsolve
-from scipy.optimize import root
 import matplotlib.pyplot as plt
 from src.UtilsMod import build_interp_func
 
@@ -112,7 +104,7 @@ class AeroMod(object):
 
         # side-force is horizontal component of Fh
         self.Fy *= np.cos(np.radians(self.phi))
-        
+
         # heeling moment
         self.Mx = self.Fy * self._vce()
 

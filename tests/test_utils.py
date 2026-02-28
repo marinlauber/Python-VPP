@@ -2,7 +2,7 @@ from src.SailMod import Jib, Kite, Main
 from src.YachtMod import Keel, Rudder, Yacht
 
 def return_YD41_particulars():
-    
+
     YD41 = Yacht(
         Name="YD41",
         Lwl=11.90,

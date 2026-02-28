@@ -20,7 +20,7 @@ def test_single_sail_set():
         tws_range=np.arange(4.0, 6.0, 1.0), twa_range=np.linspace(30.0, 180.0, 3)
     )
 
-    vpp.run(verbose=False)
+    vpp.run()
     vpp.write("results")
     vpp.polar(3, False)
     vpp.SailChart(False)

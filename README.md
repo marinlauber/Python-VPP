@@ -6,9 +6,9 @@ Please see the demo hosted at [https://yacht-vpp.streamlit.app/](https://yacht-v
 
 ## Using the code
 
-To use the code, first clone or download this repository then install the required dependencies (see below). 
+To use the code, first clone or download this repository then install the required dependencies (see below).
 
-The main files that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). 
+The main files that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design).
 
 The VPP is run with.
 
@@ -31,8 +31,8 @@ Here is a list of the key variables used in the VPP.
 1. Appendages :
     * Cu : Root Chord / Upper Chord (m)
     * Cl : Tip Chord / Lower Chord (m)
-    * Span : Span (m) 
-1. Yacht : 
+    * Span : Span (m)
+1. Yacht :
     * Lwl : Length waterline (m)
     * Vol : Displ. volume of canoebody (m^3)
     * Bwl : Beam waterline (m)
@@ -66,7 +66,7 @@ Follow the steps below to contribute to this project.
 
 Install the required dependencies from the `requirements.txt` file.
 
-If using `pip` then `pip install requirements.txt`.
+If using `pip` then `pip install -r requirements.txt`.
 
 If using `conda` then follow these steps to create an environment with the right dependencies:
 

@@ -4,13 +4,12 @@
 __author__ = "Marin Lauber"
 __copyright__ = "Copyright 2020, Marin Lauber"
 __license__ = "GPL"
-__version__ = "1.0.1"
-__email__ = "M.Lauber@soton.ac.uk"
+__version__ = "1.0.2"
+__email__ = "marinlauber@gmail.com"
 
 import logging
 import warnings
 
-import nlopt
 import numpy as np
 from scipy.optimize import root
 from tqdm import trange
@@ -22,7 +21,7 @@ from src.YachtMod import Yacht as YachtClass
 
 logger = logging.getLogger(__name__)
 debug_mode = logging.getLogger().getEffectiveLevel() == logging.DEBUG
-
+info_mode = logging.getLogger().getEffectiveLevel() == logging.INFO
 
 class VPP(object):
     """A VPP Class that run an analysis on a given Yacht."""
@@ -43,6 +42,9 @@ class VPP(object):
         # maximum allows heel angle
         self.phi_max = 35.0
 
+        # flag for later
+        self.upToDate = False
+
         # debbuging flag
         self.debbug = False
         if not self.debbug:
@@ -62,16 +64,16 @@ class VPP(object):
         """
 
         if tws_range.max() <= 35.0 and tws_range.min() >= 2.0:
-            logging.debug("Analysis set for TWS: ", tws_range)
+            logging.info("Analysis set for TWS: " + str(tws_range))
             self.tws_range = tws_range * KNOTS_TO_MPS
         else:
-            logging.debug("Analysis only valid for TWS range : 2. < TWS < 35. knots.")
+            logging.info("Analysis only valid for TWS range : 2. < TWS < 35. knots.")
 
         if twa_range.max() <= 180.0 and twa_range.min() >= 0.0:
             self.twa_range = twa_range
-            logging.debug("Analysis set for TWA: ", self.twa_range)
+            logging.info("Analysis set for TWA: " + str(self.twa_range))
         else:
-            logging.debug(
+            logging.info(
                 "Analysis only valid for TWA range : 0. < TWA < 180. degrees."
             )
 
@@ -84,7 +86,7 @@ class VPP(object):
             self.yacht.sails[0].name + " + " + self.yacht.sails[n + 1].name
             for n in range(self.Nsails)
         ]
-        logging.debug("Using sail quiver ", self.sail_name)
+        logging.info("Using sail quiver " + str(self.sail_name))
         # tws bounds for downwind/upwind sails
         self.lim_up = 60.0
         self.lim_dn = 135.0 if (self.Nsails != 1) else 200.0
@@ -121,101 +123,27 @@ class VPP(object):
 
         return None
 
-    def run_NLopt(self, verbose=False):
-        logging.info("Optimisation start")
-
-        if not self.upToDate:
-            raise "VPP run stop: no analysis set!"
-
-        # gradient-free optimization because the gradient of our
-        # objective function cannot be evaluated
-        opt = nlopt.opt(nlopt.LN_COBYLA, 5)
-
-        # out three parameters are x = [v_b, hell, leeway, flat, red]
-        opt.set_lower_bounds([0.0, 0.0, 0.0, 0.0, 0.0])
-        opt.set_upper_bounds([float("inf"), self.phi_max, 6.0, 1.0, 2.0])
-
-        # the function we want to maximise
-        opt.set_max_objective(self.Vb)
-
-        # set solver tolerance
-        opt.set_xtol_rel(1e-6)
-
-        for i, tws in enumerate(self.tws_range):
-            logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
-
-            for n in range(self.Nsails):
-                self.aero.sails[1] = self.yacht.sails[n + 1]
-
-                logging.debug(
-                    "Sail Config : ",
-                    self.aero.sails[0].name + " + " + self.aero.sails[1].name,
-                )
-
-                self.aero.up = self.aero.sails[1].up
-
-                for j in trange(len(self.twa_range), disable=not debug_mode):
-                    twa = self.twa_range[j]
-
-                    self.vb0 = 0.8 * tws
-                    self.phi0 = 0
-                    self.leeway0 = (
-                        100.0 / twa
-                        if (twa > 1.0 and 100.0 / twa < 2 * tws)
-                        else 2 * tws
-                    )
-
-                    # don't do low twa with downwind sails
-                    if (self.aero.up == True) and (twa >= self.lim_dn):
-                        continue
-                    if (self.aero.up == False) and (twa <= self.lim_up):
-                        continue
-
-                    # vector-valued constraint
-                    constrain = lambda res, x, grad: self.SumForce(
-                        res, x, grad, twa_=twa, tws_=tws
-                    )
-                    opt.add_equality_mconstraint(constrain, np.full(5, 1e-8))
-
-                    x0 = np.array([self.vb0, self.phi0, self.leeway0, 1.0, 2.0])
-                    res = opt.optimize(x0)
-
-                    # store data for later
-                    self.store[i, j, n, :] = res[:] * np.array(
-                        [1.0 / KNOTS_TO_MPS, 1, 1, 1, 1]
-                    )
-
-                    # clean up
-                    opt.remove_equality_constraints()
-
-        logging.info("Optimization successful.")
-
-    def run(self, verbose=False):
+    def run(self):
         """
         Run the analysis for the given analysis range.
-        Parameters
-        ----------
-        verbose
-            A logical, if True, prints results of equilibrium at each TWA/TWS.
         """
 
         if not self.upToDate:
-            raise "VPP run stop: no analysis set!"
+            raise AssertionError("VPP run stop: no analysis set!")
 
         for i, tws in enumerate(self.tws_range):
-            logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
+            logging.info("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
 
             for n in range(self.Nsails):
                 self.aero.sails[1] = self.yacht.sails[n + 1]
 
-                logging.debug(
-                    "Sail Config : ",
-                    self.aero.sails[0].name + " + " + self.aero.sails[1].name,
+                logging.info(
+                    "Sail Config : " + self.aero.sails[0].name + " + " + self.aero.sails[1].name
                 )
 
                 self.aero.up = self.aero.sails[1].up
 
-                for j in trange(len(self.twa_range), disable=not debug_mode):
+                for j in trange(len(self.twa_range), disable=not info_mode):
                     twa = self.twa_range[j]
 
                     self.vb0 = 0.8 * tws
@@ -241,8 +169,8 @@ class VPP(object):
                         method="lm",
                     )
                     self.vb0, self.phi0, self.leeway0 = res = sol.x
-                    
-                    if verbose and not sol.success:
+
+                    if not sol.success:
                         logger.debug(sol.message)
 
                     # # contraints
@@ -257,15 +185,14 @@ class VPP(object):
                     # # minimize
                     # sol = minimize(self.objective, args=(twa, tws), x0=x0, method='SLSQP',
                     #                constraints=con, bounds=self.bnds, tol=1e-2,
-                    #                options={"maxiter": 100, "disp": verbose})
+                    #                options={"maxiter": 100, "disp": debug_mode})
 
                     # # get result
                     # self.vb0, self.phi0, self.leeway0, self.flat, self.red = res = sol.x
 
-                    logging.debug(
-                        "Equilibrium residuals (Fx, Fy, Mx): ",
-                        self.resid(sol.x, twa, tws),
-                    )
+                    # logging.info(
+                    #     "Equilibrium residuals (Fx, Fy, Mx): (%.4f, %.4f, %.4f)" % (self.resid(sol.x, twa, tws))
+                    # )
 
                     # store data for later
                     self.store[i, j, n, : len(res)] = (

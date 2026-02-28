@@ -39,7 +39,7 @@ vpp.set_analysis(
     tws_range=np.arange(4.0, 22.0, 2.0), twa_range=np.linspace(30.0, 180.0, 31)
 )
 
-vpp.run(verbose=False)
+vpp.run()
 vpp.write("results")
 vpp.polar(3, True)
 vpp.SailChart(True)
