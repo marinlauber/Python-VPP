@@ -37,6 +37,60 @@ def json_write(data, fname):
         json.dump(data, json_file, ensure_ascii=False, indent=2, sort_keys=False)
 
 
+# def write_csv(VPP, fname):
+def csv_write(tws_range, twa_range, store, fname):
+    import csv
+    
+    # Init a counter for how many values have been used to average the boat speed for a given wind direction and speed:
+    avg_counter = np.zeros((37, 20))
+
+    with open(fname, mode="w", newline="") as file:
+        writer = csv.writer(file, delimiter=";")
+        # Write header with TWS in knots
+        writer.writerow(["TWA\TWS", "2", "4", "6", "8", "10", "12", "14", "16", "18", "20", "22", "24", "26", "28", "30", "32", "34", "36", "38", "40"])
+        # Loop through every degree from 0°to 180° in 5° increments
+        for angle in range(0, 181, 5):
+            # Init row to write
+            row = [None] * 21
+            # Set angle
+            row[0] = angle
+            # Go through each TWS and get the corresponding boat speed for the current angle
+            for i, tws in enumerate(tws_range):
+                # Change tws to knots
+                tws = tws / KNOTS_TO_MPS
+                for j, twa in enumerate(twa_range):
+                    # Get closest wind speed and find column in openCPN. Note we are stuck using these until this issue (https://github.com/rgleason/polar_pi/issues/34) gets dealt with
+                    closest_wind_speed_column = round(tws/2)
+                    # If closest wind speed column is zero, increment by one so we don't overwrite the angle column.
+                    if closest_wind_speed_column == 0:
+                        closest_wind_speed_column += 1
+                    # Get closest angle and find see if it matches the current angle we are looking for
+                    closest_angle = round(twa/5)*5
+                    # If the closest_angle matches the angle we're currently working with then get the speeds, otherwise, skip to next entry
+                    if closest_angle == angle:
+                        # Get boat speed for give wind angle and speed
+                        boat_speed = store[i, j, 0, 0]
+                        # Get row number
+                        row_number = int(angle/5)
+
+                        # Update the row with the boat speed for this angle and wind speed
+                        # If there has not been a value used yet, set the value to the boat speed, otherwise, average the current value with the new boat speed
+                        if row[closest_wind_speed_column] is None:
+                            row[closest_wind_speed_column] = boat_speed
+                        else:
+                            # Find out how many values have been used to make this average
+                            num_values = avg_counter[row_number, closest_wind_speed_column]
+                            # Average the current boat speed with the already logged average boat speed
+                            row[closest_wind_speed_column] = (row[closest_wind_speed_column] * num_values + boat_speed) / (num_values + 1)
+
+                        # Update the average counter for this angle and wind speed
+                        avg_counter[row_number, closest_wind_speed_column] += 1
+                        # Print out the speed of the vessel given the angle and wind speed
+
+            # Write the row to the csv file
+            writer.writerow(row)
+
+
 def build_interp_func(fname, i=1, kind="linear"):
     """
     build interpolatison function and returns it in a list
