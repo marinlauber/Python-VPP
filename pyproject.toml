@@ -22,6 +22,7 @@ dependencies = [
     "nlopt>=2.9.1",
     "tqdm>=4.66",
     "flask",
+    "streamlit>=1.37",
 ]
 
 [project.optional-dependencies]
