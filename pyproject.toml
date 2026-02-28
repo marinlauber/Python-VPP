@@ -21,6 +21,7 @@ dependencies = [
     "scipy>=1.12",
     "nlopt>=2.9.1",
     "tqdm>=4.66",
+    "flask",
 ]
 
 [project.optional-dependencies]
