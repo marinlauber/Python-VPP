@@ -74,3 +74,48 @@ def test_run_without_analysis_raises():
     vpp = VPP(Yacht=yacht)
     with pytest.raises(RuntimeError, match="no analysis set"):
         vpp.run()
+
+
+def test_set_analysis_empty_tws_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="TWS range is empty"):
+        vpp.set_analysis(tws_range=np.array([]), twa_range=np.linspace(30, 180, 5))
+
+
+def test_set_analysis_empty_twa_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="TWA range is empty"):
+        vpp.set_analysis(tws_range=np.array([6.0, 10.0]), twa_range=np.array([]))
+
+
+def test_set_analysis_tws_below_minimum_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="outside valid bounds"):
+        vpp.set_analysis(tws_range=np.array([1.0, 5.0]), twa_range=np.linspace(30, 180, 5))
+
+
+def test_set_analysis_tws_above_maximum_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="outside valid bounds"):
+        vpp.set_analysis(tws_range=np.array([10.0, 40.0]), twa_range=np.linspace(30, 180, 5))
+
+
+def test_set_analysis_twa_out_of_range_raises():
+    import pytest
+
+    yacht = return_YD41_particulars()
+    vpp = VPP(Yacht=yacht)
+    with pytest.raises(ValueError, match="outside valid bounds"):
+        vpp.set_analysis(tws_range=np.array([6.0, 10.0]), twa_range=np.array([-5.0, 90.0]))
