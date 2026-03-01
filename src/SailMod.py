@@ -12,9 +12,21 @@ import numpy as np
 from scipy import interpolate
 
 
+SAIL_TYPES = {
+    "main": "main",
+    "main_low": "main_low",
+    "jib": "jib",
+    "jib_low": "jib_low",
+    "kite": "kite",
+    "sym_kite": "sym_kite",
+    "asym_cl_kite": "asym_cl_kite",
+    "asym_pole_kite": "asym_pole_kite",
+}
+
+
 class Sail(object):
     def __init__(self, name, type, area, vce, up=True, data_source="orc",
-                 cl_data=None, cd_data=None):
+                 cl_data=None, cd_data=None, sail_type=None):
         """
         Base sail class.
 
@@ -37,17 +49,23 @@ class Sail(object):
             User-provided CL data: ``{"awa": [...], "values": [...]}``.
         cd_data : dict, optional
             User-provided CD data: ``{"awa": [...], "values": [...]}``.
+        sail_type : str, optional
+            Override for the coefficient data file name. E.g. ``"main_low"``,
+            ``"sym_kite"``, ``"asym_cl_kite"``, ``"asym_pole_kite"``.
+            If None, uses *type*.
         """
         self.name = name
         self.type = type
         self.area = area
         self.vce = vce
+        # Determine which data file to load
+        coeff_file = sail_type if sail_type is not None else self.type
         # get sails coefficients
         if cl_data is not None and cd_data is not None:
-            self._build_interp_func(self.type, data_source=data_source)
+            self._build_interp_func(coeff_file, data_source=data_source)
             self._build_interp_from_arrays(cl_data, cd_data)
         else:
-            self._build_interp_func(self.type, data_source=data_source)
+            self._build_interp_func(coeff_file, data_source=data_source)
         self.bk = 1.0  # always valid for main, only AWA<135 for jib
         self.up = up  # is that an upwind sail?
 
@@ -121,7 +139,7 @@ class Sail(object):
 
 class Main(Sail):
     def __init__(self, name, P, E, Roach, BAD, data_source="orc",
-                 cl_data=None, cd_data=None):
+                 cl_data=None, cd_data=None, sail_type=None):
         """
         Initialize mainsail.
 
@@ -143,6 +161,8 @@ class Main(Sail):
             User-provided CL data.
         cd_data : dict, optional
             User-provided CD data.
+        sail_type : str, optional
+            Coefficient variant: ``"main"`` (default) or ``"main_low"``.
         """
         self.name = name
         self.type = "main"
@@ -153,7 +173,8 @@ class Main(Sail):
         self.area0 = 0.5 * P * E * (1 + self.roach)
         self.vce = P / 3.0 * (1 + self.roach) + self.BAD
         super().__init__(self.name, self.type, self.area0, self.vce,
-                         data_source=data_source, cl_data=cl_data, cd_data=cd_data)
+                         data_source=data_source, cl_data=cl_data, cd_data=cd_data,
+                         sail_type=sail_type)
         self.measure()
 
     def measure(self, rfm=1, ftj=1):
@@ -176,7 +197,7 @@ class Main(Sail):
 
 class Jib(Sail):
     def __init__(self, name, I, J, LPG, HBI, data_source="orc",
-                 cl_data=None, cd_data=None):
+                 cl_data=None, cd_data=None, sail_type=None):
         """
         Headsail (jib/genoa).
 
@@ -198,6 +219,8 @@ class Jib(Sail):
             User-provided CL data.
         cd_data : dict, optional
             User-provided CD data.
+        sail_type : str, optional
+            Coefficient variant: ``"jib"`` (default) or ``"jib_low"``.
         """
         self.name = name
         self.type = "jib"
@@ -209,7 +232,8 @@ class Jib(Sail):
         self.area = 0.5 * I * max(J, LPG)
         self.vce = I / 3.0 + HBI
         super().__init__(self.name, self.type, self.area, self.vce,
-                         data_source=data_source, cl_data=cl_data, cd_data=cd_data)
+                         data_source=data_source, cl_data=cl_data, cd_data=cd_data,
+                         sail_type=sail_type)
         self.measure()
 
     def measure(self, rfm=1, ftj=1):
@@ -231,7 +255,7 @@ class Jib(Sail):
 
 class Kite(Sail):
     def __init__(self, name, area, vce, data_source="orc",
-                 cl_data=None, cd_data=None):
+                 cl_data=None, cd_data=None, sail_type=None):
         """
         Spinnaker or asymmetric downwind sail.
 
@@ -249,6 +273,9 @@ class Kite(Sail):
             User-provided CL data.
         cd_data : dict, optional
             User-provided CD data.
+        sail_type : str, optional
+            Coefficient variant: ``"kite"`` (default), ``"sym_kite"``,
+            ``"asym_cl_kite"``, or ``"asym_pole_kite"``.
         """
         self.name = name
         self.type = "kite"
@@ -256,7 +283,8 @@ class Kite(Sail):
         self.min_area = self.area
         self.vce = vce
         super().__init__(self.name, self.type, self.area, self.vce, up=False,
-                         data_source=data_source, cl_data=cl_data, cd_data=cd_data)
+                         data_source=data_source, cl_data=cl_data, cd_data=cd_data,
+                         sail_type=sail_type)
         self.measure()
 
     def measure(self, rfm=1, ftj=1):

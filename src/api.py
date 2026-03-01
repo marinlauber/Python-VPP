@@ -73,6 +73,7 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
                 data_source=data.get("data_source", "orc"),
                 cl_data=data["main"].get("cl_data"),
                 cd_data=data["main"].get("cd_data"),
+                sail_type=data["main"].get("sail_type"),
             ),
             Jib(
                 name=data["jib"]["Name"],
@@ -83,6 +84,7 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
                 data_source=data.get("data_source", "orc"),
                 cl_data=data["jib"].get("cl_data"),
                 cd_data=data["jib"].get("cd_data"),
+                sail_type=data["jib"].get("sail_type"),
             ),
             Kite(
                 name=data["kite"]["Name"],
@@ -91,6 +93,7 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
                 data_source=data.get("data_source", "orc"),
                 cl_data=data["kite"].get("cl_data"),
                 cd_data=data["kite"].get("cd_data"),
+                sail_type=data["kite"].get("sail_type"),
             ),
         ],
     )
