@@ -159,6 +159,15 @@ st.markdown(
 """
 )
 
+with st.popover("ℹ️ What is a VPP?"):
+    st.markdown(
+        "A Velocity Prediction Program computes the "
+        "equilibrium speed of a sailing yacht at each combination of true "
+        "wind speed (TWS) and true wind angle (TWA). It balances "
+        "aerodynamic driving force against hydrodynamic resistance, side "
+        "force against keel lift, and heeling moment against righting moment."
+    )
+
 preset_name = st.selectbox("Yacht preset", list(PRESETS.keys()), index=1)
 preset = PRESETS[preset_name]
 yacht = dict(preset["yacht"])
@@ -194,7 +203,7 @@ kite_sail_type = render_sail_type("Kite", KITE_SAIL_TYPES, key_prefix="vpp_kite"
 for key, value in kite.items():
     kite[key] = st.text_input(f"{key}:", value)
 
-tws_range, twa_range = render_environment_inputs(key_prefix="vpp")
+tws_range, twa_range, env_params = render_environment_inputs(key_prefix="vpp")
 
 st.subheader("Solver Settings")
 solver_method = render_solver_method(key_prefix="vpp")
@@ -205,16 +214,31 @@ if st.button("Process Specifications"):
         config = {"yacht": yacht, "keel": keel, "rudder": rudder, "main": main, "jib": jib, "kite": kite}
         with st.spinner("Running optimisation, this can take a minute or two."):
             sail_types = {"main": main_sail_type, "jib": jib_sail_type, "kite": kite_sail_type}
-            response = run_vpp(config, tws_range, twa_range, method=solver_method, data_source=data_source, sail_types=sail_types)
+            response = run_vpp(config, tws_range, twa_range, method=solver_method, data_source=data_source, sail_types=sail_types, env_params=env_params)
             if response.status_code != 200:
                 error_msg = response.json.get("error", "Unknown error") if response.json else "Unknown error"
                 st.error(f"Simulation failed: {error_msg}")
                 logging.error("VPP API returned %d: %s", response.status_code, error_msg)
             else:
+                with st.popover("ℹ️ What is a polar plot?"):
+                    st.markdown(
+                        "The polar plot shows boat speed (radial "
+                        "axis) vs true wind angle. Each curve is a different wind "
+                        "speed. Dots mark the best VMG (velocity made good) angles "
+                        "upwind and downwind."
+                    )
                 fig = plot_single_polar(response)
                 st.pyplot(fig)
 
                 st.subheader("Depowering (Flat & RED)")
+                with st.popover("ℹ️ What is depowering?"):
+                    st.markdown(
+                        "*Flat* controls how much the sails are "
+                        "flattened (1.0 = full power, 0.62 = maximum depower). "
+                        "*RED* is the reef/reduction factor (2.0 = full sail, "
+                        "lower = reefed). The VPP depowers automatically when "
+                        "heel exceeds the limit."
+                    )
                 dep_fig = plot_depowering_polar(response)
                 st.pyplot(dep_fig)
 

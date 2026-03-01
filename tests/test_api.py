@@ -175,3 +175,30 @@ def test_api_sail_type_low_performance():
     results = np.array(response.json["results"])
     assert np.any(results[:, :, :, 0] > 0)
 
+
+def test_api_roughness():
+    """API accepts roughness parameter and rough hull is slower."""
+    d_smooth = make_yd41(roughness=0.0)
+    d_rough = make_yd41(roughness=500e-6)
+    r_smooth = post_vpp(d_smooth)
+    r_rough = post_vpp(d_rough)
+    assert r_smooth.status_code == 200
+    assert r_rough.status_code == 200
+    speeds_smooth = np.array(r_smooth.json["results"])[:, :, :, 0].max()
+    speeds_rough = np.array(r_rough.json["results"])[:, :, :, 0].max()
+    assert speeds_smooth > speeds_rough, "Rough hull should be slower"
+
+
+def test_api_wave_params():
+    """API accepts Hs and Ts parameters."""
+    d = make_yd41(Hs=1.0, Ts=6.0)
+    response = post_vpp(d)
+    assert response.status_code == 200
+
+
+def test_api_wave_direction():
+    """API accepts wave_direction parameter."""
+    d = make_yd41(Hs=1.0, Ts=6.0, wave_direction=45.0)
+    response = post_vpp(d)
+    assert response.status_code == 200
+

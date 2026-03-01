@@ -141,14 +141,69 @@ class HydroMod(object):
 
     def _cf(self, L):
         """
-        Flat plate turbulent boundary layer friction coefficient (ITTC 1957). Takes a length scale so it can be used for hull and appendages.
+        Flat plate turbulent boundary layer friction coefficient (ITTC 1957)
+        with ITTC 1978 roughness allowance. Takes a length scale so it can
+        be used for hull and appendages.
         """
         Re = max(
             1e4, self.vb * L / self.nu
         )  # prevents dividing by zero, lowest for turbulence on plate
-        return 0.066 * (np.log10(Re) - 2.03) ** (-2)
+        cf = 0.066 * (np.log10(Re) - 2.03) ** (-2)
+        ks = self.yacht.roughness
+        if ks > 0:
+            cf += (105.0 * (ks / self.l) ** (1.0 / 3.0) - 0.64) * 1e-3
+        return cf
 
-    def update(self, vb, phi, leeway):
+    def _added_resistance_waves(self, twa):
+        """Added resistance in waves (simplified Gerritsma scaling).
+
+        Uses a Bretschneider-type spectrum with hull-form scaling to
+        estimate the mean added resistance from ocean waves.
+
+        Parameters
+        ----------
+        twa : float
+            True wind angle (degrees), used as wave encounter angle
+            unless ``yacht.wave_direction`` overrides it.
+
+        Returns
+        -------
+        float
+            Added resistance in Newtons. Returns 0 when Hs = 0.
+        """
+        Hs = self.yacht.Hs
+        Ts = self.yacht.Ts
+        if Hs <= 0 or Ts <= 0:
+            return 0.0
+
+        # wave encounter angle
+        if self.yacht.wave_direction is not None:
+            mu = np.radians(twa - self.yacht.wave_direction)
+        else:
+            mu = np.radians(twa)
+
+        # heading correction — full drag head-on, near-zero following
+        cos2_mu = np.cos(mu) ** 2
+
+        # hull-form coefficient (empirical, typical displacement hull)
+        C_aw = 6.0
+
+        # wave encounter frequency
+        omega_0 = 2.0 * np.pi / Ts
+        omega_e = abs(omega_0 - omega_0 ** 2 * self.vb * np.cos(mu) / self.g)
+
+        # resonance tuning factor (peak when encounter ≈ hull natural freq)
+        omega_n = np.sqrt(self.g / self.l)
+        r = omega_e / omega_n if omega_n > 0 else 0.0
+        f_omega = r ** 2 * np.exp(1.0 - r ** 2) if r > 0 else 0.0
+
+        Raw = C_aw * (Hs ** 2 / self.l) * (self.bwl ** 2 / self.tc) * f_omega * cos2_mu
+        # convert to Newtons (rho * g scaling)
+        Raw *= self.rho * self.g / 1000.0
+
+        return max(0.0, Raw)
+
+    def update(self, vb, phi, leeway, twa=0.0):
         """
         Update hydrodynamic forces for current sailing state.
 
@@ -160,6 +215,8 @@ class HydroMod(object):
             Heel angle (degrees).
         leeway : float
             Leeway angle (degrees).
+        twa : float, optional
+            True wind angle (degrees). Used for wave encounter angle.
 
         Returns
         -------
@@ -176,6 +233,7 @@ class HydroMod(object):
 
         # resistance
         self.Fx = self._get_Rr() + self._get_Rv() + self._get_Ri()
+        self.Fx += self._added_resistance_waves(twa)
 
         # keel side force, calculated when _get_Ri() is called
         self.Fy = self.Ksf * np.cos(self.phi / 180.0 * np.pi)

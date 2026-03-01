@@ -206,6 +206,14 @@ st.markdown(
 """
 )
 
+with st.popover("ℹ️ How to use"):
+    st.markdown(
+        "Set up two or more configurations with different "
+        "parameters (e.g. different keel shapes, sail areas, or hull dimensions). "
+        "The comparison overlay shows all polars on the same plot, and the delta "
+        "table quantifies speed differences at each TWS/TWA point."
+    )
+
 # Add / remove config buttons
 btn_cols = st.columns([1, 1, 6])
 with btn_cols[0]:
@@ -235,7 +243,7 @@ for idx, tab in enumerate(tabs):
             )
         configs.append(cfg)
 
-tws_range, twa_range = render_environment_inputs(key_prefix="cmp")
+tws_range, twa_range, env_params = render_environment_inputs(key_prefix="cmp")
 
 st.subheader("Solver Settings")
 solver_method = render_solver_method(key_prefix="cmp")
@@ -247,7 +255,7 @@ if st.button("Compare"):
         with st.spinner(f"Running {num} VPP simulations..."):
             for cfg in configs:
                 sail_types = cfg.pop("_sail_types", None)
-                resp = run_vpp(cfg, tws_range, twa_range, method=solver_method, data_source=data_source, sail_types=sail_types)
+                resp = run_vpp(cfg, tws_range, twa_range, method=solver_method, data_source=data_source, sail_types=sail_types, env_params=env_params)
                 if resp.status_code != 200:
                     st.error("A simulation failed. Check your inputs.")
                     break

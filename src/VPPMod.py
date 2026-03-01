@@ -259,7 +259,7 @@ class VPP(object):
 
                     def _forces(x):
                         vb, phi, leeway, flat, red = x
-                        Fxh, Fyh, Mxh = self.hydro.update(vb, phi, leeway)
+                        Fxh, Fyh, Mxh = self.hydro.update(vb, phi, leeway, twa)
                         Fxa, Fya, Mxa = self.aero.update(vb, phi, tws, twa, flat, red)
                         return Fxh, Fyh, Mxh, Fxa, Fya, Mxa
 
@@ -327,7 +327,7 @@ class VPP(object):
         phi0 = x0[1]
         leeway = x0[2]
 
-        Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway)
+        Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway, twa)
         Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, flat, red)
 
         return [(Fxh - Fxa) ** 2, (Mxh - Mxa) ** 2, (Fyh - Fya) ** 2]

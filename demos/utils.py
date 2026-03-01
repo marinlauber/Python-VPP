@@ -120,6 +120,7 @@ def run_vpp(
     method: str = "iterative",
     data_source: str = "orc",
     sail_types: Dict[str, str] = None,
+    env_params: Dict = None,
 ):
     """Post a yacht configuration to the VPP API and return the response.
 
@@ -128,6 +129,8 @@ def run_vpp(
     sail_types : dict, optional
         Mapping of sail section to sail_type, e.g.
         ``{"main": "main_low", "jib": "jib", "kite": "sym_kite"}``.
+    env_params : dict, optional
+        Environment parameters (roughness, Hs, Ts).
     """
     main = dict(config["main"])
     jib = dict(config["jib"])
@@ -152,6 +155,8 @@ def run_vpp(
         "method": method,
         "data_source": data_source,
     }
+    if env_params:
+        data.update(env_params)
     logging.info("Starting VPP simulation")
     json_string = json.dumps(data)
     headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
@@ -161,23 +166,54 @@ def run_vpp(
     return response
 
 
-def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[float]]:
-    """Render TWA/TWS sliders and return (tws_range, twa_range) as lists."""
+def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[float], Dict]:
+    """Render TWA/TWS/roughness/wave sliders.
+
+    Returns (tws_range, twa_range, env_params) where env_params is a dict
+    with keys ``roughness``, ``Hs``, ``Ts``.
+    """
     st.subheader("Environment")
     twa_slider = st.slider(
         "True wind angle (TWA) range",
-        35.0, 175.0, (35.0, 175.0), step=2.0,
+        35.0, 175.0, (35.0, 175.0), step=1.0,
         key=f"{key_prefix}_twa",
     )
-    twa_range = np.arange(twa_slider[0], twa_slider[1], 2.0).tolist()
+    twa_range = np.arange(twa_slider[0], twa_slider[1], 1.0).tolist()
 
     tws_slider = st.slider(
         "True wind speed (TWS) range",
-        2.0, 25.0, (8.0, 12.0), step=2.0,
+        2.0, 25.0, (8.0, 12.0), step=1.0,
         key=f"{key_prefix}_tws",
     )
-    tws_range = np.arange(tws_slider[0], tws_slider[1], 2.0).tolist()
-    return tws_range, twa_range
+    tws_range = np.arange(tws_slider[0], tws_slider[1], 1.0).tolist()
+
+    roughness_um = st.slider(
+        "Hull roughness (μm)",
+        0, 500, 150, step=10,
+        key=f"{key_prefix}_roughness",
+        help="Mean hull roughness height. 0 = smooth, 150 = new antifouling, 300+ = fouled hull.",
+    )
+
+    Hs = st.slider(
+        "Significant wave height Hs (m)",
+        0.0, 3.0, 0.0, step=0.1,
+        key=f"{key_prefix}_Hs",
+        help="Wave height. 0 = flat water. Typical coastal: 0.5–1.5 m.",
+    )
+
+    Ts = st.slider(
+        "Modal wave period Ts (s)",
+        0.0, 12.0, 0.0 if Hs == 0 else 5.0, step=0.5,
+        key=f"{key_prefix}_Ts",
+        help="Peak wave period. Typical: 4–8 s for wind waves, 8–12 s for swell.",
+    )
+
+    env_params = {
+        "roughness": roughness_um * 1e-6,
+        "Hs": Hs,
+        "Ts": Ts,
+    }
+    return tws_range, twa_range, env_params
 
 
 def validate_ranges(tws_range: List[float], twa_range: List[float]) -> bool:

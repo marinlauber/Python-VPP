@@ -195,7 +195,8 @@ class ShortKeel(Appendage):
 
 class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
-                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None, crew_weight=None):
+                 Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None, crew_weight=None,
+                 roughness=150e-6, Hs=0.0, Ts=0.0, wave_direction=None):
         """
         Yacht hull and rig definition.
 
@@ -238,6 +239,15 @@ class Yacht(object):
         crew_weight : float, optional
             Total crew weight (kg). If *None*, uses empirical formula
             ``25.8 * Lwl ** 1.4262``.
+        roughness : float, optional
+            Mean hull roughness height (m). Default 150e-6 (150 μm,
+            new antifouling paint). Set to 0 for a smooth hull.
+        Hs : float, optional
+            Significant wave height (m). Default 0.0 (flat water).
+        Ts : float, optional
+            Modal wave period (s). Default 0.0.
+        wave_direction : float or None, optional
+            Wave direction (degrees). If None, waves align with wind.
         """
         self.g = 9.81
         self.Name = Name
@@ -265,6 +275,12 @@ class Yacht(object):
         self.area_proj = self.l * self.tc * 0.666
         self.cla = self.area_proj * 2 * np.pi / (1.0 + 0.5 * self.area_proj / self.tc)
         self.teff = 2.07 * self.tc
+
+        # hull roughness and wave parameters
+        self.roughness = roughness
+        self.Hs = Hs
+        self.Ts = Ts
+        self.wave_direction = wave_direction
 
         # appendages object
         self.appendages = App

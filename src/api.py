@@ -48,6 +48,14 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
         Cl=float(data["rudder"]["Cu"]),
         Span=float(data["rudder"]["Span"])
     )
+    # Environment parameters
+    roughness = float(data.get("roughness", 150e-6))
+    Hs = float(data.get("Hs", 0.0))
+    Ts = float(data.get("Ts", 0.0))
+    wave_direction = data.get("wave_direction")
+    if wave_direction is not None:
+        wave_direction = float(wave_direction)
+
     yacht = Yacht(
         Name=data["yacht"]["Name"],
         Lwl=float(data["yacht"]["Lwl"]),
@@ -62,6 +70,10 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
         Fa=float(data["yacht"]["Fa"]),
         Boa=float(data["yacht"]["Boa"]),
         Loa=float(data["yacht"]["Loa"]),
+        roughness=roughness,
+        Hs=Hs,
+        Ts=Ts,
+        wave_direction=wave_direction,
         App=[keel, rudder],
         Sails=[
             Main(
