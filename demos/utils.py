@@ -86,22 +86,67 @@ def render_data_source(key_prefix: str = "") -> str:
     )
 
 
+MAIN_SAIL_TYPES = ["main", "main_low"]
+JIB_SAIL_TYPES = ["jib", "jib_low"]
+KITE_SAIL_TYPES = ["kite", "sym_kite", "asym_cl_kite", "asym_pole_kite"]
+
+SAIL_TYPE_HELP = {
+    "main": "ORC high-performance mainsail",
+    "main_low": "ORC low-performance mainsail (lower CL)",
+    "jib": "ORC high-performance jib",
+    "jib_low": "ORC low-performance jib (lower CL)",
+    "kite": "Default asymmetric spinnaker",
+    "sym_kite": "ORC symmetric spinnaker (higher CL)",
+    "asym_cl_kite": "ORC asymmetric spinnaker, centerline tack",
+    "asym_pole_kite": "ORC asymmetric spinnaker, pole tack",
+}
+
+
+def render_sail_type(label: str, options: list, key_prefix: str = "") -> str:
+    """Render a sail type selectbox and return the selected type."""
+    return st.selectbox(
+        f"{label} type",
+        options,
+        index=0,
+        key=f"{key_prefix}_sail_type",
+        help=", ".join(f"{o}: {SAIL_TYPE_HELP[o]}" for o in options),
+    )
+
+
 def run_vpp(
     config: Dict,
     tws_range: List[float],
     twa_range: List[float],
     method: str = "iterative",
     data_source: str = "orc",
+    sail_types: Dict[str, str] = None,
 ):
-    """Post a yacht configuration to the VPP API and return the response."""
+    """Post a yacht configuration to the VPP API and return the response.
+
+    Parameters
+    ----------
+    sail_types : dict, optional
+        Mapping of sail section to sail_type, e.g.
+        ``{"main": "main_low", "jib": "jib", "kite": "sym_kite"}``.
+    """
+    main = dict(config["main"])
+    jib = dict(config["jib"])
+    kite = dict(config["kite"])
+    if sail_types:
+        if "main" in sail_types:
+            main["sail_type"] = sail_types["main"]
+        if "jib" in sail_types:
+            jib["sail_type"] = sail_types["jib"]
+        if "kite" in sail_types:
+            kite["sail_type"] = sail_types["kite"]
     data = {
         "name": config["yacht"]["Name"],
         "yacht": config["yacht"],
         "keel": config["keel"],
         "rudder": config["rudder"],
-        "main": config["main"],
-        "jib": config["jib"],
-        "kite": config["kite"],
+        "main": main,
+        "jib": jib,
+        "kite": kite,
         "tws_range": tws_range,
         "twa_range": twa_range,
         "method": method,

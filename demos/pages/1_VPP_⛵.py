@@ -9,11 +9,15 @@ import pandas as pd
 import streamlit as st
 from presets import PRESETS
 from utils import (
+    KITE_SAIL_TYPES,
+    JIB_SAIL_TYPES,
+    MAIN_SAIL_TYPES,
     footer,
     header,
     render_data_source,
     render_environment_inputs,
     render_keel_inputs,
+    render_sail_type,
     render_solver_method,
     run_vpp,
     validate_ranges,
@@ -176,14 +180,17 @@ for key, value in rudder.items():
     rudder[key] = st.text_input(f"{key}:", value)
 
 st.subheader("Main Sail")
+main_sail_type = render_sail_type("Main sail", MAIN_SAIL_TYPES, key_prefix="vpp_main")
 for key, value in main.items():
     main[key] = st.text_input(f"{key}:", value)
 
 st.subheader("Jib")
+jib_sail_type = render_sail_type("Jib", JIB_SAIL_TYPES, key_prefix="vpp_jib")
 for key, value in jib.items():
     jib[key] = st.text_input(f"{key}:", value)
 
 st.subheader("Kite (Spinnaker)")
+kite_sail_type = render_sail_type("Kite", KITE_SAIL_TYPES, key_prefix="vpp_kite")
 for key, value in kite.items():
     kite[key] = st.text_input(f"{key}:", value)
 
@@ -197,7 +204,8 @@ if st.button("Process Specifications"):
     if validate_ranges(tws_range, twa_range):
         config = {"yacht": yacht, "keel": keel, "rudder": rudder, "main": main, "jib": jib, "kite": kite}
         with st.spinner("Running optimisation, this can take a minute or two."):
-            response = run_vpp(config, tws_range, twa_range, method=solver_method, data_source=data_source)
+            sail_types = {"main": main_sail_type, "jib": jib_sail_type, "kite": kite_sail_type}
+            response = run_vpp(config, tws_range, twa_range, method=solver_method, data_source=data_source, sail_types=sail_types)
             if response.status_code != 200:
                 error_msg = response.json.get("error", "Unknown error") if response.json else "Unknown error"
                 st.error(f"Simulation failed: {error_msg}")

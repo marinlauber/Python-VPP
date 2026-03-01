@@ -154,3 +154,24 @@ def test_api_data_source():
     response = post_vpp(d)
     assert response.status_code == 200
 
+
+def test_api_sail_type_sym_kite():
+    """API accepts sail_type in kite section and produces results."""
+    d = make_yd41()
+    d["kite"]["sail_type"] = "sym_kite"
+    response = post_vpp(d)
+    assert response.status_code == 200
+    results = np.array(response.json["results"])
+    assert np.any(results[:, :, :, 0] > 0)
+
+
+def test_api_sail_type_low_performance():
+    """API accepts low-performance sail_type for main and jib."""
+    d = make_yd41()
+    d["main"]["sail_type"] = "main_low"
+    d["jib"]["sail_type"] = "jib_low"
+    response = post_vpp(d)
+    assert response.status_code == 200
+    results = np.array(response.json["results"])
+    assert np.any(results[:, :, :, 0] > 0)
+

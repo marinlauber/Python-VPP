@@ -9,11 +9,15 @@ import pandas as pd
 import streamlit as st
 from presets import PRESETS
 from utils import (
+    KITE_SAIL_TYPES,
+    JIB_SAIL_TYPES,
+    MAIN_SAIL_TYPES,
     footer,
     header,
     render_data_source,
     render_environment_inputs,
     render_keel_inputs,
+    render_sail_type,
     render_solver_method,
     run_vpp,
     validate_ranges,
@@ -51,12 +55,19 @@ def render_config_tab(key_prefix: str, default_index: int = 1, baseline: Dict = 
     config = {}
     changed_fields = []
 
+    sail_type_options = {"main": MAIN_SAIL_TYPES, "jib": JIB_SAIL_TYPES, "kite": KITE_SAIL_TYPES}
+    sail_types = {}
     for title, section_key in SECTIONS:
         section = copy.deepcopy(preset[section_key])
         with st.expander(title, expanded=False):
             if section_key == "keel":
                 section = render_keel_inputs(section, key_prefix=key_prefix)
             else:
+                if section_key in sail_type_options:
+                    sail_types[section_key] = render_sail_type(
+                        title, sail_type_options[section_key],
+                        key_prefix=f"{key_prefix}_{section_key}",
+                    )
                 for field, value in section.items():
                     input_key = f"{key_prefix}_{section_key}_{field}"
                     section[field] = st.text_input(f"{field}:", value, key=input_key)
@@ -69,6 +80,7 @@ def render_config_tab(key_prefix: str, default_index: int = 1, baseline: Dict = 
                         changed_fields.append((section_key, field, value, base_val))
 
         config[section_key] = section
+    config["_sail_types"] = sail_types
 
     if baseline is not None and changed_fields:
         st.caption("Changes vs Config 1:")
@@ -234,7 +246,8 @@ if st.button("Compare"):
         responses = []
         with st.spinner(f"Running {num} VPP simulations..."):
             for cfg in configs:
-                resp = run_vpp(cfg, tws_range, twa_range, method=solver_method, data_source=data_source)
+                sail_types = cfg.pop("_sail_types", None)
+                resp = run_vpp(cfg, tws_range, twa_range, method=solver_method, data_source=data_source, sail_types=sail_types)
                 if resp.status_code != 200:
                     st.error("A simulation failed. Check your inputs.")
                     break
