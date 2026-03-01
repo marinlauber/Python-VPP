@@ -96,55 +96,89 @@ def get_or_compute_polar(config: Dict, tws_range: List[float], twa_range: List[f
     return Race.build_polar_interp(tws, twa, results), data["name"]
 
 
+BOAT_A_COLOR = "#1b6ec2"
+BOAT_B_COLOR = "#d9480f"
+
+
 def plot_win_probability(mc: Dict, name_A: str, name_B: str) -> plt.Figure:
     """Horizontal stacked bar showing win probability."""
     total = mc["wins_A"] + mc["wins_B"]
     ties = len(mc["deltas"]) - total
-    fig, ax = plt.subplots(figsize=(8, 1.2))
+    fig, ax = plt.subplots(figsize=(10, 1.4), dpi=120)
     n = len(mc["deltas"])
     pct_A = mc["wins_A"] / n * 100
     pct_B = mc["wins_B"] / n * 100
     pct_tie = ties / n * 100
 
-    ax.barh(0, pct_A, color="C0", label=f"{name_A}: {pct_A:.0f}%")
-    ax.barh(0, pct_tie, left=pct_A, color="lightgray", label=f"Tie: {pct_tie:.0f}%")
-    ax.barh(0, pct_B, left=pct_A + pct_tie, color="C1", label=f"{name_B}: {pct_B:.0f}%")
+    ax.barh(0, pct_A, color=BOAT_A_COLOR, label=f"{name_A}: {pct_A:.0f}%",
+            edgecolor="white", linewidth=0.5)
+    ax.barh(0, pct_tie, left=pct_A, color="#dee2e6",
+            label=f"Tie: {pct_tie:.0f}%", edgecolor="white", linewidth=0.5)
+    ax.barh(0, pct_B, left=pct_A + pct_tie, color=BOAT_B_COLOR,
+            label=f"{name_B}: {pct_B:.0f}%", edgecolor="white", linewidth=0.5)
     ax.set_xlim(0, 100)
     ax.set_yticks([])
     ax.set_xlabel("Win probability (%)")
-    ax.legend(loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.6))
+    ax.legend(loc="upper center", ncol=3, bbox_to_anchor=(0.5, 1.6),
+              frameon=False, fontsize=10)
+    ax.spines[["top", "right", "left"]].set_visible(False)
     plt.tight_layout()
     return fig
 
 
 def plot_delta_histogram(mc: Dict, name_A: str, name_B: str) -> plt.Figure:
     """Histogram of time deltas across Monte Carlo runs."""
-    fig, ax = plt.subplots(figsize=(8, 4))
+    fig, ax = plt.subplots(figsize=(8, 4), dpi=120)
     deltas = np.array(mc["deltas"])
-    ax.hist(deltas, bins=30, color="C2", edgecolor="white", alpha=0.8)
-    ax.axvline(0, color="black", linestyle="--", lw=1)
-    ax.axvline(mc["mean_delta"], color="C3", linestyle="-", lw=2, label=f"Mean: {mc['mean_delta']:.1f}s")
-    ax.set_xlabel(f"Time delta (s)  ← {name_A} faster | {name_B} faster →")
+    ax.hist(deltas, bins=30, color="#868e96", edgecolor="white", alpha=0.85)
+    ax.axvline(0, color="black", linestyle="--", lw=1, alpha=0.5)
+    ax.axvline(mc["mean_delta"], color="#e03131", linestyle="-", lw=2,
+               label=f"Mean: {mc['mean_delta']:.1f}s")
+    ax.set_xlabel(f"Time delta (s)  \u2190 {name_A} faster | {name_B} faster \u2192")
     ax.set_ylabel("Count")
-    ax.legend()
+    ax.legend(frameon=False)
+    ax.grid(axis="y", alpha=0.3)
+    ax.spines[["top", "right"]].set_visible(False)
     plt.tight_layout()
     return fig
 
 
-def plot_course_trace(mc: Dict, name_A: str, name_B: str) -> plt.Figure:
+def plot_course_trace(mc: Dict, name_A: str, name_B: str,
+                      leg_distance_nm: float = 1.0, n_legs: int = 1) -> plt.Figure:
     """Bird's eye view of both boats' tracks from the first race."""
-    fig, ax = plt.subplots(figsize=(8, 10))
+    fig, ax = plt.subplots(figsize=(8, 10), dpi=120)
     trace_A, trace_B = mc["traces"]
+
+    # Draw mark positions
+    leg_m = leg_distance_nm * 1852.0
+    mark_positions = [0.0, leg_m]
+    for m_y in mark_positions:
+        ax.plot(0, m_y, "D", color="black", markersize=10, zorder=5)
+    ax.axhline(0, color="black", lw=0.5, alpha=0.3)
+    ax.axhline(leg_m, color="black", lw=0.5, alpha=0.3)
+
+    # Course corridor
+    corridor = 200.0
+    ax.axvline(-corridor / 2, color="gray", lw=0.5, ls=":", alpha=0.4)
+    ax.axvline(corridor / 2, color="gray", lw=0.5, ls=":", alpha=0.4)
+
     if trace_A:
         xA, yA = zip(*trace_A)
-        ax.plot(xA, yA, "C0-", lw=1, alpha=0.7, label=name_A)
+        ax.plot(xA, yA, color=BOAT_A_COLOR, ls="-", lw=1.5, alpha=0.8,
+                marker="o", markevery=20, markersize=4, label=name_A)
+        ax.plot(xA[0], yA[0], "o", color=BOAT_A_COLOR, markersize=7, zorder=5)
     if trace_B:
         xB, yB = zip(*trace_B)
-        ax.plot(xB, yB, "C1-", lw=1, alpha=0.7, label=name_B)
+        ax.plot(xB, yB, color=BOAT_B_COLOR, ls="--", lw=1.5, alpha=0.8,
+                marker="^", markevery=20, markersize=4, label=name_B)
+        ax.plot(xB[0], yB[0], "^", color=BOAT_B_COLOR, markersize=7, zorder=5)
+
     ax.set_xlabel("Cross-course (m)")
     ax.set_ylabel("Upwind distance (m)")
-    ax.legend()
+    ax.legend(frameon=False, loc="upper left")
+    ax.grid(alpha=0.2)
     ax.set_aspect("equal")
+    ax.spines[["top", "right"]].set_visible(False)
     plt.tight_layout()
     return fig
 
@@ -360,7 +394,8 @@ if st.button("Race!", type="primary"):
         st.pyplot(fig_hist)
     with res_col2:
         st.markdown("#### Example race trace")
-        fig_trace = plot_course_trace(mc, name_A, name_B)
+        fig_trace = plot_course_trace(mc, name_A, name_B,
+                                      leg_distance_nm=leg_distance, n_legs=n_legs)
         st.pyplot(fig_trace)
 
     # Stats table
