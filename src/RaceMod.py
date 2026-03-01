@@ -297,10 +297,21 @@ class Race:
 
                 dx = bs * np.sin(heading_rad) * dt + cur_x * dt
                 dy = bs * np.cos(heading_rad) * dt + cur_y * dt
+
+                # Interpolate exact crossing time when boat reaches mark
+                prev_y = boat.y
                 boat.x += dx
                 boat.y += dy
                 boat.speed = bs
-                boat.elapsed += dt
+
+                crossed = (upwind and boat.y >= self.leg_distance_m and prev_y < self.leg_distance_m) or \
+                          (not upwind and boat.y <= 0 and prev_y > 0)
+                if crossed and abs(dy) > 1e-9:
+                    target = self.leg_distance_m if upwind else 0.0
+                    frac = (target - prev_y) / dy
+                    boat.elapsed += frac * dt
+                else:
+                    boat.elapsed += dt
 
             if step % 5 == 0:
                 trace_A.append((boat_A.x, boat_A.y))
@@ -319,6 +330,21 @@ class Race:
         rng = np.random.default_rng(seed)
         boat_A = Boat(self.polar_A, "A", self.boat_length)
         boat_B = Boat(self.polar_B, "B", self.boat_length)
+
+        # Random start-line offset — one boat wins the pin (0.5–2 boat
+        # lengths of lateral separation, slight y jitter).  This breaks
+        # perfect symmetry just as a real start does.
+        pin_offset = (0.5 + 1.5 * rng.random()) * self.boat_length
+        if rng.random() < 0.5:
+            boat_A.x = pin_offset / 2
+            boat_B.x = -pin_offset / 2
+        else:
+            boat_A.x = -pin_offset / 2
+            boat_B.x = pin_offset / 2
+        # Small along-course jitter (0–0.5 boat lengths) models timing
+        # differences at the start gun.
+        boat_A.y = rng.random() * 0.5 * self.boat_length
+        boat_B.y = rng.random() * 0.5 * self.boat_length
 
         self.wind_model.reset(tws=self.tws, twd=0.0)
 
