@@ -13,6 +13,7 @@ from utils import (
     KITE_SAIL_TYPES,
     JIB_SAIL_TYPES,
     MAIN_SAIL_TYPES,
+    field_label,
     footer,
     header,
     render_data_source,
@@ -71,7 +72,7 @@ def render_config_tab(key_prefix: str, default_index: int = 1, baseline: Dict = 
                     )
                 for field, value in section.items():
                     input_key = f"{key_prefix}_{section_key}_{field}"
-                    section[field] = st.text_input(f"{field}:", value, key=input_key, help=FIELD_HELP.get(field, ""))
+                    section[field] = st.text_input(field_label(field), value, key=input_key, help=FIELD_HELP.get(field, ""))
 
             # Track which fields differ from baseline
             if baseline is not None:

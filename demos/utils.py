@@ -59,7 +59,7 @@ def render_keel_inputs(keel: dict, key_prefix: str = "") -> dict:
     result = {}
     for field, default in defaults.items():
         input_key = f"{key_prefix}_keel_{field}"
-        result[field] = st.text_input(f"{field}:", keel.get(field, default), key=input_key, help=FIELD_HELP.get(field, ""))
+        result[field] = st.text_input(field_label(field), keel.get(field, default), key=input_key, help=FIELD_HELP.get(field, ""))
     result["type"] = keel_type
     return result
 
@@ -123,6 +123,49 @@ FIELD_HELP = {
     "area": "Spinnaker sail area (m²).",
     "vce": "Vertical centre of effort above deck (m).",
 }
+
+FIELD_LABELS = {
+    # Yacht hull
+    "Name": "Name",
+    "Lwl": r"$L_{wl}$ (m)",
+    "Vol": r"$\nabla$ (m³)",
+    "Bwl": r"$B_{wl}$ (m)",
+    "Tc": r"$T_c$ (m)",
+    "WSA": r"$S_{wet}$ (m²)",
+    "Tmax": r"$T_{max}$ (m)",
+    "Amax": r"$A_{max}$ (m²)",
+    "Mass": r"$\Delta m$ (kg)",
+    "Ff": r"$F_f$ (m)",
+    "Fa": r"$F_a$ (m)",
+    "Boa": r"$B_{oa}$ (m)",
+    "Loa": r"$L_{oa}$ (m)",
+    # Fin keel
+    "Cu": r"$C_u$ (m)",
+    "Cl": r"$C_l$ (m)",
+    "Span": r"$b$ (m)",
+    # Short keel
+    "Length": r"$L_{keel}$ (m)",
+    "Depth": r"$D_{keel}$ (m)",
+    "Tc_ratio": r"$t/c$",
+    # Main sail
+    "P": r"$P$ (m)",
+    "E": r"$E$ (m)",
+    "Roach": "Roach",
+    "BAD": r"$BAD$ (m)",
+    # Jib
+    "I": r"$I$ (m)",
+    "J": r"$J$ (m)",
+    "LPG": r"$LPG$ (m)",
+    "HBI": r"$HBI$ (m)",
+    # Kite
+    "area": r"$A_{kite}$ (m²)",
+    "vce": r"$VCE$ (m)",
+}
+
+
+def field_label(key: str) -> str:
+    """Return the mathematical display label for a field, falling back to the key."""
+    return FIELD_LABELS.get(key, key)
 
 
 MAIN_SAIL_TYPES = ["main", "main_low"]
@@ -213,35 +256,35 @@ def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[f
     """
     st.subheader("Environment")
     twa_slider = st.slider(
-        "True wind angle (TWA) range",
+        r"True wind angle $\theta_{tw}$ (TWA) range",
         35.0, 175.0, (35.0, 175.0), step=1.0,
         key=f"{key_prefix}_twa",
     )
     twa_range = np.arange(twa_slider[0], twa_slider[1], 1.0).tolist()
 
     tws_slider = st.slider(
-        "True wind speed (TWS) range",
+        r"True wind speed $V_{tw}$ (TWS) range",
         2.0, 25.0, (8.0, 12.0), step=1.0,
         key=f"{key_prefix}_tws",
     )
     tws_range = np.arange(tws_slider[0], tws_slider[1], 1.0).tolist()
 
     roughness_um = st.slider(
-        "Hull roughness (μm)",
+        r"Hull roughness $k_s$ ($\mu m$)",
         0, 500, 150, step=10,
         key=f"{key_prefix}_roughness",
         help="Mean hull roughness height. 0 = smooth, 150 = new antifouling, 300+ = fouled hull.",
     )
 
     Hs = st.slider(
-        "Significant wave height Hs (m)",
+        r"Significant wave height $H_s$ (m)",
         0.0, 3.0, 0.0, step=0.1,
         key=f"{key_prefix}_Hs",
         help="Wave height. 0 = flat water. Typical coastal: 0.5–1.5 m.",
     )
 
     Ts = st.slider(
-        "Modal wave period Ts (s)",
+        r"Modal wave period $T_s$ (s)",
         0.0, 12.0, 0.0 if Hs == 0 else 5.0, step=0.5,
         key=f"{key_prefix}_Ts",
         help="Peak wave period. Typical: 4–8 s for wind waves, 8–12 s for swell.",

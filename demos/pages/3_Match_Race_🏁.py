@@ -13,6 +13,7 @@ from utils import (
     KITE_SAIL_TYPES,
     JIB_SAIL_TYPES,
     MAIN_SAIL_TYPES,
+    field_label,
     footer,
     header,
     render_data_source,
@@ -60,7 +61,7 @@ def render_boat_config(key_prefix: str, default_index: int = 1) -> Dict:
                     )
                 for field, value in section.items():
                     input_key = f"{key_prefix}_{section_key}_{field}"
-                    section[field] = st.text_input(f"{field}:", value, key=input_key, help=FIELD_HELP.get(field, ""))
+                    section[field] = st.text_input(field_label(field), value, key=input_key, help=FIELD_HELP.get(field, ""))
         config[section_key] = section
     config["_sail_types"] = sail_types
     config["_preset_name"] = preset_name
@@ -251,34 +252,34 @@ with col_B:
 st.subheader("Environment")
 env_col1, env_col2 = st.columns(2)
 with env_col1:
-    race_tws = st.slider("True wind speed (knots)", 4.0, 25.0, 10.0, step=1.0,
+    race_tws = st.slider(r"True wind speed $V_{tw}$ (knots)", 4.0, 25.0, 10.0, step=1.0,
                           key="race_tws")
-    current_speed = st.slider("Current speed (knots)", 0.0, 3.0, 0.0, step=0.1,
+    current_speed = st.slider(r"Current speed $V_c$ (knots)", 0.0, 3.0, 0.0, step=0.1,
                               key="race_current_speed",
                               help="Constant current applied to both boats.")
 with env_col2:
-    current_dir = st.slider("Current direction (degrees, 0 = upwind)", 0.0, 360.0, 0.0,
+    current_dir = st.slider(r"Current direction $\theta_c$ (degrees, 0 = upwind)", 0.0, 360.0, 0.0,
                             step=5.0, key="race_current_dir")
 
 # --- Race parameters ---
 st.subheader("Race parameters")
 race_col1, race_col2, race_col3 = st.columns(3)
 with race_col1:
-    leg_distance = st.slider("Leg distance (NM)", 0.3, 3.0, 1.0, step=0.1,
+    leg_distance = st.slider(r"Leg distance $d_{leg}$ (NM)", 0.3, 3.0, 1.0, step=0.1,
                              key="race_leg_dist",
                              help="Distance per leg in nautical miles.")
     n_legs = st.selectbox("Up/down leg pairs", [1, 2, 3], index=0,
                           key="race_n_legs",
                           help="Number of upwind/downwind leg pairs.")
 with race_col2:
-    tack_penalty = st.slider("Tack penalty (s)", 3.0, 20.0, 10.0, step=1.0,
+    tack_penalty = st.slider(r"Tack penalty $\tau_{tack}$ (s)", 3.0, 20.0, 10.0, step=1.0,
                              key="race_tack_penalty",
                              help="Time the boat is stationary during a tack.")
-    gybe_penalty = st.slider("Gybe penalty (s)", 2.0, 15.0, 6.0, step=1.0,
+    gybe_penalty = st.slider(r"Gybe penalty $\tau_{gybe}$ (s)", 2.0, 15.0, 6.0, step=1.0,
                              key="race_gybe_penalty",
                              help="Time the boat is stationary during a gybe.")
 with race_col3:
-    n_runs = st.selectbox("Monte Carlo runs", [50, 100, 200, 500], index=1,
+    n_runs = st.selectbox(r"Monte Carlo runs $N$", [50, 100, 200, 500], index=1,
                           key="race_n_runs",
                           help="Number of races to simulate. More = better statistics.")
 
@@ -293,16 +294,16 @@ with st.popover("ℹ️ Wind model parameters"):
     )
 wind_col1, wind_col2 = st.columns(2)
 with wind_col1:
-    wind_sigma = st.slider("Wind shift sigma (deg/sqrt(min))", 0.0, 8.0, 2.0,
+    wind_sigma = st.slider(r"Wind shift $\sigma_\theta$ (deg/$\sqrt{min}$)", 0.0, 8.0, 2.0,
                            step=0.5, key="race_wind_sigma")
-    tws_sigma = st.slider("TWS sigma (kts/sqrt(min))", 0.0, 3.0, 0.0,
+    tws_sigma = st.slider(r"TWS $\sigma_{V}$ (kts/$\sqrt{min}$)", 0.0, 3.0, 0.0,
                           step=0.1, key="race_tws_sigma",
                           help="0 = constant wind speed. >0 adds speed variation.")
 with wind_col2:
-    dir_reversion = st.slider("Direction mean-reversion (1/min)", 0.0, 1.0, 0.05,
+    dir_reversion = st.slider(r"Direction mean-reversion $\kappa_\theta$ (1/min)", 0.0, 1.0, 0.05,
                               step=0.01, key="race_dir_reversion",
                               help="How quickly wind direction returns to mean. 0 = pure random walk.")
-    tws_reversion = st.slider("TWS mean-reversion (1/min)", 0.0, 1.0, 0.1,
+    tws_reversion = st.slider(r"TWS mean-reversion $\kappa_V$ (1/min)", 0.0, 1.0, 0.1,
                               step=0.01, key="race_tws_reversion",
                               help="How quickly wind speed returns to mean. 0 = pure random walk.")
 
@@ -316,14 +317,14 @@ with st.popover("ℹ️ Stochastic effects"):
     )
 stoch_col1, stoch_col2 = st.columns(2)
 with stoch_col1:
-    trim_sigma = st.slider("Trim noise (fractional std)", 0.00, 0.10, 0.00,
+    trim_sigma = st.slider(r"Trim noise $\sigma_{trim}$", 0.00, 0.10, 0.00,
                            step=0.01, key="race_trim_sigma",
                            help="0 = perfect trim. 0.03 = 3% speed noise.")
 with stoch_col2:
-    tack_penalty_std = st.slider("Tack penalty std (s)", 0.0, 5.0, 0.0,
+    tack_penalty_std = st.slider(r"Tack penalty $\sigma$ (s)", 0.0, 5.0, 0.0,
                                  step=0.5, key="race_tack_std",
                                  help="Std-dev of tack time. 0 = fixed penalty.")
-    gybe_penalty_std = st.slider("Gybe penalty std (s)", 0.0, 5.0, 0.0,
+    gybe_penalty_std = st.slider(r"Gybe penalty $\sigma$ (s)", 0.0, 5.0, 0.0,
                                  step=0.5, key="race_gybe_std",
                                  help="Std-dev of gybe time. 0 = fixed penalty.")
 

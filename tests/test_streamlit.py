@@ -70,8 +70,8 @@ class TestVPPPage:
         assert any("TWA" in l for l in slider_labels), "Missing TWA slider"
         assert any("TWS" in l for l in slider_labels), "Missing TWS slider"
         assert any("roughness" in l.lower() for l in slider_labels), "Missing roughness slider"
-        assert any("Hs" in l for l in slider_labels), "Missing Hs slider"
-        assert any("Ts" in l for l in slider_labels), "Missing Ts slider"
+        assert any("H_s" in l for l in slider_labels), "Missing Hs slider"
+        assert any("T_s" in l for l in slider_labels), "Missing Ts slider"
 
     def test_vpp_page_has_solver_settings(self):
         at = _load_page("1_VPP_⛵.py")
@@ -187,15 +187,15 @@ class TestMatchRacePage:
     def test_match_race_page_has_wind_model_sliders(self):
         at = _load_page("3_Match_Race_🏁.py")
         slider_labels = [s.label for s in at.slider]
-        assert any("Wind shift sigma" in l for l in slider_labels)
-        assert any("TWS sigma" in l for l in slider_labels)
+        assert any("Wind shift" in l for l in slider_labels)
+        assert any("TWS" in l and "sigma" in l.lower() for l in slider_labels)
         assert any("mean-reversion" in l.lower() for l in slider_labels)
 
     def test_match_race_page_has_stochastic_sliders(self):
         at = _load_page("3_Match_Race_🏁.py")
         slider_labels = [s.label for s in at.slider]
         assert any("Trim noise" in l for l in slider_labels)
-        assert any("Tack penalty std" in l for l in slider_labels)
+        assert any("Tack penalty" in l and "sigma" in l.lower() for l in slider_labels)
 
     def test_match_race_page_has_monte_carlo_selector(self):
         at = _load_page("3_Match_Race_🏁.py")
