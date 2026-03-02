@@ -9,6 +9,7 @@ __email__ = "M.Lauber@soton.ac.uk"
 
 import logging
 import warnings
+from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
 from scipy.optimize import least_squares, minimize, root
@@ -21,6 +22,91 @@ from src.YachtMod import Yacht as YachtClass
 
 logger = logging.getLogger(__name__)
 debug_mode = logging.getLogger().getEffectiveLevel() == logging.DEBUG
+
+
+def _solve_point(yacht, tws, twa, sail_index, phi_max, lim_up, lim_dn):
+    """Solve one (tws, twa, sail) grid point independently.
+
+    Creates its own AeroMod/HydroMod so there is no shared mutable state.
+    This is a module-level function so it can be pickled by ProcessPoolExecutor.
+
+    Returns
+    -------
+    tuple
+        (i, j, n, result_array) where result_array is [vb_kts, phi, leeway, flat, red],
+        or None if the point was skipped.
+    """
+    i, j, n = sail_index
+
+    aero = AeroMod(yacht)
+    hydro = HydroMod(yacht)
+    aero.sails[1] = yacht.sails[n + 1]
+    aero.up = aero.sails[1].up
+
+    # Skip invalid sail/TWA combinations
+    Nsails = len(yacht.sails) - 1
+    dn_limit = 135.0 if Nsails != 1 else 200.0
+    if aero.up and twa >= dn_limit:
+        return None
+    if not aero.up and twa <= lim_up:
+        return None
+
+    # Initial guesses
+    vb0 = 0.8 * tws
+    phi0 = 0.0
+    leeway0 = 100.0 / twa if (twa > 1.0 and 100.0 / twa < 2 * tws) else 2 * tws
+
+    def resid(x0, twa_, tws_, flat=1.0, red=2.0):
+        vb_, phi_, leeway_ = x0
+        Fxh, Fyh, Mxh = hydro.update(vb_, phi_, leeway_, twa_)
+        Fxa, Fya, Mxa = aero.update(vb_, phi_, tws_, twa_, flat, red)
+        return [(Fxh - Fxa) ** 2, (Mxh - Mxa) ** 2, (Fyh - Fya) ** 2]
+
+    flat = 1.0
+    red = 2.0
+
+    sol = root(resid, [vb0, phi0, leeway0],
+               args=(twa, tws, flat, red), method="lm")
+    vb, phi, leeway = sol.x
+
+    if phi <= phi_max:
+        res = np.array([vb, phi, leeway, flat, red])
+        res[0] /= KNOTS_TO_MPS
+        return (i, j, n, res)
+
+    # Depowering: flatten then reef
+    lo = [0, 0, -2]
+    hi = [np.inf, phi_max, 6]
+    margin = phi_max - 1.0
+
+    def _clamp(vb_, phi_, leeway_):
+        return [max(vb_, 0), min(max(phi_, 0), phi_max),
+                min(max(leeway_, -2), 6)]
+
+    for flat in np.arange(0.98, 0.60, -0.02):
+        sol = least_squares(
+            resid, _clamp(vb, phi_max, leeway),
+            args=(twa, tws, flat, red), bounds=(lo, hi),
+        )
+        vb, phi, leeway = sol.x
+        if phi <= margin:
+            res = np.array([vb, phi, leeway, flat, red])
+            res[0] /= KNOTS_TO_MPS
+            return (i, j, n, res)
+
+    flat = 0.62
+    for red in np.arange(1.9, 0.45, -0.1):
+        sol = least_squares(
+            resid, _clamp(vb, phi_max, leeway),
+            args=(twa, tws, flat, red), bounds=(lo, hi),
+        )
+        vb, phi, leeway = sol.x
+        if phi <= margin:
+            break
+
+    res = np.array([vb, phi, leeway, flat, red])
+    res[0] /= KNOTS_TO_MPS
+    return (i, j, n, res)
 
 
 class VPP(object):
@@ -112,14 +198,17 @@ class VPP(object):
         verbose
             A logical, if True, prints results of equilibrium at each TWA/TWS.
         method
-            Solver method: "iterative" (3-DOF with depowering loop) or
+            Solver method: "iterative" (3-DOF sequential with depowering loop),
+            "parallel" (same solver, multiprocessing across grid points), or
             "5dof" (scipy SLSQP 5-DOF constrained optimizer).
         """
 
         if method == "5dof":
             return self._run_5dof(verbose)
+        elif method == "parallel":
+            return self._run_parallel()
         elif method != "iterative":
-            raise ValueError(f"Unknown method '{method}'. Use 'iterative' or '5dof'.")
+            raise ValueError(f"Unknown method '{method}'. Use 'iterative', 'parallel', or '5dof'.")
 
         if not self.upToDate:
             raise RuntimeError("VPP run stop: no analysis set!")
@@ -169,6 +258,31 @@ class VPP(object):
                     self.store[i, j, n, :] = res * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])
 
         logging.info("Optimization successful.")
+
+    def _run_parallel(self):
+        """Run iterative solver in parallel across all grid points."""
+        if not self.upToDate:
+            raise RuntimeError("VPP run stop: no analysis set!")
+
+        # Build work items: (yacht, tws, twa, (i,j,n), phi_max, lim_up, lim_dn)
+        work = []
+        for i, tws in enumerate(self.tws_range):
+            for n in range(self.Nsails):
+                for j, twa in enumerate(self.twa_range):
+                    work.append((
+                        self.yacht, tws, twa, (i, j, n),
+                        self.phi_max, self.lim_up, self.lim_dn
+                    ))
+
+        with ProcessPoolExecutor() as pool:
+            results = pool.map(_solve_point, *zip(*work))
+
+        for result in results:
+            if result is not None:
+                i, j, n, res = result
+                self.store[i, j, n, :] = res
+
+        logging.info("Parallel optimization successful.")
 
     def _depower_solve(self, twa, tws):
         """Solve 3-DOF equilibrium, depowering iteratively if heel exceeds phi_max.

@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 from presets import PRESETS
 from utils import (
+    FIELD_HELP,
     KITE_SAIL_TYPES,
     JIB_SAIL_TYPES,
     MAIN_SAIL_TYPES,
@@ -70,7 +71,7 @@ def render_config_tab(key_prefix: str, default_index: int = 1, baseline: Dict = 
                     )
                 for field, value in section.items():
                     input_key = f"{key_prefix}_{section_key}_{field}"
-                    section[field] = st.text_input(f"{field}:", value, key=input_key)
+                    section[field] = st.text_input(f"{field}:", value, key=input_key, help=FIELD_HELP.get(field, ""))
 
             # Track which fields differ from baseline
             if baseline is not None:

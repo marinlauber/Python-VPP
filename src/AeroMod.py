@@ -7,11 +7,28 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
+import functools
+
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.optimize import fsolve
 
 from src.UtilsMod import build_interp_func
+
+
+@functools.lru_cache(maxsize=512)
+def wind_triangle(tws, twa, vb):
+    """Analytical wind triangle: TWS/TWA/VB → (AWA, AWS) in degrees.
+
+    Uses the law of cosines on the velocity triangle formed by the true
+    wind, boat speed, and apparent wind vectors.
+    """
+    twa_rad = np.radians(twa)
+    aws = np.sqrt(tws**2 + vb**2 + 2 * tws * vb * np.cos(twa_rad))
+    if aws < 1e-12:
+        return twa, 0.0
+    cos_awa = np.clip((tws * np.cos(twa_rad) + vb) / aws, -1.0, 1.0)
+    awa = np.degrees(np.arccos(cos_awa))
+    return awa, aws
 
 
 class AeroMod(object):
@@ -171,12 +188,15 @@ class AeroMod(object):
         self.cl = 0.0
         self.cd = 0.0
         kpp = 0.0
+        sail_cd = {}
 
         for sail in self.sails:
-
-            self.cl += sail.cl(self.awa) * sail.area * sail.bk
-            self.cd += sail.cd(self.awa) * sail.area * sail.bk
-            kpp += sail.cl(self.awa) ** 2 * sail.area * sail.bk * sail.kp
+            cl_i = sail.cl(self.awa)
+            cd_i = sail.cd(self.awa)
+            sail_cd[id(sail)] = cd_i
+            self.cl += cl_i * sail.area * sail.bk
+            self.cd += cd_i * sail.area * sail.bk
+            kpp += cl_i ** 2 * sail.area * sail.bk * sail.kp
 
         self.cl /= self.area
         self.cd /= self.area
@@ -191,7 +211,7 @@ class AeroMod(object):
         for sail in self.sails:
             if sail.type == "jib":
                 self.fcdj = (
-                    sail.bk * sail.cd(self.awa) * sail.area / (self.cd * self.area)
+                    sail.bk * sail_cd[id(sail)] * sail.area / (self.cd * self.area)
                 )
 
         # final lift and drag
@@ -205,17 +225,7 @@ class AeroMod(object):
         """
         find AWS and AWA for a given TWS, TWA and VB
         """
-        _awa_ = lambda awa: self.vb * np.sin(awa / 180.0 * np.pi) - self.tws * np.sin(
-            (self.twa - awa) / 180.0 * np.pi
-        )
-        self.awa = fsolve(_awa_, self.twa)[0]
-        self.aws = np.sqrt(
-            (self.tws * np.sin(self.twa / 180.0 * np.pi)) ** 2
-            + (self.tws * np.cos(self.twa / 180.0 * np.pi) + self.vb) ** 2
-        )
-        # self.awa = np.arccos((self.tws*np.cos(np.radians(self.twa)) + self.vb) / np.sqrt((self.tws**2) + (self.vb**2) +
-        #              2*self.tws*self.vb * np.cos(np.radians(self.twa))))
-        # self.aws = (self.tws * np.sin(np.radians(self.twa))) / np.sin(self.awa)
+        self.awa, self.aws = wind_triangle(self.tws, self.twa, self.vb)
 
 
     def _area(self):

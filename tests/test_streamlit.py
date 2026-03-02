@@ -92,6 +92,21 @@ class TestVPPPage:
         button_labels = [b.label for b in at.button]
         assert any("What is a VPP" in l for l in button_labels) or len(at.button) >= 1
 
+    def test_field_help_covers_all_yacht_fields(self):
+        """FIELD_HELP should have entries for all yacht, keel, rudder, sail fields."""
+        from utils import FIELD_HELP
+        expected = [
+            "Lwl", "Vol", "Bwl", "Tc", "WSA", "Tmax", "Amax", "Mass",
+            "Ff", "Fa", "Boa", "Loa",
+            "Cu", "Cl", "Span", "Length", "Depth", "Tc_ratio",
+            "P", "E", "Roach", "BAD",
+            "I", "J", "LPG", "HBI",
+            "area", "vce",
+        ]
+        for key in expected:
+            assert key in FIELD_HELP, f"Missing help for field '{key}'"
+            assert len(FIELD_HELP[key]) > 5, f"Help for '{key}' too short"
+
 
 # ──────────────────────────────────────────────
 # Compare page

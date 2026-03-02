@@ -13,6 +13,11 @@ from scipy import interpolate
 from src.UtilsMod import build_interp_func, json_read, json_write
 
 
+def _zero_cr(fn):
+    """Zero residuary resistance (for appendages without Cr data)."""
+    return 0.0
+
+
 class Appendage(object):
     def __init__(self, type, chord, area, span, vol, ce):
         """
@@ -48,7 +53,7 @@ class Appendage(object):
         self.cla = self.dclda * self.area
         self.teff = 1.8 * self.span
         # no residuary resistance
-        self._interp_cr = lambda fn: 0.0
+        self._interp_cr = _zero_cr
         if self.type == "keel":
             self._interp_cr = build_interp_func("rrk")
         if self.type == "bulb":

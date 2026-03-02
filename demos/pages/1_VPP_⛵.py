@@ -9,6 +9,7 @@ import pandas as pd
 import streamlit as st
 from presets import PRESETS
 from utils import (
+    FIELD_HELP,
     KITE_SAIL_TYPES,
     JIB_SAIL_TYPES,
     MAIN_SAIL_TYPES,
@@ -179,29 +180,29 @@ kite = dict(preset["kite"])
 
 st.subheader("Yacht particulars")
 for key, value in yacht.items():
-    yacht[key] = st.text_input(f"{key}:", value)
+    yacht[key] = st.text_input(f"{key}:", value, help=FIELD_HELP.get(key, ""))
 
 st.subheader("Keel")
 keel = render_keel_inputs(keel, key_prefix="vpp")
 
 st.subheader("Rudder")
 for key, value in rudder.items():
-    rudder[key] = st.text_input(f"{key}:", value)
+    rudder[key] = st.text_input(f"{key}:", value, help=FIELD_HELP.get(key, ""))
 
 st.subheader("Main Sail")
 main_sail_type = render_sail_type("Main sail", MAIN_SAIL_TYPES, key_prefix="vpp_main")
 for key, value in main.items():
-    main[key] = st.text_input(f"{key}:", value)
+    main[key] = st.text_input(f"{key}:", value, help=FIELD_HELP.get(key, ""))
 
 st.subheader("Jib")
 jib_sail_type = render_sail_type("Jib", JIB_SAIL_TYPES, key_prefix="vpp_jib")
 for key, value in jib.items():
-    jib[key] = st.text_input(f"{key}:", value)
+    jib[key] = st.text_input(f"{key}:", value, help=FIELD_HELP.get(key, ""))
 
 st.subheader("Kite (Spinnaker)")
 kite_sail_type = render_sail_type("Kite", KITE_SAIL_TYPES, key_prefix="vpp_kite")
 for key, value in kite.items():
-    kite[key] = st.text_input(f"{key}:", value)
+    kite[key] = st.text_input(f"{key}:", value, help=FIELD_HELP.get(key, ""))
 
 tws_range, twa_range, env_params = render_environment_inputs(key_prefix="vpp")
 

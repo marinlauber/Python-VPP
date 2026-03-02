@@ -9,6 +9,7 @@ import numpy as np
 import streamlit as st
 from presets import PRESETS
 from utils import (
+    FIELD_HELP,
     KITE_SAIL_TYPES,
     JIB_SAIL_TYPES,
     MAIN_SAIL_TYPES,
@@ -59,7 +60,7 @@ def render_boat_config(key_prefix: str, default_index: int = 1) -> Dict:
                     )
                 for field, value in section.items():
                     input_key = f"{key_prefix}_{section_key}_{field}"
-                    section[field] = st.text_input(f"{field}:", value, key=input_key)
+                    section[field] = st.text_input(f"{field}:", value, key=input_key, help=FIELD_HELP.get(field, ""))
         config[section_key] = section
     config["_sail_types"] = sail_types
     config["_preset_name"] = preset_name
@@ -264,18 +265,22 @@ st.subheader("Race parameters")
 race_col1, race_col2, race_col3 = st.columns(3)
 with race_col1:
     leg_distance = st.slider("Leg distance (NM)", 0.3, 3.0, 1.0, step=0.1,
-                             key="race_leg_dist")
+                             key="race_leg_dist",
+                             help="Distance per leg in nautical miles.")
     n_legs = st.selectbox("Up/down leg pairs", [1, 2, 3], index=0,
-                          key="race_n_legs")
+                          key="race_n_legs",
+                          help="Number of upwind/downwind leg pairs.")
 with race_col2:
     tack_penalty = st.slider("Tack penalty (s)", 3.0, 20.0, 10.0, step=1.0,
                              key="race_tack_penalty",
                              help="Time the boat is stationary during a tack.")
     gybe_penalty = st.slider("Gybe penalty (s)", 2.0, 15.0, 6.0, step=1.0,
-                             key="race_gybe_penalty")
+                             key="race_gybe_penalty",
+                             help="Time the boat is stationary during a gybe.")
 with race_col3:
     n_runs = st.selectbox("Monte Carlo runs", [50, 100, 200, 500], index=1,
-                          key="race_n_runs")
+                          key="race_n_runs",
+                          help="Number of races to simulate. More = better statistics.")
 
 # --- Wind model ---
 st.subheader("Wind model")
@@ -298,7 +303,8 @@ with wind_col2:
                               step=0.01, key="race_dir_reversion",
                               help="How quickly wind direction returns to mean. 0 = pure random walk.")
     tws_reversion = st.slider("TWS mean-reversion (1/min)", 0.0, 1.0, 0.1,
-                              step=0.01, key="race_tws_reversion")
+                              step=0.01, key="race_tws_reversion",
+                              help="How quickly wind speed returns to mean. 0 = pure random walk.")
 
 # --- Stochastic effects ---
 st.subheader("Stochastic effects")
@@ -315,9 +321,11 @@ with stoch_col1:
                            help="0 = perfect trim. 0.03 = 3% speed noise.")
 with stoch_col2:
     tack_penalty_std = st.slider("Tack penalty std (s)", 0.0, 5.0, 0.0,
-                                 step=0.5, key="race_tack_std")
+                                 step=0.5, key="race_tack_std",
+                                 help="Std-dev of tack time. 0 = fixed penalty.")
     gybe_penalty_std = st.slider("Gybe penalty std (s)", 0.0, 5.0, 0.0,
-                                 step=0.5, key="race_gybe_std")
+                                 step=0.5, key="race_gybe_std",
+                                 help="Std-dev of gybe time. 0 = fixed penalty.")
 
 # --- Solver settings ---
 with st.expander("Solver settings (for computing polars)"):

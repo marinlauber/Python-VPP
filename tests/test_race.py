@@ -251,6 +251,172 @@ class TestWindModels:
         assert result["time_A"] > 0
 
 
+class TestTwsSweep:
+    def test_tws_sweep_returns_expected_keys(self):
+        """run_tws_sweep returns dict with tws_values, win_pct_A, win_pct_B."""
+        fast = _realistic_polar(1.2)
+        slow = _realistic_polar(1.0)
+        race = Race(fast, slow, tws=10.0,
+                    leg_distance=0.2, n_legs=1, wind_sigma=1.0)
+        result = race.run_tws_sweep(
+            tws_range=np.array([6.0, 10.0, 14.0]),
+            n_runs=10,
+        )
+        assert "tws_values" in result
+        assert "win_pct_A" in result
+        assert "win_pct_B" in result
+        assert len(result["tws_values"]) == 3
+        assert len(result["win_pct_A"]) == 3
+        assert len(result["win_pct_B"]) == 3
+
+    def test_tws_sweep_probabilities_valid(self):
+        """Win percentages should be between 0 and 1 and sum to <= 1."""
+        polar = _realistic_polar(1.0)
+        race = Race(polar, polar, tws=10.0,
+                    leg_distance=0.2, n_legs=1, wind_sigma=2.0)
+        result = race.run_tws_sweep(
+            tws_range=np.array([8.0, 12.0]),
+            n_runs=20,
+        )
+        for a, b in zip(result["win_pct_A"], result["win_pct_B"]):
+            assert 0.0 <= a <= 1.0
+            assert 0.0 <= b <= 1.0
+            assert a + b <= 1.0 + 1e-9  # allow float rounding
+
+    def test_tws_sweep_faster_boat_dominates(self):
+        """Faster boat should win majority at all wind speeds."""
+        fast = _realistic_polar(1.5)
+        slow = _realistic_polar(1.0)
+        race = Race(fast, slow, tws=10.0,
+                    leg_distance=0.3, n_legs=1, wind_sigma=1.0)
+        result = race.run_tws_sweep(
+            tws_range=np.array([8.0, 12.0]),
+            n_runs=50,
+        )
+        for pct in result["win_pct_A"]:
+            assert pct > 0.5, f"Fast boat should win >50%, got {pct:.0%}"
+
+
+class TestLegBreakdown:
+    def test_single_race_has_leg_times(self):
+        """run_single returns per-leg elapsed times."""
+        race = Race(_realistic_polar(1.0), _realistic_polar(1.0), tws=10.0,
+                    leg_distance=0.3, n_legs=2, wind_sigma=1.0)
+        result = race.run_single(seed=42)
+        assert "leg_times_A" in result
+        assert "leg_times_B" in result
+        # 2 leg pairs = 4 legs (up, down, up, down)
+        assert len(result["leg_times_A"]) == 4
+        assert len(result["leg_times_B"]) == 4
+        # All leg times should be positive
+        assert all(t > 0 for t in result["leg_times_A"])
+        assert all(t > 0 for t in result["leg_times_B"])
+
+    def test_leg_times_sum_to_total(self):
+        """Per-leg times should approximately sum to total elapsed time."""
+        race = Race(_realistic_polar(1.0), _realistic_polar(1.0), tws=10.0,
+                    leg_distance=0.3, n_legs=1, wind_sigma=1.0)
+        result = race.run_single(seed=42)
+        # Sum of leg times should be close to total time
+        # (may differ slightly due to start offset and rounding)
+        sum_A = sum(result["leg_times_A"])
+        assert abs(sum_A - result["time_A"]) < 2.0, (
+            f"Leg times sum {sum_A:.1f} != total {result['time_A']:.1f}"
+        )
+
+    def test_leg_types_alternate(self):
+        """Leg types should alternate upwind/downwind."""
+        race = Race(_realistic_polar(1.0), _realistic_polar(1.0), tws=10.0,
+                    leg_distance=0.3, n_legs=2, wind_sigma=0.0)
+        result = race.run_single(seed=42)
+        assert result["leg_types"] == ["upwind", "downwind", "upwind", "downwind"]
+
+    def test_monte_carlo_has_leg_stats(self):
+        """Monte carlo should include per-leg aggregate stats."""
+        race = Race(_realistic_polar(1.2), _realistic_polar(1.0), tws=10.0,
+                    leg_distance=0.3, n_legs=1, wind_sigma=1.0)
+        mc = race.run_monte_carlo(n_runs=20)
+        assert "leg_stats" in mc
+        assert len(mc["leg_stats"]) == 2  # 1 pair = 2 legs
+        for stat in mc["leg_stats"]:
+            assert "leg_type" in stat
+            assert "mean_delta" in stat
+            assert "a_wins" in stat
+
+
+class TestTacticalStats:
+    def test_single_race_has_tactical_stats(self):
+        """run_single returns tactical statistics."""
+        race = Race(_realistic_polar(1.2), _realistic_polar(1.0), tws=10.0,
+                    leg_distance=0.3, n_legs=1, wind_sigma=2.0)
+        result = race.run_single(seed=42)
+        assert "tactics_A" in result
+        assert "tactics_B" in result
+        for key in ["shadow_seconds", "shadow_encounters"]:
+            assert key in result["tactics_A"], f"Missing {key} in tactics_A"
+            assert key in result["tactics_B"], f"Missing {key} in tactics_B"
+
+    def test_shadow_seconds_non_negative(self):
+        """Shadow time should be non-negative."""
+        race = Race(_realistic_polar(1.0), _realistic_polar(1.0), tws=10.0,
+                    leg_distance=0.3, n_legs=1, wind_sigma=2.0)
+        result = race.run_single(seed=42)
+        assert result["tactics_A"]["shadow_seconds"] >= 0
+        assert result["tactics_B"]["shadow_seconds"] >= 0
+
+    def test_monte_carlo_has_tactical_summary(self):
+        """Monte carlo includes aggregated tactical stats."""
+        race = Race(_realistic_polar(1.2), _realistic_polar(1.0), tws=10.0,
+                    leg_distance=0.3, n_legs=1, wind_sigma=2.0)
+        mc = race.run_monte_carlo(n_runs=10)
+        assert "tactics_summary" in mc
+        assert "mean_shadow_seconds_A" in mc["tactics_summary"]
+        assert "mean_shadow_seconds_B" in mc["tactics_summary"]
+
+
+class TestParameterSweep:
+    def test_parameter_sweep_returns_expected_keys(self):
+        """run_parameter_sweep returns dict with param_values and win_pct_A."""
+        from src.RaceMod import run_parameter_sweep
+
+        result = run_parameter_sweep(
+            yacht_factory_A=lambda v: None,  # uses polars directly
+            yacht_factory_B=lambda v: None,
+            polar_factory_A=lambda v: _realistic_polar(1.0 + v * 0.1),
+            polar_factory_B=lambda v: _realistic_polar(1.0),
+            param_values=[0.0, 1.0, 2.0],
+            param_name="speed_bonus",
+            tws=10.0,
+            n_runs=10,
+            leg_distance=0.2,
+        )
+        assert "param_values" in result
+        assert "param_name" in result
+        assert "win_pct_A" in result
+        assert "win_pct_B" in result
+        assert "mean_deltas" in result
+        assert len(result["param_values"]) == 3
+        assert len(result["win_pct_A"]) == 3
+
+    def test_parameter_sweep_increasing_advantage(self):
+        """As speed bonus increases, win probability should increase."""
+        from src.RaceMod import run_parameter_sweep
+
+        result = run_parameter_sweep(
+            polar_factory_A=lambda v: _realistic_polar(1.0 + v),
+            polar_factory_B=lambda v: _realistic_polar(1.0),
+            param_values=[0.0, 0.3, 0.6],
+            param_name="scale_bonus",
+            tws=10.0,
+            n_runs=50,
+            leg_distance=0.3,
+        )
+        # Win rate should generally increase with speed advantage
+        assert result["win_pct_A"][-1] > result["win_pct_A"][0], (
+            "Higher speed bonus should increase win rate"
+        )
+
+
 class TestCachedPolars:
     def test_daring_polar_loads(self):
         """Pre-computed Daring polar loads and returns sensible speeds."""

@@ -31,6 +31,10 @@ class Boat:
         self._just_tacked = False
         self._tack_cooldown = 0.0
 
+        self.shadow_seconds = 0.0
+        self.shadow_encounters = 0
+        self._in_shadow = False
+
     def reset(self):
         self.x = 0.0
         self.y = 0.0
@@ -42,6 +46,9 @@ class Boat:
         self.penalty_remaining = 0.0
         self._just_tacked = False
         self._tack_cooldown = 0.0
+        self.shadow_seconds = 0.0
+        self.shadow_encounters = 0
+        self._in_shadow = False
 
 
 class Race:
@@ -283,8 +290,13 @@ class Race:
 
                 # Speed with shadow + trim noise
                 effective_tws = tws
-                if self._is_in_shadow(opponent, boat, wind_dir):
+                in_shadow = self._is_in_shadow(opponent, boat, wind_dir)
+                if in_shadow:
                     effective_tws *= 0.90
+                    boat.shadow_seconds += dt
+                    if not boat._in_shadow:
+                        boat.shadow_encounters += 1
+                boat._in_shadow = in_shadow
 
                 bs_kts = boat.polar(effective_tws, twa_opt)
                 bs_kts = self._apply_trim_noise(bs_kts, rng)
@@ -350,15 +362,23 @@ class Race:
 
         all_trace_A = []
         all_trace_B = []
+        leg_times_A = []
+        leg_times_B = []
+        leg_types = []
 
         for leg_idx in range(self.n_legs * 2):
             upwind = (leg_idx % 2 == 0)
+            leg_types.append("upwind" if upwind else "downwind")
 
             if not upwind:
                 boat_A.y = self.leg_distance_m
                 boat_B.y = self.leg_distance_m
 
+            start_A = boat_A.elapsed
+            start_B = boat_B.elapsed
             tA, tB = self._run_leg(boat_A, boat_B, upwind, rng)
+            leg_times_A.append(boat_A.elapsed - start_A)
+            leg_times_B.append(boat_B.elapsed - start_B)
             all_trace_A.extend(tA)
             all_trace_B.extend(tB)
 
@@ -374,6 +394,17 @@ class Race:
             "gybe_count_B": boat_B.gybe_count,
             "trace_A": all_trace_A,
             "trace_B": all_trace_B,
+            "leg_times_A": leg_times_A,
+            "leg_times_B": leg_times_B,
+            "leg_types": leg_types,
+            "tactics_A": {
+                "shadow_seconds": boat_A.shadow_seconds,
+                "shadow_encounters": boat_A.shadow_encounters,
+            },
+            "tactics_B": {
+                "shadow_seconds": boat_B.shadow_seconds,
+                "shadow_encounters": boat_B.shadow_encounters,
+            },
         }
 
     def run_monte_carlo(self, n_runs=100):
@@ -406,6 +437,37 @@ class Race:
             if first_traces is None:
                 first_traces = (result["trace_A"], result["trace_B"])
 
+        # Compute per-leg statistics
+        n_legs_total = self.n_legs * 2
+        leg_stats = []
+        for leg_idx in range(n_legs_total):
+            leg_deltas = []
+            a_wins = 0
+            for r in all_results:
+                if "leg_times_A" in r and leg_idx < len(r["leg_times_A"]):
+                    d = r["leg_times_A"][leg_idx] - r["leg_times_B"][leg_idx]
+                    leg_deltas.append(d)
+                    if r["leg_times_A"][leg_idx] < r["leg_times_B"][leg_idx]:
+                        a_wins += 1
+            leg_type = "upwind" if leg_idx % 2 == 0 else "downwind"
+            leg_stats.append({
+                "leg_type": leg_type,
+                "mean_delta": float(np.mean(leg_deltas)) if leg_deltas else 0.0,
+                "a_wins": a_wins,
+            })
+
+        # Tactical summary
+        shadow_A = [r["tactics_A"]["shadow_seconds"] for r in all_results if "tactics_A" in r]
+        shadow_B = [r["tactics_B"]["shadow_seconds"] for r in all_results if "tactics_B" in r]
+        encounters_A = [r["tactics_A"]["shadow_encounters"] for r in all_results if "tactics_A" in r]
+        encounters_B = [r["tactics_B"]["shadow_encounters"] for r in all_results if "tactics_B" in r]
+        tactics_summary = {
+            "mean_shadow_seconds_A": float(np.mean(shadow_A)) if shadow_A else 0.0,
+            "mean_shadow_seconds_B": float(np.mean(shadow_B)) if shadow_B else 0.0,
+            "mean_shadow_encounters_A": float(np.mean(encounters_A)) if encounters_A else 0.0,
+            "mean_shadow_encounters_B": float(np.mean(encounters_B)) if encounters_B else 0.0,
+        }
+
         return {
             "wins_A": wins_A,
             "wins_B": wins_B,
@@ -413,6 +475,55 @@ class Race:
             "mean_delta": float(np.mean(deltas)),
             "traces": first_traces,
             "results": all_results,
+            "leg_stats": leg_stats,
+            "tactics_summary": tactics_summary,
+        }
+
+    def run_tws_sweep(self, tws_range, n_runs=100):
+        """Run monte carlo at each TWS and collect win probabilities.
+
+        Parameters
+        ----------
+        tws_range : array-like
+            TWS values (knots) to sweep.
+        n_runs : int
+            Monte carlo runs per TWS point.
+
+        Returns
+        -------
+        dict with keys:
+            tws_values : list of float
+            win_pct_A : list of float (fraction 0-1)
+            win_pct_B : list of float (fraction 0-1)
+            mean_deltas : list of float (seconds, A - B)
+        """
+        tws_values = []
+        win_pct_A = []
+        win_pct_B = []
+        mean_deltas = []
+
+        original_tws = self.tws
+        for tws in tws_range:
+            self.tws = tws
+            self.wind_model.reset(tws=tws)
+            mc = self.run_monte_carlo(n_runs=n_runs)
+            total = mc["wins_A"] + mc["wins_B"]
+            tws_values.append(float(tws))
+            if total > 0:
+                win_pct_A.append(mc["wins_A"] / total)
+                win_pct_B.append(mc["wins_B"] / total)
+            else:
+                win_pct_A.append(0.5)
+                win_pct_B.append(0.5)
+            mean_deltas.append(mc["mean_delta"])
+
+        self.tws = original_tws
+
+        return {
+            "tws_values": tws_values,
+            "win_pct_A": win_pct_A,
+            "win_pct_B": win_pct_B,
+            "mean_deltas": mean_deltas,
         }
 
     @staticmethod
@@ -438,3 +549,66 @@ class Race:
             bounds_error=False, fill_value=0.0,
         )
         return lambda tws, twa: float(np.clip(interp((tws, twa)), 0.0, None))
+
+
+def run_parameter_sweep(param_values, param_name, tws, n_runs=100,
+                        polar_factory_A=None, polar_factory_B=None,
+                        yacht_factory_A=None, yacht_factory_B=None,
+                        leg_distance=1.0, n_legs=1, wind_sigma=2.0,
+                        **race_kwargs):
+    """Sweep a parameter and measure match race outcomes at each value.
+
+    For each value in *param_values*, builds polars via the factory
+    callables and runs a monte carlo match race.
+
+    Parameters
+    ----------
+    param_values : list of float
+        Values to sweep.
+    param_name : str
+        Label for the swept parameter (used in output).
+    tws : float
+        True wind speed (knots).
+    n_runs : int
+        Monte carlo runs per parameter point.
+    polar_factory_A, polar_factory_B : callable(value) -> polar, optional
+        Build a polar callable for each parameter value.
+    yacht_factory_A, yacht_factory_B : callable(value) -> Yacht, optional
+        Not used directly — reserved for full VPP rebuild workflows.
+    leg_distance, n_legs, wind_sigma : float
+        Race configuration.
+    **race_kwargs
+        Extra keyword arguments passed to Race().
+
+    Returns
+    -------
+    dict with keys:
+        param_values, param_name, win_pct_A, win_pct_B, mean_deltas
+    """
+    win_pct_A = []
+    win_pct_B = []
+    mean_deltas = []
+
+    for v in param_values:
+        polar_A = polar_factory_A(v) if polar_factory_A else None
+        polar_B = polar_factory_B(v) if polar_factory_B else None
+        race = Race(polar_A, polar_B, tws=tws,
+                    leg_distance=leg_distance, n_legs=n_legs,
+                    wind_sigma=wind_sigma, **race_kwargs)
+        mc = race.run_monte_carlo(n_runs=n_runs)
+        total = mc["wins_A"] + mc["wins_B"]
+        if total > 0:
+            win_pct_A.append(mc["wins_A"] / total)
+            win_pct_B.append(mc["wins_B"] / total)
+        else:
+            win_pct_A.append(0.5)
+            win_pct_B.append(0.5)
+        mean_deltas.append(mc["mean_delta"])
+
+    return {
+        "param_values": list(param_values),
+        "param_name": param_name,
+        "win_pct_A": win_pct_A,
+        "win_pct_B": win_pct_B,
+        "mean_deltas": mean_deltas,
+    }

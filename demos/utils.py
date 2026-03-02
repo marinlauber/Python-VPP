@@ -59,7 +59,7 @@ def render_keel_inputs(keel: dict, key_prefix: str = "") -> dict:
     result = {}
     for field, default in defaults.items():
         input_key = f"{key_prefix}_keel_{field}"
-        result[field] = st.text_input(f"{field}:", keel.get(field, default), key=input_key)
+        result[field] = st.text_input(f"{field}:", keel.get(field, default), key=input_key, help=FIELD_HELP.get(field, ""))
     result["type"] = keel_type
     return result
 
@@ -84,6 +84,45 @@ def render_data_source(key_prefix: str = "") -> str:
         key=f"{key_prefix}_data_source",
         help="Coefficient data directory under dat/",
     )
+
+
+FIELD_HELP = {
+    # Yacht hull
+    "Name": "Yacht design name (label only).",
+    "Lwl": "Waterline length (m). Longer = faster hull speed.",
+    "Vol": "Displaced volume of the canoe body (m³).",
+    "Bwl": "Waterline beam (m). Wider = more initial stability.",
+    "Tc": "Canoe body draft (m). Depth of hull excluding keel.",
+    "WSA": "Wetted surface area of the canoe body (m²). Drives viscous drag.",
+    "Tmax": "Maximum draft including keel (m).",
+    "Amax": "Maximum cross-section area (m²).",
+    "Mass": "Total displacement mass including keel (kg).",
+    "Ff": "Freeboard height at the bow (m).",
+    "Fa": "Freeboard height at the stern (m).",
+    "Boa": "Beam overall (m).",
+    "Loa": "Length overall (m).",
+    # Fin keel
+    "Cu": "Root (upper) chord length (m).",
+    "Cl": "Tip (lower) chord length (m).",
+    "Span": "Appendage span / depth (m).",
+    # Short keel
+    "Length": "Fore-aft keel length along hull bottom (m).",
+    "Depth": "Keel depth below canoe body (m).",
+    "Tc_ratio": "Thickness-to-chord ratio (e.g. 0.15 = 15%).",
+    # Main sail
+    "P": "Luff length / mast height above boom (m).",
+    "E": "Foot length along the boom (m).",
+    "Roach": "Sail roach as fraction of triangle area (0.0–0.3).",
+    "BAD": "Boom above deck height (m).",
+    # Jib
+    "I": "Forestay height above deck (m).",
+    "J": "Base of foretriangle — mast to forestay at deck (m).",
+    "LPG": "Longest perpendicular of genoa/jib (m). Larger = more overlap.",
+    "HBI": "Height of jib tack above deck (m).",
+    # Kite
+    "area": "Spinnaker sail area (m²).",
+    "vce": "Vertical centre of effort above deck (m).",
+}
 
 
 MAIN_SAIL_TYPES = ["main", "main_low"]

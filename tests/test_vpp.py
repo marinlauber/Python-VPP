@@ -209,6 +209,42 @@ def test_sail_type_asym_kite_variants():
     assert kite_pole.cl(67) > kite_cl.cl(67)
 
 
+def test_parallel_matches_iterative():
+    """Parallel solver must produce identical results to sequential iterative."""
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
+                   Kite("A2", area=150.0, vce=9.55)]
+
+    tws_range = np.array([6.0, 10.0])
+    twa_range = np.linspace(40.0, 160.0, 5)
+
+    vpp_seq = VPP(Yacht=yacht)
+    vpp_seq.set_analysis(tws_range=tws_range, twa_range=twa_range)
+    vpp_seq.run(method="iterative")
+
+    vpp_par = VPP(Yacht=yacht)
+    vpp_par.set_analysis(tws_range=tws_range, twa_range=twa_range)
+    vpp_par.run(method="parallel")
+
+    np.testing.assert_allclose(
+        vpp_par.store, vpp_seq.store, atol=1e-6,
+        err_msg="Parallel results differ from sequential iterative"
+    )
+
+
+def test_parallel_method_accepted():
+    """VPP.run(method='parallel') should not raise."""
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(tws_range=np.array([8.0]),
+                     twa_range=np.linspace(40.0, 160.0, 3))
+    vpp.run(method="parallel")
+    assert np.any(vpp.store[0, :, 0, 0] > 0)
+
+
 def test_sym_kite_vpp_runs():
     """VPP runs with symmetric spinnaker coefficients."""
     from src.YachtMod import Keel, Rudder, Yacht
