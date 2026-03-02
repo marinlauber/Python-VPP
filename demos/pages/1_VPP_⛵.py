@@ -19,9 +19,10 @@ from utils import (
     render_data_source,
     render_environment_inputs,
     render_keel_inputs,
+    render_roughness_input,
     render_sail_type,
     render_solver_method,
-    run_vpp,
+    run_vpp_direct,
     validate_ranges,
 )
 
@@ -31,12 +32,12 @@ from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, lab, 
 st.set_page_config(page_title="VPP", page_icon="⛵")
 
 
-def plot_single_polar(response: Dict[str, Any]) -> plt.Figure:
-    name = response.json["name"]
-    sails = response.json["sails"]
-    twa_range = np.array(response.json["twa"])
-    tws_range = np.array(response.json["tws"])
-    results = np.array(response.json["results"])
+def plot_single_polar(data: Dict[str, Any]) -> plt.Figure:
+    name = data["name"]
+    sails = data["sails"]
+    twa_range = np.array(data["twa"])
+    tws_range = np.array(data["tws"])
+    results = np.array(data["results"])
 
     n = 1
 
@@ -77,13 +78,13 @@ def plot_single_polar(response: Dict[str, Any]) -> plt.Figure:
     return fig
 
 
-def plot_depowering_polar(response: Dict[str, Any]) -> plt.Figure:
+def plot_depowering_polar(data: Dict[str, Any]) -> plt.Figure:
     """Plot flat and red depowering values on polar axes."""
-    name = response.json["name"]
-    sails = response.json["sails"]
-    twa_range = np.array(response.json["twa"])
-    tws_range = np.array(response.json["tws"])
-    results = np.array(response.json["results"])
+    name = data["name"]
+    sails = data["sails"]
+    twa_range = np.array(data["twa"])
+    tws_range = np.array(data["tws"])
+    results = np.array(data["results"])
 
     fig, axes = plt.subplots(1, 2, subplot_kw=dict(polar=True), figsize=(12, 6))
     for ax_i, (idx, title) in enumerate([(3, "Flat"), (4, "RED")]):
@@ -117,12 +118,12 @@ def plot_depowering_polar(response: Dict[str, Any]) -> plt.Figure:
     return fig
 
 
-def build_depowering_table(response: Dict[str, Any]) -> pd.DataFrame:
+def build_depowering_table(data: Dict[str, Any]) -> pd.DataFrame:
     """Build a table of depowering values for the best sail at each TWS/TWA."""
-    sails = response.json["sails"]
-    twa_range = np.array(response.json["twa"])
-    tws_range = np.array(response.json["tws"])
-    results = np.array(response.json["results"])
+    sails = data["sails"]
+    twa_range = np.array(data["twa"])
+    tws_range = np.array(data["tws"])
+    results = np.array(data["results"])
 
     rows = []
     for i, tws in enumerate(tws_range):
@@ -182,6 +183,7 @@ kite = dict(preset["kite"])
 st.subheader("Yacht particulars")
 for key, value in yacht.items():
     yacht[key] = st.text_input(field_label(key), value, help=FIELD_HELP.get(key, ""))
+roughness = render_roughness_input(key_prefix="vpp")
 
 st.subheader("Keel")
 keel = render_keel_inputs(keel, key_prefix="vpp")
@@ -214,38 +216,43 @@ data_source = render_data_source(key_prefix="vpp")
 if st.button("Process Specifications"):
     if validate_ranges(tws_range, twa_range):
         config = {"yacht": yacht, "keel": keel, "rudder": rudder, "main": main, "jib": jib, "kite": kite}
-        with st.spinner("Running optimisation, this can take a minute or two."):
-            sail_types = {"main": main_sail_type, "jib": jib_sail_type, "kite": kite_sail_type}
-            response = run_vpp(config, tws_range, twa_range, method=solver_method, data_source=data_source, sail_types=sail_types, env_params=env_params)
-            if response.status_code != 200:
-                error_msg = response.json.get("error", "Unknown error") if response.json else "Unknown error"
-                st.error(f"Simulation failed: {error_msg}")
-                logging.error("VPP API returned %d: %s", response.status_code, error_msg)
-            else:
-                with st.popover("ℹ️ What is a polar plot?"):
-                    st.markdown(
-                        "The polar plot shows boat speed (radial "
-                        "axis) vs true wind angle. Each curve is a different wind "
-                        "speed. Dots mark the best VMG (velocity made good) angles "
-                        "upwind and downwind."
-                    )
-                fig = plot_single_polar(response)
-                st.pyplot(fig)
+        sail_types = {"main": main_sail_type, "jib": jib_sail_type, "kite": kite_sail_type}
+        env_params["roughness"] = roughness
+        with st.status("Running VPP optimisation...", expanded=True) as status:
+            result, error = run_vpp_direct(
+                config, tws_range, twa_range, method=solver_method,
+                data_source=data_source, sail_types=sail_types,
+                env_params=env_params,
+            )
+            status.update(label="Optimisation complete!", state="complete", expanded=False)
+        if error:
+            st.error(f"Simulation failed: {error}")
+            logging.error("VPP failed: %s", error)
+        else:
+            with st.popover("ℹ️ What is a polar plot?"):
+                st.markdown(
+                    "The polar plot shows boat speed (radial "
+                    "axis) vs true wind angle. Each curve is a different wind "
+                    "speed. Dots mark the best VMG (velocity made good) angles "
+                    "upwind and downwind."
+                )
+            fig = plot_single_polar(result)
+            st.pyplot(fig)
 
-                st.subheader("Depowering (Flat & RED)")
-                with st.popover("ℹ️ What is depowering?"):
-                    st.markdown(
-                        "*Flat* controls how much the sails are "
-                        "flattened (1.0 = full power, 0.62 = maximum depower). "
-                        "*RED* is the reef/reduction factor (2.0 = full sail, "
-                        "lower = reefed). The VPP depowers automatically when "
-                        "heel exceeds the limit."
-                    )
-                dep_fig = plot_depowering_polar(response)
-                st.pyplot(dep_fig)
+            st.subheader("Depowering (Flat & RED)")
+            with st.popover("ℹ️ What is depowering?"):
+                st.markdown(
+                    "*Flat* controls how much the sails are "
+                    "flattened (1.0 = full power, 0.62 = maximum depower). "
+                    "*RED* is the reef/reduction factor (2.0 = full sail, "
+                    "lower = reefed). The VPP depowers automatically when "
+                    "heel exceeds the limit."
+                )
+            dep_fig = plot_depowering_polar(result)
+            st.pyplot(dep_fig)
 
-                with st.expander("Depowering data table"):
-                    df = build_depowering_table(response)
-                    st.dataframe(df, use_container_width=True)
+            with st.expander("Depowering data table"):
+                df = build_depowering_table(result)
+                st.dataframe(df, use_container_width=True)
 
 footer()

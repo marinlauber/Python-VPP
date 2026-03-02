@@ -69,7 +69,8 @@ class TestVPPPage:
         slider_labels = [s.label for s in at.slider]
         assert any("TWA" in l for l in slider_labels), "Missing TWA slider"
         assert any("TWS" in l for l in slider_labels), "Missing TWS slider"
-        assert any("roughness" in l.lower() for l in slider_labels), "Missing roughness slider"
+        number_labels = [n.label for n in at.number_input]
+        assert any("roughness" in l.lower() for l in number_labels), "Missing roughness input"
         assert any("H_s" in l for l in slider_labels), "Missing Hs slider"
         assert any("T_s" in l for l in slider_labels), "Missing Ts slider"
 

@@ -18,6 +18,7 @@ from utils import (
     header,
     render_data_source,
     render_keel_inputs,
+    render_roughness_input,
     render_sail_type,
     render_solver_method,
     run_vpp,
@@ -63,6 +64,7 @@ def render_boat_config(key_prefix: str, default_index: int = 1) -> Dict:
                     input_key = f"{key_prefix}_{section_key}_{field}"
                     section[field] = st.text_input(field_label(field), value, key=input_key, help=FIELD_HELP.get(field, ""))
         config[section_key] = section
+    config["_roughness"] = render_roughness_input(key_prefix=key_prefix)
     config["_sail_types"] = sail_types
     config["_preset_name"] = preset_name
     return config

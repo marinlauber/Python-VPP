@@ -214,6 +214,26 @@ def run_vpp(
     env_params : dict, optional
         Environment parameters (roughness, Hs, Ts).
     """
+    data = _build_vpp_data(config, tws_range, twa_range, method, data_source, sail_types, env_params)
+    logging.info("Starting VPP simulation")
+    json_string = json.dumps(data)
+    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
+    client = app.test_client()
+    response = client.post("/api/vpp/", data=json_string, headers=headers)
+    logging.info("VPP simulation completed")
+    return response
+
+
+def _build_vpp_data(
+    config: Dict,
+    tws_range: List[float],
+    twa_range: List[float],
+    method: str = "iterative",
+    data_source: str = "orc",
+    sail_types: Dict[str, str] = None,
+    env_params: Dict = None,
+) -> Dict:
+    """Build the VPP request data dict from a config."""
     main = dict(config["main"])
     jib = dict(config["jib"])
     kite = dict(config["kite"])
@@ -239,20 +259,68 @@ def run_vpp(
     }
     if env_params:
         data.update(env_params)
-    logging.info("Starting VPP simulation")
-    json_string = json.dumps(data)
-    headers = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
-    client = app.test_client()
-    response = client.post("/api/vpp/", data=json_string, headers=headers)
-    logging.info("VPP simulation completed")
-    return response
+    return data
+
+
+def run_vpp_direct(
+    config: Dict,
+    tws_range: List[float],
+    twa_range: List[float],
+    method: str = "iterative",
+    data_source: str = "orc",
+    sail_types: Dict[str, str] = None,
+    env_params: Dict = None,
+):
+    """Run VPP directly (bypassing Flask).
+
+    Returns (result_dict, error_string). result_dict has keys:
+    name, tws, twa, sails, results. On error, result_dict is None.
+    """
+    from src.api import data_to_vpp
+
+    data = _build_vpp_data(config, tws_range, twa_range, method, data_source, sail_types, env_params)
+
+    try:
+        vpp, method = data_to_vpp(data)
+    except (KeyError, TypeError, ValueError) as e:
+        logging.warning("Invalid VPP input: %s", e)
+        return None, str(e)
+
+    try:
+        vpp.run(verbose=True, method=method)
+    except Exception as e:
+        logging.exception("VPP simulation failed")
+        return None, str(e)
+
+    return vpp.results(), None
+
+
+def render_roughness_input(key_prefix: str = "") -> float:
+    """Render hull roughness number input. Returns roughness in metres."""
+    roughness_um = st.number_input(
+        r"Hull roughness $k_s$ ($\mu m$)",
+        min_value=0,
+        max_value=1000,
+        value=150,
+        step=10,
+        key=f"{key_prefix}_roughness",
+        help=(
+            "Mean hull roughness height in micrometres. "
+            "Typical values: **0** = hydraulically smooth, "
+            "**50** = racing finish, "
+            "**150** = new antifouling paint, "
+            "**300** = 1-year fouled hull, "
+            "**500+** = heavily fouled."
+        ),
+    )
+    return roughness_um * 1e-6
 
 
 def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[float], Dict]:
-    """Render TWA/TWS/roughness/wave sliders.
+    """Render TWA/TWS/wave sliders.
 
     Returns (tws_range, twa_range, env_params) where env_params is a dict
-    with keys ``roughness``, ``Hs``, ``Ts``.
+    with keys ``Hs``, ``Ts``.
     """
     st.subheader("Environment")
     twa_slider = st.slider(
@@ -269,13 +337,6 @@ def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[f
     )
     tws_range = np.arange(tws_slider[0], tws_slider[1], 1.0).tolist()
 
-    roughness_um = st.slider(
-        r"Hull roughness $k_s$ ($\mu m$)",
-        0, 500, 150, step=10,
-        key=f"{key_prefix}_roughness",
-        help="Mean hull roughness height. 0 = smooth, 150 = new antifouling, 300+ = fouled hull.",
-    )
-
     Hs = st.slider(
         r"Significant wave height $H_s$ (m)",
         0.0, 3.0, 0.0, step=0.1,
@@ -291,7 +352,6 @@ def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[f
     )
 
     env_params = {
-        "roughness": roughness_um * 1e-6,
         "Hs": Hs,
         "Ts": Ts,
     }

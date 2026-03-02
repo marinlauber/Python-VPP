@@ -19,10 +19,10 @@ dependencies = [
     "numpy>=2.0",
     "matplotlib>=3.8",
     "scipy>=1.12",
-
     "tqdm>=4.66",
     "flask",
     "streamlit>=1.37",
+    "plotly>=6.6.0",
 ]
 
 [project.optional-dependencies]
