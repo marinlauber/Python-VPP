@@ -270,8 +270,15 @@ def run_vpp_direct(
     data_source: str = "orc",
     sail_types: Dict[str, str] = None,
     env_params: Dict = None,
+    progress_callback=None,
 ):
     """Run VPP directly (bypassing Flask).
+
+    Parameters
+    ----------
+    progress_callback : callable, optional
+        Called as ``progress_callback(tws_index, tws_kts, n_tws)`` after
+        each wind speed is completed.
 
     Returns (result_dict, error_string). result_dict has keys:
     name, tws, twa, sails, results. On error, result_dict is None.
@@ -287,7 +294,7 @@ def run_vpp_direct(
         return None, str(e)
 
     try:
-        vpp.run(verbose=True, method=method)
+        vpp.run(verbose=True, method=method, progress_callback=progress_callback)
     except Exception as e:
         logging.exception("VPP simulation failed")
         return None, str(e)
@@ -328,14 +335,14 @@ def render_environment_inputs(key_prefix: str = "") -> Tuple[List[float], List[f
         35.0, 175.0, (35.0, 175.0), step=1.0,
         key=f"{key_prefix}_twa",
     )
-    twa_range = np.arange(twa_slider[0], twa_slider[1], 1.0).tolist()
+    twa_range = np.arange(twa_slider[0], twa_slider[1] + 1.0, 1.0).tolist()
 
     tws_slider = st.slider(
         r"True wind speed $V_{tw}$ (TWS) range",
         2.0, 25.0, (8.0, 12.0), step=1.0,
         key=f"{key_prefix}_tws",
     )
-    tws_range = np.arange(tws_slider[0], tws_slider[1], 1.0).tolist()
+    tws_range = np.arange(tws_slider[0], tws_slider[1] + 1.0, 1.0).tolist()
 
     Hs = st.slider(
         r"Significant wave height $H_s$ (m)",

@@ -215,8 +215,13 @@ def _build_vmg_section(responses: List, point: str, sign: int) -> pd.DataFrame:
             else:
                 delta = vmg[idx] - base_vmg
                 pct = (delta / base_vmg * 100) if base_vmg > 0 else 0.0
+                # seconds per nautical mile difference
+                spm_base = (3600.0 / base_vmg) if base_vmg > 0 else 0.0
+                spm_new = (3600.0 / vmg[idx]) if vmg[idx] > 0 else 0.0
+                delta_spm = spm_new - spm_base
                 row[f"Δ#{ci} (kts)"] = f"{delta:+.2f}"
                 row[f"Δ#{ci} (%)"] = f"{pct:+.1f}%"
+                row[f"Δ#{ci} (s/NM)"] = f"{delta_spm:+.1f}"
         rows.append(row)
     return pd.DataFrame(rows)
 
@@ -294,11 +299,16 @@ if st.button("Compare"):
                 sail_types = cfg.pop("_sail_types", None)
                 cfg_roughness = cfg.pop("_roughness", 150e-6)
                 cfg_env = dict(env_params, roughness=cfg_roughness)
-                st.write(f"Config {ci + 1} of {num}...")
+                cfg_name = cfg.get("yacht", {}).get("Name", f"Config {ci + 1}")
+                st.write(f"**{cfg_name}** (config {ci + 1} of {num})")
+
+                def _on_tws(i, tws_kts, n_tws, _name=cfg_name):
+                    st.write(f"  {_name}: TWS {tws_kts:.0f} kts complete ({i + 1}/{n_tws})")
+
                 result, error = run_vpp_direct(
                     cfg, tws_range, twa_range, method=solver_method,
                     data_source=data_source, sail_types=sail_types,
-                    env_params=cfg_env,
+                    env_params=cfg_env, progress_callback=_on_tws,
                 )
                 if error:
                     st.error(f"Config {ci + 1} failed: {error}")

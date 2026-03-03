@@ -219,10 +219,13 @@ if st.button("Process Specifications"):
         sail_types = {"main": main_sail_type, "jib": jib_sail_type, "kite": kite_sail_type}
         env_params["roughness"] = roughness
         with st.status("Running VPP optimisation...", expanded=True) as status:
+            def _on_tws(i, tws_kts, n_tws):
+                st.write(f"TWS {tws_kts:.0f} kts complete ({i + 1}/{n_tws})")
+
             result, error = run_vpp_direct(
                 config, tws_range, twa_range, method=solver_method,
                 data_source=data_source, sail_types=sail_types,
-                env_params=env_params,
+                env_params=env_params, progress_callback=_on_tws,
             )
             status.update(label="Optimisation complete!", state="complete", expanded=False)
         if error:

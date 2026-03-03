@@ -202,7 +202,8 @@ class VPP(object):
             "parallel" (same solver, multiprocessing across grid points), or
             "5dof" (scipy SLSQP 5-DOF constrained optimizer).
         progress_callback
-            Optional callable(current, total) invoked after each grid point.
+            Optional callable(tws_index, tws_kts, n_tws) invoked after each
+            TWS wind speed is completed.
         """
 
         if method == "5dof":
@@ -215,8 +216,7 @@ class VPP(object):
         if not self.upToDate:
             raise RuntimeError("VPP run stop: no analysis set!")
 
-        total_points = len(self.tws_range) * self.Nsails * len(self.twa_range)
-        current_point = 0
+        n_tws = len(self.tws_range)
 
         for i, tws in enumerate(self.tws_range):
             logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
@@ -233,7 +233,6 @@ class VPP(object):
 
                 for j in trange(len(self.twa_range), disable=not debug_mode):
                     twa = self.twa_range[j]
-                    current_point += 1
 
                     self.vb0 = 0.8 * tws
                     self.phi0 = 0
@@ -247,12 +246,8 @@ class VPP(object):
 
                     # don't do low twa with downwind sails
                     if (self.aero.up == True) and (twa >= self.lim_dn):
-                        if progress_callback:
-                            progress_callback(current_point, total_points)
                         continue
                     if (self.aero.up == False) and (twa <= self.lim_up):
-                        if progress_callback:
-                            progress_callback(current_point, total_points)
                         continue
 
                     vb, phi, leeway, flat, red = self._depower_solve(twa, tws)
@@ -267,8 +262,8 @@ class VPP(object):
                     res = np.array([vb, phi, leeway, flat, red])
                     self.store[i, j, n, :] = res * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])
 
-                    if progress_callback:
-                        progress_callback(current_point, total_points)
+            if progress_callback:
+                progress_callback(i, tws / KNOTS_TO_MPS, n_tws)
 
         logging.info("Optimization successful.")
 
