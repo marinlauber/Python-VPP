@@ -7,18 +7,46 @@ __license__ = "GPL"
 __version__ = "1.0.1"
 __email__ = "M.Lauber@soton.ac.uk"
 
-import numpy as np
-from scipy.interpolate import interp1d
-from scipy.optimize import fsolve
-from scipy.optimize import root
+import functools
+
 import matplotlib.pyplot as plt
+import numpy as np
+
 from src.UtilsMod import build_interp_func
+
+
+@functools.lru_cache(maxsize=512)
+def wind_triangle(tws, twa, vb):
+    """Analytical wind triangle: TWS/TWA/VB → (AWA, AWS) in degrees.
+
+    Uses the law of cosines on the velocity triangle formed by the true
+    wind, boat speed, and apparent wind vectors.
+    """
+    twa_rad = np.radians(twa)
+    aws = np.sqrt(tws**2 + vb**2 + 2 * tws * vb * np.cos(twa_rad))
+    if aws < 1e-12:
+        return twa, 0.0
+    cos_awa = np.clip((tws * np.cos(twa_rad) + vb) / aws, -1.0, 1.0)
+    awa = np.degrees(np.arccos(cos_awa))
+    return awa, aws
 
 
 class AeroMod(object):
     def __init__(self, Yacht, rho=1.225, mu=0.0000181):
         """
-        Initializes an Aero Model, given a set of sails
+        Aerodynamic force model.
+
+        Computes sail drive force, side force, and heeling moment from the
+        yacht's sail plan using ORC aerodynamic coefficients.
+
+        Parameters
+        ----------
+        Yacht : Yacht
+            Yacht object containing sail definitions and hull geometry.
+        rho : float, optional
+            Air density (kg/m^3). Default is 1.225 (ISA sea level).
+        mu : float, optional
+            Dynamic viscosity of air (Pa.s). Default is 1.81e-5.
         """
         # physical params
         self.rho = rho
@@ -74,7 +102,31 @@ class AeroMod(object):
     # prototype top function in hydro mod
     def update(self, vb, phi, tws, twa, flat, RED):
         """
-        Update the aero model for current iter
+        Update aerodynamic forces for current sailing state.
+
+        Solves the wind triangle, computes sail coefficients, and projects
+        forces into the boat reference frame.
+
+        Parameters
+        ----------
+        vb : float
+            Boat speed (m/s).
+        phi : float
+            Heel angle (degrees).
+        tws : float
+            True wind speed (m/s).
+        twa : float
+            True wind angle (degrees).
+        flat : float
+            Sail flattening factor (0.62 to 1.0). Reduces lift and drag.
+        RED : float
+            Reef/reduction factor. Values > 1 apply jib furling (ftj = RED - 1),
+            values <= 1 apply mainsail reefing (rfm = RED).
+
+        Returns
+        -------
+        tuple of float
+            (Fx, Fy, Mx) — drive force (N), side force (N), heeling moment (N.m).
         """
         self.vb = max(0, vb)
         self.phi = max(0, phi)
@@ -112,7 +164,7 @@ class AeroMod(object):
 
         # side-force is horizontal component of Fh
         self.Fy *= np.cos(np.radians(self.phi))
-        
+
         # heeling moment
         self.Mx = self.Fy * self._vce()
 
@@ -136,12 +188,15 @@ class AeroMod(object):
         self.cl = 0.0
         self.cd = 0.0
         kpp = 0.0
+        sail_cd = {}
 
         for sail in self.sails:
-
-            self.cl += sail.cl(self.awa) * sail.area * sail.bk
-            self.cd += sail.cd(self.awa) * sail.area * sail.bk
-            kpp += sail.cl(self.awa) ** 2 * sail.area * sail.bk * sail.kp
+            cl_i = sail.cl(self.awa)
+            cd_i = sail.cd(self.awa)
+            sail_cd[id(sail)] = cd_i
+            self.cl += cl_i * sail.area * sail.bk
+            self.cd += cd_i * sail.area * sail.bk
+            kpp += cl_i ** 2 * sail.area * sail.bk * sail.kp
 
         self.cl /= self.area
         self.cd /= self.area
@@ -156,7 +211,7 @@ class AeroMod(object):
         for sail in self.sails:
             if sail.type == "jib":
                 self.fcdj = (
-                    sail.bk * sail.cd(self.awa) * sail.area / (self.cd * self.area)
+                    sail.bk * sail_cd[id(sail)] * sail.area / (self.cd * self.area)
                 )
 
         # final lift and drag
@@ -170,17 +225,7 @@ class AeroMod(object):
         """
         find AWS and AWA for a given TWS, TWA and VB
         """
-        _awa_ = lambda awa: self.vb * np.sin(awa / 180.0 * np.pi) - self.tws * np.sin(
-            (self.twa - awa) / 180.0 * np.pi
-        )
-        self.awa = fsolve(_awa_, self.twa)[0]
-        self.aws = np.sqrt(
-            (self.tws * np.sin(self.twa / 180.0 * np.pi)) ** 2
-            + (self.tws * np.cos(self.twa / 180.0 * np.pi) + self.vb) ** 2
-        )
-        # self.awa = np.arccos((self.tws*np.cos(np.radians(self.twa)) + self.vb) / np.sqrt((self.tws**2) + (self.vb**2) + 
-        #              2*self.tws*self.vb * np.cos(np.radians(self.twa))))
-        # self.aws = (self.tws * np.sin(np.radians(self.twa))) / np.sin(self.awa)
+        self.awa, self.aws = wind_triangle(self.tws, self.twa, self.vb)
 
 
     def _area(self):
@@ -194,7 +239,7 @@ class AeroMod(object):
 
     def _vce(self):
         """
-        Vectical centre of effort lift/drag weigted
+        Vertical centre of effort, lift/drag weighted.
         """
         sum = 0.0
         for sail in self.sails:
