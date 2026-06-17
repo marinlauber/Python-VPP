@@ -6,6 +6,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
+from scipy.interpolate import RegularGridInterpolator
 
 KNOTS_TO_MPS = 0.5144
 stl = [
@@ -39,11 +40,17 @@ def json_write(data, fname):
 
 def build_interp_func(fname, i=1, kind="linear"):
     """
-    build interpolatison function and returns it in a list
+    build interpolation function and returns it in a list
     """
     a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
-    # linear for now, this is not good, might need to polish data outside
-    return interpolate.interp1d(a[0, :], a[i, :], kind=kind, fill_value="extrapolate")
+    # Filter out NaN values for make_interp_spline compatibility
+    mask = ~(np.isnan(a[0, :]) | np.isnan(a[i, :]))
+    x = a[0, mask]
+    y = a[i, mask]
+    k = {"linear": 1, "quadratic": 2, "cubic": 3}.get(kind, 1)
+    spline = interpolate.make_interp_spline(x, y, k=k)
+    spline.extrapolate = True
+    return spline
 
 
 def _polar(n) -> plt.Figure:
@@ -94,11 +101,24 @@ def _get_vmg(dat, twa_range):
         return np.array([ix[sup], iy[sdn]], dtype=int), np.array([sup, sdn])
 
 
-def _get_cross(dat, n):
+def _get_cross(dat, n, pad=2):
+    """Return [start, end) TWA indices where sail *n* is fastest.
+
+    Parameters
+    ----------
+    dat : ndarray
+        Shape ``(ntwa, nsails, nvars)``.
+    n : int
+        Sail index.
+    pad : int
+        Number of extra TWA indices to include on each side for visual
+        overlap.  Use 0 for a tight (no-overlap) range.
+    """
     max_ = np.where(dat[:, n, 0] >= np.max(dat[:, :, 0], axis=1))[0]
     if len(max_) > 0:
         idx = np.array(
-            [max(min(max_) - 2, 0), min(max(max_) + 2, len(dat[:, n, 0]))], dtype=int
+            [max(min(max_) - pad, 0), min(max(max_) + pad, len(dat[:, n, 0]))],
+            dtype=int,
         )
         return idx
     else:
@@ -125,8 +145,12 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
         for i in range(len(VPP.tws_range)):
             vmg, ids = _get_vmg(VPP.store[i, :, :, :], VPP.twa_range)
             for k in range(VPP.Nsails):
-                idx = _get_cross(VPP.store[i, :, :, :], k)
                 for j in range(n):
+                    # Speed plot (j=0) uses overlap padding so sail curves
+                    # connect visually; heel/leeway (j>0) use tight range
+                    # to avoid discontinuities at sail crossover points.
+                    pad = 2 if j == 0 else 0
+                    idx = _get_cross(VPP.store[i, :, :, :], k, pad=pad)
                     lab = "_nolegend_"
                     if k == 0:
                         lab = name + " " + f"{VPP.tws_range[i]/KNOTS_TO_MPS:.1f}"
@@ -149,9 +173,23 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
                     markersize=4,
                     mfc="None",
                 )
-            # add legend only on first axis
-            ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+        # TWS legend on every axis
+        for j in range(n):
+            ax[j].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+
+    # Sail colour legend along the bottom of the figure
+    from matplotlib.lines import Line2D
+    VPP = VPP_list[-1]
+    sail_handles = [
+        Line2D([0], [0], color=cols[k % 7], lw=2, label=VPP.sail_name[k])
+        for k in range(VPP.Nsails)
+    ]
+    fig.legend(
+        handles=sail_handles, title="Sail set",
+        loc="lower center", ncol=VPP.Nsails, frameon=True,
+    )
     plt.tight_layout()
+    fig.subplots_adjust(bottom=0.12)
     if save:
         plt.savefig(fname, dpi=96)
     else:
@@ -178,9 +216,12 @@ def sail_chart(VPP, save, fname="SailChart.png"):
             for j in range(ntwa):
                 if sailset[i, j] == id:
                     sail[i + 1, j + 1] = 1.0
-        func = interpolate.interp2d(twas, twss, sail, kind="cubic")
-        data = func(xnew, ynew)
-        data = np.where(data > 1.0, 1.0, data)
+        func = RegularGridInterpolator(
+            (twss, twas), sail, method="cubic", bounds_error=False, fill_value=0.0
+        )
+        yy, xx = np.meshgrid(ynew, xnew, indexing="ij")
+        data = func((yy, xx))
+        data = np.clip(data, 0.0, 1.0)
         ax[0].contour(
             np.radians(xnew), ynew, data, levels=[0.4], colors=cols[id], alpha=0.8
         )
