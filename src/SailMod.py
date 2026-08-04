@@ -1,16 +1,9 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__author__ = "Marin Lauber"
-__copyright__ = "Copyright 2020, Marin Lauber"
-__license__ = "GPL"
-__version__ = "1.0.1"
-__email__ = "M.Lauber@soton.ac.uk"
-
 import numpy as np
 import matplotlib.pyplot as plt
-from scipy import interpolate
-
+from scipy.interpolate import Akima1DInterpolator
 
 class Sail(object):
     def __init__(self, name, type, area, vce, up=True):
@@ -32,8 +25,8 @@ class Sail(object):
         a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
         self.kp = a[0, 0]
         # linear for now, this is not good, might need to polish data outside
-        self.interp_cd = interpolate.interp1d(a[1, :], a[2, :], kind="linear")
-        self.interp_cl = interpolate.interp1d(a[1, :], a[3, :], kind="linear")
+        self.interp_cd = Akima1DInterpolator(a[1, :], a[2, :])
+        self.interp_cl = Akima1DInterpolator(a[1, :], a[3, :])
 
     def cl(self, awa):
         awa = max(0, min(awa, 180))
@@ -59,39 +52,39 @@ class Main(Sail):
     def __init__(self, name, P, E, Roach, BAD):
         """
         Initialize mainsail
-    
-        This function initializes an object of class Main which inherits the class Sail. 
-        It calculates the area, the Vertical Center of Effort (vce), 
-        sets CE = 1 and calls the super class constructor. 
-    
+
+        This function initializes an object of class Main which inherits the class Sail.
+        It calculates the area, the Vertical Center of Effort (vce),
+        sets CE = 1 and calls the super class constructor.
+
         Parameters
         ----------
         name : string
             Of the sail
-            
+
         P : Float
             Height of the Mainsail  in meters
-            
+
         E: Float
             Length (Foot) of the Mainsail  in meters
-            
+
         Roach: Float
-            Percentage by which the triangular area is increased in order to obtain the mainsail area. 
-            This is area behind the line from clew to head. 
+            Percentage by which the triangular area is increased in order to obtain the mainsail area.
+            This is area behind the line from clew to head.
             To get this number you have to calculate  Mainsail_area / (P*E/2) -1
-            
+
         BAD: Float
             Boom Above Deck: Distance between boom and Deck  in meters
-        
+
         Returns
         -------
         Main
             Object of type Main( Sail )
-    
+
         See Also
         --------
         Jib( Sail )
-    
+
         Examples
         --------
         >>> Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0)
@@ -107,7 +100,7 @@ class Main(Sail):
         self.vce = P / 3.0 * (1 + self.roach) + self.BAD
         super().__init__(self.name, self.type, self.area0, self.vce)
         self.measure()
-    
+
     def measure(self, rfm=1, ftj=1):
         self.P_r = self.P*rfm
         self.vce = self.P_r / 3.0 * (1 + self.roach) + self.BAD
@@ -147,14 +140,6 @@ class Kite(Sail):
 
     def measure(self, rfm=1, ftj=1):
         pass
-
-# class Kite(Sail):
-#     def __init__(self, SLU, SLE, SFL, SHW, ISP, J, SPL):
-#         self.type = 'kite'
-#         area_d = 1.14*np.sqrt(ISP**2+J**2)*max(SPL,J) # only for symm kite
-#         self.area = max(area_d, 0.5*(SLU+SLE)*(SFL+4*SHW)/6.)
-#         self.vce = 0.565*ISP # above base of I
-#         super().__init__(self.type, self.area, self.vce, up=False)
 
 if __name__=="__main__":
     pass

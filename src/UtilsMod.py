@@ -5,7 +5,7 @@ import json
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy import interpolate
+from scipy.interpolate import Akima1DInterpolator,RectBivariateSpline
 
 KNOTS_TO_MPS = 0.5144
 stl = [
@@ -43,7 +43,7 @@ def build_interp_func(fname, i=1, kind="linear"):
     """
     a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
     # linear for now, this is not good, might need to polish data outside
-    return interpolate.interp1d(a[0, :], a[i, :], kind=kind, fill_value="extrapolate")
+    return Akima1DInterpolator(a[0, :], a[i, :], extrapolate=True)
 
 
 def _polar(n) -> plt.Figure:
@@ -160,32 +160,33 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
 
 def sail_chart(VPP, save, fname="SailChart.png"):
     sailset = _get_best_sails(VPP.store)
-
+    print(sailset)
     twa = VPP.twa_range
     tws = VPP.tws_range
     twas = np.hstack((twa[0] - (twa[1] - twa[0]), twa, twa[-1] + (twa[-1] - twa[-2])))
     twss = np.hstack((tws[0] - (tws[1] - tws[0]), tws, tws[-1] + (tws[-1] - tws[-2])))
-    xnew = np.linspace(twas[0], twas[-1], 101)
-    ynew = np.linspace(twss[0], twss[-1], 51)
+    xnew = np.linspace(twss[0], twss[-1], 51)
+    ynew = np.linspace(twas[0], twas[-1], 51)
 
     fig, ax = _polar(1)
     ax[0].set_ylabel(r"TWS (Knots)", labelpad=-60)
     h = []
     ntws, ntwa, _, _ = VPP.store.shape
     for id in range(VPP.Nsails):
-        sail = np.zeros((ntws + 2, ntwa + 2))
+        sail = np.zeros((ntws+2, ntwa+2))
         for i in range(ntws):
             for j in range(ntwa):
                 if sailset[i, j] == id:
-                    sail[i + 1, j + 1] = 1.0
-        func = interpolate.interp2d(twas, twss, sail, kind="cubic")
+                    sail[i+1, j+1] = 1.0
+        func = RectBivariateSpline(twss, twas, sail)
         data = func(xnew, ynew)
         data = np.where(data > 1.0, 1.0, data)
+        print(data)
         ax[0].contour(
-            np.radians(xnew), ynew, data, levels=[0.4], colors=cols[id], alpha=0.8
+            np.radians(ynew), xnew, data, levels=[0.4], colors=cols[id], alpha=0.8
         )
         c = ax[0].contourf(
-            np.radians(xnew), ynew, data, levels=[0.4, 1.0], colors=cols[id], alpha=0.5
+            np.radians(ynew), xnew, data, levels=[0.4, 1.0], colors=cols[id], alpha=0.5
         )
         h1, _ = c.legend_elements()
         h.append(h1[0])
@@ -214,23 +215,19 @@ class VPPResults(object):
 
     def _load_data(self):
         self.data = json_read(self.fname)
-        k = 1
-        self.name = self.data[0]["name"]
-        self.tws_range = np.array(self.data[0]["tws"])
-        self.twa_range = np.array(self.data[0]["twa"])
-        self.sail_name = self.data[0]["Sails"]
+        self.name = self.data["name"]
+        self.tws_range = np.array(self.data["tws"])
+        self.twa_range = np.array(self.data["twa"])
+        self.sail_name = self.data["sails"]
         self.Nsails = len(self.sail_name)
         self.store = np.zeros(
             (len(self.tws_range), len(self.twa_range), self.Nsails, 3)
         )
-
+        # fille the store
         for i in range(len(self.tws_range)):
             for j in range(len(self.twa_range)):
                 for n in range(self.Nsails):
-                    self.store[i, j, n, 0] = self.data[k]["Speed"]
-                    self.store[i, j, n, 1] = self.data[k]["Heel"]
-                    self.store[i, j, n, 2] = self.data[k]["Leeway"]
-                    k += 1
+                    self.store[i, j, n, 0:2] = self.data["results"][i][j][n][0:2]
 
     def polar(self, n=1, save=False):
         polar_plot(

@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__author__ = "Marin Lauber"
-__copyright__ = "Copyright 2020, Marin Lauber"
-__license__ = "GPL"
-__version__ = "1.0.1"
-__email__ = "M.Lauber@soton.ac.uk"
-
 import numpy as np
 from src.UtilsMod import build_interp_func,json_read,json_write
 from scipy import interpolate
@@ -14,7 +8,7 @@ from scipy import interpolate
 class Appendage(object):
     def __init__(self, type, chord, area, span, vol, ce):
         """
-        
+
         """
         self.type = type
         self.chord = chord
@@ -101,7 +95,7 @@ class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
                  Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[]):
         """
-        Name : Name of particular design 
+        Name : Name of particular design
         Lwl : waterline length (m)
         Vol : volume of canoe body (m^3)
         Bwl : waterline beam (m)
