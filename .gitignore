@@ -20,14 +20,6 @@ sphinx/_build/
 # pytest
 .pytest_cache/
 
-# Claude Code
-.claude/
-CLAUDE.md
-AGENTS.md
-.beads/
-
 # Project
 ORC_VPP_2019.pdf
 dev.py
-
-.playwright-cli/
