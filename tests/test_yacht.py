@@ -1,6 +1,6 @@
 import numpy as np
 import pytest
-from src.YachtMod import Yacht, Keel, Rudder
+from src.YachtMod import Yacht, Keel, Rudder, ShortKeel
 from src.SailMod import Main, Jib
 
 
@@ -45,3 +45,35 @@ def test_yacht_default_crew_weight():
     yacht = _minimal_yacht()
     expected = 25.8 * 7.01 ** 1.4262
     assert abs(yacht.cw - expected) < 0.1
+
+
+# --- ShortKeel-specific unit tests ---
+
+def test_short_keel_jones_lift_formula():
+    """ShortKeel dclda should match Jones low-AR formula: pi*AR/2."""
+    sk = ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15)
+    ar = sk.span / sk.area  # = 0.90 / (1.2 * 0.90)
+    expected = np.pi * ar / 2.0
+    assert abs(sk.dclda - expected) < 1e-10, f"dclda={sk.dclda}, expected={expected}"
+
+
+def test_short_keel_no_appendage_residuary():
+    """ShortKeel should return zero appendage residuary resistance."""
+    sk = ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15)
+    for fn in [0.0, 0.2, 0.4, 0.6]:
+        assert sk._cr(fn) == 0.0, f"_cr({fn}) should be 0.0 for short_keel"
+
+
+def test_short_keel_lower_lift_than_fin():
+    """A ShortKeel with equivalent area should produce less lift than a fin Keel."""
+    sk = ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15)
+    # Fin keel with similar area: chord ~0.575, span 0.90 -> area ~0.5175
+    # Use root/tip that give similar area to short keel
+    fk = Keel(Cu=1.40, Cl=1.00, Span=0.90)  # area = 1.08, same span
+    # At the same leeway, short keel should generate less lift coefficient
+    leeway_rad = np.radians(5.0)
+    cl_short = sk.dclda * leeway_rad
+    cl_fin = fk.dclda * leeway_rad
+    assert cl_short < cl_fin, (
+        f"ShortKeel cl={cl_short:.4f} should be less than Keel cl={cl_fin:.4f}"
+    )
