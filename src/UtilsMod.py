@@ -255,23 +255,19 @@ class VPPResults(object):
 
     def _load_data(self):
         self.data = json_read(self.fname)
-        k = 1
-        self.name = self.data[0]["name"]
-        self.tws_range = np.array(self.data[0]["tws"])
-        self.twa_range = np.array(self.data[0]["twa"])
-        self.sail_name = self.data[0]["Sails"]
+        self.name = self.data["name"]
+        self.tws_range = np.array(self.data["tws"])
+        self.twa_range = np.array(self.data["twa"])
+        self.sail_name = self.data["sails"]
         self.Nsails = len(self.sail_name)
         self.store = np.zeros(
             (len(self.tws_range), len(self.twa_range), self.Nsails, 3)
         )
-
+        # fille the store
         for i in range(len(self.tws_range)):
             for j in range(len(self.twa_range)):
                 for n in range(self.Nsails):
-                    self.store[i, j, n, 0] = self.data[k]["Speed"]
-                    self.store[i, j, n, 1] = self.data[k]["Heel"]
-                    self.store[i, j, n, 2] = self.data[k]["Leeway"]
-                    k += 1
+                    self.store[i, j, n, 0:2] = self.data["results"][i][j][n][0:2]
 
     def polar(self, n=1, save=False):
         polar_plot(

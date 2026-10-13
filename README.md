@@ -6,14 +6,35 @@ Please see the demo hosted at [https://yacht-vpp.streamlit.app/](https://yacht-v
 
 ## Using the code
 
-To use the code, first clone or download this repository then install the required dependencies (see below). 
-
-The main files that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). 
-
-The VPP is run with.
+The project is managed with [uv](https://docs.astral.sh/uv/). Install it once (see the [uv docs](https://docs.astral.sh/uv/getting-started/installation/) for other methods):
 
 ```bash
-$ python runVPP.py
+curl -LsSf https://astral.sh/uv/install.sh | sh
+```
+
+Then clone the repository and install the dependencies into a local `.venv`:
+
+```bash
+git clone https://github.com/marinlauber/Python-VPP.git
+cd Python-VPP
+uv sync
+```
+
+The main files that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design).
+
+The VPP is run from the root of the repository with
+
+```bash
+uv run python runVPP.py
+```
+
+`VPP.set_analysis` takes an optional maximum heel angle (`phi_max`, default 35 degrees); above it the sails are flattened and then reefed. `VPP.run` accepts `method="iterative"` (default), `"parallel"` (same solver spread over all CPU cores) or `"5dof"` (constrained 5-DOF optimiser).
+
+To run the Streamlit demo locally:
+
+```bash
+uv sync --extra demo --extra api
+uv run streamlit run demos/Home.py
 ```
 
 Once the code has run, it should generate the following figure (or a similar one)
@@ -31,8 +52,8 @@ Here is a list of the key variables used in the VPP.
 1. Appendages :
     * Cu : Root Chord / Upper Chord (m)
     * Cl : Tip Chord / Lower Chord (m)
-    * Span : Span (m) 
-1. Yacht : 
+    * Span : Span (m)
+1. Yacht :
     * Lwl : Length waterline (m)
     * Vol : Displ. volume of canoebody (m^3)
     * Bwl : Beam waterline (m)
@@ -64,16 +85,18 @@ Follow the steps below to contribute to this project.
 
 ### Install dependencies
 
-Install the project using [uv](https://docs.astral.sh/uv/):
+Install the project with the development tools (pytest, ruff, mypy) and the API dependencies:
 
 ```bash
-uv sync --extra dev
+uv sync --extra dev --extra api
 ```
 
-If using `pip`:
+Note that `uv sync` removes extras that are not listed, so pass every extra you need (or use `uv sync --all-extras`).
+
+If using `pip` instead:
 
 ```bash
-pip install -e ".[dev]"
+pip install -e ".[dev,api]"
 ```
 
 ### Run tests
@@ -83,13 +106,13 @@ Tests are implemented using [pytest](https://docs.pytest.org/en/8.0.x/).
 You can run tests with
 
 ```bash
-pytest -vv
+uv run pytest -vv
 ```
 
-You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script.
+You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script (`-g` plots the polars, `-s` saves the results).
 
 ```bash
-$ python benchmark/benchmark.py -g -o
+uv run python benchmark/benchmark.py -g -s
 ```
 
 ## Acknowledgements

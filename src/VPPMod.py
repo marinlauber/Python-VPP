@@ -4,8 +4,8 @@
 __author__ = "Marin Lauber"
 __copyright__ = "Copyright 2020, Marin Lauber"
 __license__ = "GPL"
-__version__ = "1.0.1"
-__email__ = "M.Lauber@soton.ac.uk"
+__version__ = "1.0.2"
+__email__ = "marinlauber@gmail.com"
 
 import logging
 import warnings

@@ -22,7 +22,7 @@ def test_single_sail_set(tmp_path):
         tws_range=np.arange(4.0, 6.0, 1.0), twa_range=np.linspace(30.0, 180.0, 3)
     )
 
-    vpp.run(verbose=False)
+    vpp.run()
     vpp.write("results")
 
     polar_path = str(tmp_path / "test_polar.png")
