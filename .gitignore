@@ -1,11 +1,25 @@
-ORC_VPP_2019.pdf
-sphinx/_build/
-src/__pycache__/
-dev.py
-venv
-.vscode
+# Python
+__pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# Environments
+.venv/
+venv/
+
+# IDE
+.vscode/
+.idea/
+
+# Sphinx
+sphinx/_build/
+
+# pytest
+.pytest_cache/
+
+# Project
+ORC_VPP_2019.pdf
 dev.py
-/.pytest_cache
-/__pycache__/
-.pytest_cache
