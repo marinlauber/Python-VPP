@@ -116,11 +116,14 @@ def _get_cross(dat, n, pad=2):
     """
     max_ = np.where(dat[:, n, 0] >= np.max(dat[:, :, 0], axis=1))[0]
     if len(max_) > 0:
-        idx = np.array(
-            [max(min(max_) - pad, 0), min(max(max_) + pad, len(dat[:, n, 0]))],
-            dtype=int,
-        )
-        return idx
+        lo, hi = min(max_), max(max_) + 1
+        # only pad over points that were solved for this sail (skipped ones are 0)
+        for _ in range(pad):
+            if lo > 0 and dat[lo - 1, n, 0] > 0:
+                lo -= 1
+            if hi < len(dat) and dat[hi, n, 0] > 0:
+                hi += 1
+        return np.array([lo, hi], dtype=int)
     else:
         return np.array([0, 0])
 
