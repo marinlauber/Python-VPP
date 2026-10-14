@@ -115,7 +115,7 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
         tws_range=np.array(data["tws_range"]),
         twa_range=np.array(data["twa_range"]),
     )
-    return vpp, data.get("method", "iterative")
+    return vpp, data.get("method", "sequential")
 
 
 @app.route("/api/vpp/", methods=["POST"])

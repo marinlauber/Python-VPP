@@ -121,45 +121,77 @@ def test_set_analysis_twa_out_of_range_raises():
         vpp.set_analysis(tws_range=np.array([6.0, 10.0]), twa_range=np.array([-5.0, 90.0]))
 
 
-def test_5dof_solver_runs():
-    """5-DOF solver produces non-zero speeds."""
+def test_legacy_method_names_accepted():
+    """'iterative' and '5dof' are aliases of the sequential solver."""
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
+    stores = []
+    for method in ("sequential", "iterative", "5dof"):
+        vpp = VPP(Yacht=yacht)
+        vpp.set_analysis(tws_range=np.array([8.0]),
+                         twa_range=np.linspace(40.0, 160.0, 4))
+        vpp.run(method=method)
+        stores.append(vpp.store)
+    assert np.all(stores[0][0, :, 0, 0] > 0)
+    np.testing.assert_array_equal(stores[0], stores[1])
+    np.testing.assert_array_equal(stores[0], stores[2])
+
+
+def _upwind_vpp(tws_range, twa_range):
     yacht = return_YD41_particulars()
     yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
                    Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
     vpp = VPP(Yacht=yacht)
-    vpp.set_analysis(tws_range=np.array([8.0]),
-                     twa_range=np.linspace(40.0, 160.0, 4))
-    vpp.run(method="5dof")
-    speeds = vpp.store[0, :, 0, 0]
-    assert np.any(speeds > 0), "5-DOF solver should produce non-zero speeds"
+    vpp.set_analysis(tws_range=tws_range, twa_range=twa_range)
+    vpp.run()
+    return vpp
 
 
-def test_5dof_vs_iterative_comparable():
-    """5-DOF and iterative solvers should produce speeds within 15%."""
+def test_speed_increases_with_tws_when_depowered():
+    """Optimal depowering can never make the boat slower in more wind."""
+    vpp = _upwind_vpp(np.array([14.0, 16.0, 18.0, 20.0]), np.array([28.0, 36.0, 44.0, 52.0, 60.0]))
+    vb = vpp.store[:, :, 0, 0]
+    assert np.all(vb > 0)
+    assert np.all(np.diff(vb, axis=0) > -1e-3), f"VB drops with TWS:\n{vb}"
+    # heavy air is depowered and held at the heel limit
+    assert np.all(vpp.store[-1, :, 0, 1] <= vpp.phi_max + 1e-6)
+    assert np.all(vpp.store[-1, :, 0, 3] < 1.0) or np.all(vpp.store[-1, :, 0, 4] < 2.0)
+
+
+def test_stored_points_are_in_equilibrium():
+    """Every stored point satisfies force and moment equilibrium."""
+    from src.UtilsMod import KNOTS_TO_MPS
+    from src.VPPMod import RESID_TOL
+
+    vpp = _upwind_vpp(np.array([6.0, 20.0]), np.linspace(30.0, 120.0, 4))
+    vpp.aero.sails[1] = vpp.yacht.sails[1]
+    for i, tws in enumerate(vpp.tws_range):
+        for j, twa in enumerate(vpp.twa_range):
+            vb, phi, leeway, flat, red = vpp.store[i, j, 0]
+            r = vpp.resid([vb * KNOTS_TO_MPS, phi, leeway], twa, tws, flat, red)
+            assert np.abs(r).max() < RESID_TOL, f"TWS {tws} TWA {twa}: {r}"
+
+
+def test_infeasible_kite_left_unsolved():
+    """A kite that cannot be held at the heel limit is stored as 0, not a fake point."""
+    from src.UtilsMod import KNOTS_TO_MPS
+    from src.VPPMod import RESID_TOL
+
     yacht = return_YD41_particulars()
     yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
-                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8)]
-
-    vpp_iter = VPP(Yacht=yacht)
-    vpp_iter.set_analysis(tws_range=np.array([8.0]),
-                          twa_range=np.linspace(40.0, 160.0, 4))
-    vpp_iter.run(method="iterative")
-
-    vpp_5dof = VPP(Yacht=yacht)
-    vpp_5dof.set_analysis(tws_range=np.array([8.0]),
-                          twa_range=np.linspace(40.0, 160.0, 4))
-    vpp_5dof.run(method="5dof")
-
-    speeds_iter = vpp_iter.store[0, :, 0, 0]
-    speeds_5dof = vpp_5dof.store[0, :, 0, 0]
-
-    # Compare only non-zero entries
-    mask = speeds_iter > 0.1
-    if np.any(mask):
-        ratio = speeds_5dof[mask] / speeds_iter[mask]
-        assert np.all(ratio > 0.85) and np.all(ratio < 1.15), (
-            f"5-DOF vs iterative speed ratio out of 15% band: {ratio}"
-        )
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
+                   Kite("A2", area=150.0, vce=9.55)]
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(tws_range=np.array([20.0]), twa_range=np.array([80.0, 150.0]))
+    vpp.run()
+    vpp.aero.sails[1] = vpp.yacht.sails[2]
+    vpp.aero.up = False
+    assert np.all(vpp.store[0, 0, 1] == 0.0), "A2 at 20 kn/80 deg should be infeasible"
+    vb, phi, leeway, flat, red = vpp.store[0, 1, 1]
+    assert vb > 0
+    r = vpp.resid([vb * KNOTS_TO_MPS, phi, leeway], 150.0, vpp.tws_range[0], flat, red)
+    assert np.abs(r).max() < RESID_TOL
 
 
 def test_invalid_method_raises():
@@ -209,8 +241,8 @@ def test_sail_type_asym_kite_variants():
     assert kite_pole.cl(67) > kite_cl.cl(67)
 
 
-def test_parallel_matches_iterative():
-    """Parallel solver must produce identical results to sequential iterative."""
+def test_parallel_matches_sequential():
+    """Parallel solver must produce identical results to the sequential one."""
     yacht = return_YD41_particulars()
     yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
                    Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
@@ -221,7 +253,7 @@ def test_parallel_matches_iterative():
 
     vpp_seq = VPP(Yacht=yacht)
     vpp_seq.set_analysis(tws_range=tws_range, twa_range=twa_range)
-    vpp_seq.run(method="iterative")
+    vpp_seq.run(method="sequential")
 
     vpp_par = VPP(Yacht=yacht)
     vpp_par.set_analysis(tws_range=tws_range, twa_range=twa_range)
@@ -229,7 +261,7 @@ def test_parallel_matches_iterative():
 
     np.testing.assert_allclose(
         vpp_par.store, vpp_seq.store, atol=1e-6,
-        err_msg="Parallel results differ from sequential iterative"
+        err_msg="Parallel results differ from sequential"
     )
 
 

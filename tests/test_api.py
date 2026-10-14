@@ -137,8 +137,8 @@ def test_fin_keel_with_type_field():
     assert response.status_code == 200
 
 
-def test_api_5dof_method():
-    """API accepts method='5dof' and returns results."""
+def test_api_legacy_5dof_method():
+    """API still accepts the legacy method='5dof'."""
     d = make_yd41()
     d["method"] = "5dof"
     response = post_vpp(d)

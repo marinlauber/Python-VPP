@@ -28,7 +28,7 @@ The VPP is run from the root of the repository with
 uv run python runVPP.py
 ```
 
-`VPP.set_analysis` takes an optional maximum heel angle (`phi_max`, default 35 degrees); above it the sails are flattened and then reefed. `VPP.run` accepts `method="iterative"` (default), `"parallel"` (same solver spread over all CPU cores) or `"5dof"` (constrained 5-DOF optimiser).
+At each TWS/TWA the boat speed is maximised over boat speed, heel, leeway, sail flattening and reefing, subject to force and moment equilibrium (SLSQP). `VPP.set_analysis` takes an optional maximum heel angle (`phi_max`, default 35 degrees); the sails are only flattened and reefed as much as is fastest within it. Points where a sail set cannot be carried within `phi_max` are left at 0 and not plotted. `VPP.run` accepts `method="sequential"` (default) or `"parallel"` (same results, spread over all CPU cores).
 
 To run the Streamlit demo locally:
 

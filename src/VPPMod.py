@@ -8,12 +8,10 @@ __version__ = "1.0.2"
 __email__ = "marinlauber@gmail.com"
 
 import logging
-import warnings
 from concurrent.futures import ProcessPoolExecutor
 
 import numpy as np
-from scipy.optimize import least_squares, minimize, root
-from tqdm import trange
+from scipy.optimize import minimize
 
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
@@ -21,92 +19,95 @@ from src.UtilsMod import KNOTS_TO_MPS, json_write, polar_plot, sail_chart
 from src.YachtMod import Yacht as YachtClass
 
 logger = logging.getLogger(__name__)
-debug_mode = logging.getLogger().getEffectiveLevel() == logging.DEBUG
 
 
-def _solve_point(yacht, tws, twa, sail_index, phi_max, lim_up, lim_dn):
-    """Solve one (tws, twa, sail) grid point independently.
+# Residual scales (N, N, N.m) so the three equilibrium equations have similar magnitude
+RESID_SCALE = np.array([1e3, 1e3, 1e4])
+# Tolerance on the scaled residuals for a point to count as an equilibrium
+RESID_TOL = 1e-4
+
+
+def _equilibrium(x, aero, hydro, tws, twa):
+    """Scaled force/moment imbalance (Fx, Fy, Mx) at state x = [vb, phi, leeway, flat, red]."""
+    vb, phi, leeway, flat, red = x
+    Fxh, Fyh, Mxh = hydro.update(vb, phi, leeway, twa)
+    Fxa, Fya, Mxa = aero.update(vb, phi, tws, twa, flat, red)
+    return np.array([Fxh - Fxa, Fyh - Fya, Mxh - Mxa]) / RESID_SCALE
+
+
+def _solve_point(aero, hydro, tws, twa, phi_max, guesses, fallbacks=()):
+    """Find the fastest equilibrium at one (tws, twa) for the current sail set.
+
+    Maximises boat speed over [vb, phi, leeway, flat, red] subject to force and
+    moment equilibrium, with heel bounded by phi_max. Sails are flattened
+    (flat: 1.0 -> 0.62) and reefed (red: 2.0 -> 0.5) only as much as is fast.
+    Every guess is tried and the fastest converged solution is kept; the
+    fallback guesses are only tried if none of them converge.
+
+    Returns
+    -------
+    ndarray or None
+        [vb (m/s), phi, leeway, flat, red], or None if no equilibrium exists
+        (e.g. a kite that cannot be carried at this heel limit).
+    """
+    bounds = [(0.0, None), (0.0, phi_max), (-2.0, 6.0), (0.62, 1.0), (0.5, 2.0)]
+    best = None
+    for k, x0 in enumerate([*guesses, *fallbacks]):
+        if k >= len(guesses) and best is not None:
+            break
+        sol = minimize(
+            lambda x: -x[0], x0, method="SLSQP", bounds=bounds,
+            constraints={"type": "eq", "fun": _equilibrium, "args": (aero, hydro, tws, twa)},
+            options={"maxiter": 300, "ftol": 1e-10},
+        )
+        if not sol.success:
+            continue
+        if np.abs(_equilibrium(sol.x, aero, hydro, tws, twa)).max() > RESID_TOL:
+            continue
+        if best is None or sol.x[0] > best[0]:
+            best = sol.x
+    return best
+
+
+def _solve_row(yacht, tws, twa_range, n, phi_max, lim_up, lim_dn):
+    """Solve all TWAs for one TWS and sail set, warm-starting from the previous TWA.
 
     Creates its own AeroMod/HydroMod so there is no shared mutable state.
     This is a module-level function so it can be pickled by ProcessPoolExecutor.
 
     Returns
     -------
-    tuple
-        (i, j, n, result_array) where result_array is [vb_kts, phi, leeway, flat, red],
-        or None if the point was skipped.
+    ndarray
+        Shape (len(twa_range), 5), rows [vb_kts, phi, leeway, flat, red];
+        skipped or infeasible points are left at 0.
     """
-    i, j, n = sail_index
-
     aero = AeroMod(yacht)
     hydro = HydroMod(yacht)
     aero.sails[1] = yacht.sails[n + 1]
     aero.up = aero.sails[1].up
 
-    # Skip invalid sail/TWA combinations
-    Nsails = len(yacht.sails) - 1
-    dn_limit = 135.0 if Nsails != 1 else 200.0
-    if aero.up and twa >= dn_limit:
-        return None
-    if not aero.up and twa <= lim_up:
-        return None
+    row = np.zeros((len(twa_range), 5))
+    prev = None
+    for j, twa in enumerate(twa_range):
+        # don't do low twa with downwind sails (and vice versa)
+        if aero.up and twa >= lim_dn:
+            continue
+        if not aero.up and twa <= lim_up:
+            continue
 
-    # Initial guesses
-    vb0 = 0.8 * tws
-    phi0 = 0.0
-    leeway0 = 100.0 / twa if (twa > 1.0 and 100.0 / twa < 2 * tws) else 2 * tws
+        guesses = [np.array([0.6 * tws, 10.0, 3.0, 1.0, 2.0])]
+        if prev is not None:
+            guesses.insert(0, prev)
+        fallbacks = [np.array([3.5, 20.0, 3.0, 1.0, 2.0])]
 
-    def resid(x0, twa_, tws_, flat=1.0, red=2.0):
-        vb_, phi_, leeway_ = x0
-        Fxh, Fyh, Mxh = hydro.update(vb_, phi_, leeway_, twa_)
-        Fxa, Fya, Mxa = aero.update(vb_, phi_, tws_, twa_, flat, red)
-        return [(Fxh - Fxa) ** 2, (Mxh - Mxa) ** 2, (Fyh - Fya) ** 2]
-
-    flat = 1.0
-    red = 2.0
-
-    sol = root(resid, [vb0, phi0, leeway0],
-               args=(twa, tws, flat, red), method="lm")
-    vb, phi, leeway = sol.x
-
-    if phi <= phi_max:
-        res = np.array([vb, phi, leeway, flat, red])
-        res[0] /= KNOTS_TO_MPS
-        return (i, j, n, res)
-
-    # Depowering: flatten then reef
-    lo = [0, 0, -2]
-    hi = [np.inf, phi_max, 6]
-    margin = phi_max - 1.0
-
-    def _clamp(vb_, phi_, leeway_):
-        return [max(vb_, 0), min(max(phi_, 0), phi_max),
-                min(max(leeway_, -2), 6)]
-
-    for flat in np.arange(0.98, 0.60, -0.02):
-        sol = least_squares(
-            resid, _clamp(vb, phi_max, leeway),
-            args=(twa, tws, flat, red), bounds=(lo, hi),
-        )
-        vb, phi, leeway = sol.x
-        if phi <= margin:
-            res = np.array([vb, phi, leeway, flat, red])
-            res[0] /= KNOTS_TO_MPS
-            return (i, j, n, res)
-
-    flat = 0.62
-    for red in np.arange(1.9, 0.45, -0.1):
-        sol = least_squares(
-            resid, _clamp(vb, phi_max, leeway),
-            args=(twa, tws, flat, red), bounds=(lo, hi),
-        )
-        vb, phi, leeway = sol.x
-        if phi <= margin:
-            break
-
-    res = np.array([vb, phi, leeway, flat, red])
-    res[0] /= KNOTS_TO_MPS
-    return (i, j, n, res)
+        x = _solve_point(aero, hydro, tws, twa, phi_max, guesses, fallbacks)
+        if x is None:
+            logger.debug("No equilibrium for %s at TWS %.1f TWA %.1f",
+                         yacht.sails[n + 1].name, tws / KNOTS_TO_MPS, twa)
+            continue
+        prev = x
+        row[j] = x * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])
+    return row
 
 
 class VPP(object):
@@ -128,12 +129,6 @@ class VPP(object):
         # maximum allows heel angle
         self.phi_max = 35.0
 
-        # debbuging flag
-        self.debbug = False
-        if not self.debbug:
-            warnings.filterwarnings(
-                "ignore", "The iteration is not making good progress"
-            )
         self.upToDate = False
 
     def set_analysis(self, tws_range, twa_range, phi_max=35.0):
@@ -184,245 +179,66 @@ class VPP(object):
         self.lim_up = 60.0
         self.lim_dn = 135.0 if (self.Nsails != 1) else 200.0
 
-        # minimzation bounds
-        self.bnds = ((0, None), (0.0, self.phi_max), (-2.0, 6.0), (0.62, 1.0), (0, 2.0))
-
         # flag for later
         self.upToDate = True
 
-    def run(self, verbose=False, method="iterative", progress_callback=None):
+    def run(self, verbose=False, method="sequential", progress_callback=None):
         """
         Run the analysis for the given analysis range.
+
+        At each point the boat speed is maximised over [vb, phi, leeway, flat, red]
+        subject to force/moment equilibrium and phi <= phi_max. Points where no
+        equilibrium exists (e.g. a kite that cannot be carried) are left at 0.
+
         Parameters
         ----------
         verbose
             A logical, if True, prints results of equilibrium at each TWA/TWS.
         method
-            Solver method: "iterative" (3-DOF sequential with depowering loop),
-            "parallel" (same solver, multiprocessing across grid points), or
-            "5dof" (scipy SLSQP 5-DOF constrained optimizer).
+            "sequential" (default) or "parallel" (multiprocessing across TWS and
+            sail sets, identical results). "iterative" and "5dof" are accepted
+            as aliases of "sequential" for backward compatibility.
         progress_callback
             Optional callable(tws_index, tws_kts, n_tws) invoked after each
-            TWS wind speed is completed.
+            TWS wind speed is completed (sequential only).
         """
-
-        if method == "5dof":
-            return self._run_5dof(verbose)
-        elif method == "parallel":
-            return self._run_parallel()
-        elif method != "iterative":
-            raise ValueError(f"Unknown method '{method}'. Use 'iterative', 'parallel', or '5dof'.")
+        if method in ("iterative", "5dof"):
+            method = "sequential"
+        if method not in ("sequential", "parallel"):
+            raise ValueError(f"Unknown method '{method}'. Use 'sequential' or 'parallel'.")
 
         if not self.upToDate:
             raise RuntimeError("VPP run stop: no analysis set!")
 
-        n_tws = len(self.tws_range)
+        if method == "parallel":
+            return self._run_parallel()
 
+        n_tws = len(self.tws_range)
         for i, tws in enumerate(self.tws_range):
             logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
-
             for n in range(self.Nsails):
-                self.aero.sails[1] = self.yacht.sails[n + 1]
-
-                logging.debug(
-                    "Sail Config : ",
-                    self.aero.sails[0].name + " + " + self.aero.sails[1].name,
+                self.store[i, :, n, :] = _solve_row(
+                    self.yacht, tws, self.twa_range, n,
+                    self.phi_max, self.lim_up, self.lim_dn,
                 )
-
-                self.aero.up = self.aero.sails[1].up
-
-                for j in trange(len(self.twa_range), disable=not debug_mode):
-                    twa = self.twa_range[j]
-
-                    self.vb0 = 0.8 * tws
-                    self.phi0 = 0
-                    self.leeway0 = (
-                        100.0 / twa
-                        if (twa > 1.0 and 100.0 / twa < 2 * tws)
-                        else 2 * tws
-                    )
-                    self.flat = 1.0
-                    self.red = 2.0
-
-                    # don't do low twa with downwind sails
-                    if (self.aero.up == True) and (twa >= self.lim_dn):
-                        continue
-                    if (self.aero.up == False) and (twa <= self.lim_up):
-                        continue
-
-                    vb, phi, leeway, flat, red = self._depower_solve(twa, tws)
-                    self.vb0, self.phi0, self.leeway0 = vb, phi, leeway
-
-                    logging.debug(
-                        "Equilibrium residuals (Fx, Fy, Mx): ",
-                        self.resid([vb, phi, leeway], twa, tws, flat, red),
-                    )
-
-                    # store data for later
-                    res = np.array([vb, phi, leeway, flat, red])
-                    self.store[i, j, n, :] = res * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])
-
             if progress_callback:
                 progress_callback(i, tws / KNOTS_TO_MPS, n_tws)
 
         logging.info("Optimization successful.")
 
     def _run_parallel(self):
-        """Run iterative solver in parallel across all grid points."""
-        if not self.upToDate:
-            raise RuntimeError("VPP run stop: no analysis set!")
-
-        # Build work items: (yacht, tws, twa, (i,j,n), phi_max, lim_up, lim_dn)
-        work = []
-        for i, tws in enumerate(self.tws_range):
-            for n in range(self.Nsails):
-                for j, twa in enumerate(self.twa_range):
-                    work.append((
-                        self.yacht, tws, twa, (i, j, n),
-                        self.phi_max, self.lim_up, self.lim_dn
-                    ))
-
+        """Run the row solver in parallel across TWS and sail sets."""
+        work = [(i, n) for i in range(len(self.tws_range)) for n in range(self.Nsails)]
         with ProcessPoolExecutor() as pool:
-            results = pool.map(_solve_point, *zip(*work))
-
-        for result in results:
-            if result is not None:
-                i, j, n, res = result
-                self.store[i, j, n, :] = res
+            rows = pool.map(
+                _solve_row,
+                *zip(*[(self.yacht, self.tws_range[i], self.twa_range, n,
+                        self.phi_max, self.lim_up, self.lim_dn) for i, n in work])
+            )
+            for (i, n), row in zip(work, rows):
+                self.store[i, :, n, :] = row
 
         logging.info("Parallel optimization successful.")
-
-    def _depower_solve(self, twa, tws):
-        """Solve 3-DOF equilibrium, depowering iteratively if heel exceeds phi_max.
-
-        Depowering follows real sailing practice:
-        1. Flatten sails (flat: 1.0 -> 0.62)
-        2. Reef main / furl jib (RED: 2.0 -> 0.5)
-
-        The bounded solver pins phi at phi_max, so we check for genuine
-        margin (1 degree) before accepting a solution — otherwise the boat
-        is still overpowered and needs more depowering.
-        """
-        flat = 1.0
-        red = 2.0
-
-        sol = root(self.resid, [self.vb0, self.phi0, self.leeway0],
-                   args=(twa, tws, flat, red), method="lm")
-        vb, phi, leeway = sol.x
-
-        if phi <= self.phi_max:
-            return vb, phi, leeway, flat, red
-
-        # Heel exceeds limit — use bounded solver to enforce phi <= phi_max
-        lo = [0, 0, -2]
-        hi = [np.inf, self.phi_max, 6]
-        margin = self.phi_max - 1.0
-
-        def _clamp_guess(vb_, phi_, leeway_):
-            return [max(vb_, 0), min(max(phi_, 0), self.phi_max),
-                    min(max(leeway_, -2), 6)]
-
-        # Stage 1: Flatten sails (1.0 -> 0.62)
-        for flat in np.arange(0.98, 0.60, -0.02):
-            sol = least_squares(
-                self.resid, _clamp_guess(vb, self.phi_max, leeway),
-                args=(twa, tws, flat, red), bounds=(lo, hi),
-            )
-            vb, phi, leeway = sol.x
-            if phi <= margin:
-                return vb, phi, leeway, flat, red
-
-        # Stage 2: Reef main / furl jib (RED: 2.0 -> 0.5)
-        flat = 0.62
-        for red in np.arange(1.9, 0.45, -0.1):
-            sol = least_squares(
-                self.resid, _clamp_guess(vb, self.phi_max, leeway),
-                args=(twa, tws, flat, red), bounds=(lo, hi),
-            )
-            vb, phi, leeway = sol.x
-            if phi <= margin:
-                return vb, phi, leeway, flat, red
-
-        # If still over, return best we got
-        return vb, phi, leeway, flat, red
-
-    def _run_5dof(self, verbose=False):
-        """Run 5-DOF constrained optimization using scipy SLSQP.
-
-        Simultaneously optimizes [vb, phi, leeway, flat, red] to maximize
-        boat speed subject to force/moment equilibrium constraints.
-        """
-        if not self.upToDate:
-            raise RuntimeError("VPP run stop: no analysis set!")
-
-        for i, tws in enumerate(self.tws_range):
-            logging.debug("Sailing in TWS : %.1f" % (tws / KNOTS_TO_MPS))
-
-            for n in range(self.Nsails):
-                self.aero.sails[1] = self.yacht.sails[n + 1]
-                self.aero.up = self.aero.sails[1].up
-
-                for j in trange(len(self.twa_range), disable=not debug_mode):
-                    twa = self.twa_range[j]
-
-                    # don't do low twa with downwind sails
-                    if (self.aero.up == True) and (twa >= self.lim_dn):
-                        continue
-                    if (self.aero.up == False) and (twa <= self.lim_up):
-                        continue
-
-                    vb_guess = 0.8 * tws
-                    leeway_guess = (
-                        100.0 / twa
-                        if (twa > 1.0 and 100.0 / twa < 2 * tws)
-                        else 2 * tws
-                    )
-                    x0 = np.array([vb_guess, 0.0, leeway_guess, 1.0, 2.0])
-
-                    def _forces(x):
-                        vb, phi, leeway, flat, red = x
-                        Fxh, Fyh, Mxh = self.hydro.update(vb, phi, leeway, twa)
-                        Fxa, Fya, Mxa = self.aero.update(vb, phi, tws, twa, flat, red)
-                        return Fxh, Fyh, Mxh, Fxa, Fya, Mxa
-
-                    constraints = [
-                        {"type": "eq", "fun": lambda x: _forces(x)[0] - _forces(x)[3]},
-                        {"type": "eq", "fun": lambda x: _forces(x)[2] - _forces(x)[5]},
-                        {"type": "eq", "fun": lambda x: _forces(x)[1] - _forces(x)[4]},
-                    ]
-
-                    # Cache forces to avoid redundant evaluations
-                    _cache = {}
-
-                    def _cached_forces(x):
-                        key = tuple(x)
-                        if key not in _cache:
-                            _cache[key] = _forces(x)
-                        return _cache[key]
-
-                    constraints = [
-                        {"type": "eq", "fun": lambda x: _cached_forces(x)[0] - _cached_forces(x)[3]},
-                        {"type": "eq", "fun": lambda x: _cached_forces(x)[2] - _cached_forces(x)[5]},
-                        {"type": "eq", "fun": lambda x: _cached_forces(x)[1] - _cached_forces(x)[4]},
-                    ]
-
-                    result = minimize(
-                        lambda x: -x[0],
-                        x0,
-                        method="SLSQP",
-                        bounds=self.bnds,
-                        constraints=constraints,
-                        options={"maxiter": 200, "ftol": 1e-8},
-                    )
-
-                    _cache.clear()
-
-                    res = result.x
-                    self.store[i, j, n, :] = res * np.array(
-                        [1.0 / KNOTS_TO_MPS, 1, 1, 1, 1]
-                    )
-
-        logging.info("5-DOF optimization successful.")
 
     def resid(self, x0, twa, tws, flat=1.0, red=2.0):
         """
@@ -430,7 +246,7 @@ class VPP(object):
         Parameters
         ----------
         x0
-            A numpy array of the variables (DOF).
+            A numpy array of the variables (DOF): vb (m/s), phi, leeway.
         twa
             A float of the TWA at which to compute the residuals.
         tws
@@ -442,30 +258,9 @@ class VPP(object):
         Returns
         -------
         Numpy.Array
-            Residuals on each DOF
+            Scaled (Fx, Fy, Mx) imbalance, see RESID_SCALE.
         """
-
-        vb0 = x0[0]
-        phi0 = x0[1]
-        leeway = x0[2]
-
-        Fxh, Fyh, Mxh = self.hydro.update(vb0, phi0, leeway, twa)
-        Fxa, Fya, Mxa = self.aero.update(vb0, phi0, tws, twa, flat, red)
-
-        return [(Fxh - Fxa) ** 2, (Mxh - Mxa) ** 2, (Fyh - Fya) ** 2]
-
-    @staticmethod
-    def objective(x0):
-        return -x0[0]
-
-    def Fx(self, x0, twa, tws):
-        return self.resid(x0, twa, tws)[0]
-
-    def Fy(self, x0, twa, tws):
-        return self.resid(x0, twa, tws)[1]
-
-    def Mx(self, x0, twa, tws):
-        return self.resid(x0, twa, tws)[2]
+        return _equilibrium([x0[0], x0[1], x0[2], flat, red], self.aero, self.hydro, tws, twa)
 
     def results(self):
         """
