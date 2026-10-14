@@ -130,7 +130,7 @@ class Rudder(Appendage):
 
     def _Ksff(self, phi):
         # rudder influence gradually ramped up to twice its area
-        return np.where(phi <= 30, 1 + 0.5 * (1 - np.cos(phi / 30.0 * np.pi)), 1.0)
+        return np.where(phi <= 30, 1 + 0.5 * (1 - np.cos(phi / 30.0 * np.pi)), 2.0)
 
 
 class Bulb(Appendage):
