@@ -29,7 +29,7 @@ YD41 = Yacht(
         Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
         Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
         Kite("A2", area=150.0, vce=9.55),
-        Kite("A5", area=75.0, vce=2.75),
+        Kite("A5", area=110.0, vce=9.0),
     ],
 )
 
