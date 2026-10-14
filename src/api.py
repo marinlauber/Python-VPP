@@ -49,7 +49,7 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
         Span=float(data["rudder"]["Span"])
     )
     # Environment parameters
-    roughness = float(data.get("roughness", 150e-6))
+    roughness = float(data.get("roughness", 0.0))
     Hs = float(data.get("Hs", 0.0))
     Ts = float(data.get("Ts", 0.0))
     wave_direction = data.get("wave_direction")

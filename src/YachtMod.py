@@ -201,7 +201,7 @@ class ShortKeel(Appendage):
 class Yacht(object):
     def __init__(self, Name, Lwl, Vol, Bwl, Tc, WSA, Tmax,
                  Amax, Mass, Loa, Boa, Ff, Fa, App=[], Sails=[], GZ=None, crew_weight=None,
-                 roughness=150e-6, Hs=0.0, Ts=0.0, wave_direction=None):
+                 roughness=0.0, Hs=0.0, Ts=0.0, wave_direction=None):
         """
         Yacht hull and rig definition.
 
@@ -245,8 +245,10 @@ class Yacht(object):
             Total crew weight (kg). If *None*, uses empirical formula
             ``25.8 * Lwl ** 1.4262``.
         roughness : float, optional
-            Mean hull roughness height (m). Default 150e-6 (150 μm,
-            new antifouling paint). Set to 0 for a smooth hull.
+            Mean hull roughness height (m) for the optional ITTC 1978
+            roughness allowance. Default 0.0 (hydrodynamically smooth, as in
+            the ORC VPP). The allowance was calibrated on ships and adds
+            ~80% to the friction of a 12 m yacht at 150e-6, so use with care.
         Hs : float, optional
             Significant wave height (m). Default 0.0 (flat water).
         Ts : float, optional

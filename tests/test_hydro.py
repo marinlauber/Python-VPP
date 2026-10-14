@@ -49,19 +49,19 @@ class TestRoughness:
         assert Fx_rough > Fx_smooth, "Rough hull should have more resistance"
 
     def test_zero_roughness_gives_smooth_cf(self):
-        """Zero roughness should give bare ITTC 1957 Cf (no allowance)."""
+        """Zero roughness should give bare Hughes-line Cf (no allowance)."""
         yacht = _make_yacht(roughness=0.0)
         hydro = HydroMod(yacht)
         hydro.vb = 3.0
         cf = hydro._cf(hydro.l)
 
-        # ITTC 1957 only
+        # Hughes line only
         Re = 3.0 * hydro.l / hydro.nu
         cf_expected = 0.066 * (np.log10(Re) - 2.03) ** (-2)
         assert abs(cf - cf_expected) < 1e-10
 
-    def test_default_roughness_adds_allowance(self):
-        """Default 150 μm roughness should add positive Cf allowance."""
+    def test_roughness_adds_allowance(self):
+        """150 μm roughness should add positive Cf allowance."""
         yacht = _make_yacht(roughness=150e-6)
         hydro = HydroMod(yacht)
         hydro.vb = 3.0
@@ -127,3 +127,18 @@ class TestWaveResistance:
 
         # With no waves, twa shouldn't matter for resistance
         assert abs(Fx_flat - Fx_no_twa) < 1e-6
+
+    def test_default_roughness_is_smooth(self):
+        """Default hull is smooth (no roughness allowance), as in the ORC VPP."""
+        assert _make_yacht().roughness == 0.0
+
+    def test_roughness_allowance_uses_given_length(self):
+        """The roughness allowance scales with the length passed in (hull or appendage chord)."""
+        yacht = _make_yacht(roughness=150e-6)
+        hydro = HydroMod(yacht)
+        hydro.vb = 3.0
+        smooth = HydroMod(_make_yacht(roughness=0.0))
+        smooth.vb = 3.0
+        for L in [hydro.l, 1.0]:
+            dcf = hydro._cf(L) - smooth._cf(L)
+            assert abs(dcf - (105.0 * (150e-6 / L) ** (1.0 / 3.0) - 0.64) * 1e-3) < 1e-12

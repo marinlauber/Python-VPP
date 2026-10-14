@@ -141,9 +141,10 @@ class HydroMod(object):
 
     def _cf(self, L):
         """
-        Flat plate turbulent boundary layer friction coefficient (ITTC 1957)
-        with ITTC 1978 roughness allowance. Takes a length scale so it can
-        be used for hull and appendages.
+        Flat plate turbulent boundary layer friction coefficient (Hughes line,
+        as in the ORC VPP since 2013) with optional ITTC 1978 roughness
+        allowance. Takes a length scale so it can be used for hull and
+        appendages.
         """
         Re = max(
             1e4, self.vb * L / self.nu
@@ -151,7 +152,7 @@ class HydroMod(object):
         cf = 0.066 * (np.log10(Re) - 2.03) ** (-2)
         ks = self.yacht.roughness
         if ks > 0:
-            cf += (105.0 * (ks / self.l) ** (1.0 / 3.0) - 0.64) * 1e-3
+            cf += (105.0 * (ks / L) ** (1.0 / 3.0) - 0.64) * 1e-3
         return cf
 
     def _added_resistance_waves(self, twa):
