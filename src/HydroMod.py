@@ -250,15 +250,19 @@ class HydroMod(object):
     # def _limit_heel(self):
     #     self.phi = max(0,min(self.phi,self.phi_max))
 
-    # dynamic RM
     def _get_RmV(self, vb):
+        """
+        Dynamic righting moment (N.m), ORC 2026 eq. 4.32. Negative: stability
+        lost with forward speed. Displacement x length gives kg.m, so the
+        formula holds in SI with the speed-length ratio in knots/sqrt(ft).
+        """
+        slr = (vb / 0.5144) / np.sqrt(self.lsm / 0.3048)
         return (
             (5.955e-5 / 3.0)
-            * self.vol
+            * self.mass * self.g
             * self.lsm
-            * (1 - 6.25 * (self.bwl / np.sqrt(self.yacht.amax)))
-            * self.vb
-            / self.lsm
+            * (1 - 6.25 * self.bwl / np.sqrt(self.yacht.amax) - 2.1)
+            * slr
             * self.phi
         )
 

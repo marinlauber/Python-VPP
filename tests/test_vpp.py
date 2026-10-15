@@ -1,6 +1,7 @@
 import os
 
 import numpy as np
+import pytest
 
 from src.SailMod import Jib, Kite, Main
 from src.VPPMod import VPP
@@ -223,22 +224,24 @@ def test_sail_type_jib_low():
 
 
 def test_sail_type_sym_kite():
-    """Symmetric spinnaker has higher CL than the default kite."""
+    """The default kite is the ORC 2026 symmetric spinnaker (table 5.8)."""
     kite_default = Kite("A2", area=150.0, vce=9.55)
     kite_sym = Kite("A2", area=150.0, vce=9.55, sail_type="sym_kite")
-    # ORC symmetric spinnaker has peak CL ~1.456 vs default ~1.08
-    assert kite_sym.cl(67) > kite_default.cl(67)
+    assert kite_sym.cl(67) == pytest.approx(1.013)
+    assert kite_sym.cd(150) == pytest.approx(0.702)
+    assert kite_default.cl(67) == pytest.approx(kite_sym.cl(67))
 
 
 def test_sail_type_asym_kite_variants():
-    """Asymmetric spinnaker variants load and produce different coefficients."""
+    """Asymmetric spinnakers follow ORC 2026 tables 5.9 and 5.10."""
     kite_cl = Kite("A2", area=150.0, vce=9.55, sail_type="asym_cl_kite")
     kite_pole = Kite("A2", area=150.0, vce=9.55, sail_type="asym_pole_kite")
-    # Both should produce non-zero CL at 67 deg
-    assert kite_cl.cl(67) > 1.0
-    assert kite_pole.cl(67) > 1.0
-    # Pole tack has slightly higher peak CL than centerline
-    assert kite_pole.cl(67) > kite_cl.cl(67)
+    # same up to 100 deg AWA ...
+    assert kite_cl.cl(67) == pytest.approx(1.125)
+    assert kite_pole.cl(67) == pytest.approx(kite_cl.cl(67))
+    # ... but a pole keeps the sail working deeper
+    assert kite_pole.cl(150) == pytest.approx(0.391)
+    assert kite_pole.cl(150) > kite_cl.cl(150)
 
 
 def test_parallel_matches_sequential():

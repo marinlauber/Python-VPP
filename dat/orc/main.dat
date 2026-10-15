@@ -1,4 +1,4 @@
-# mainsail lift drag and lift coefficient (high). first row is awa
+# mainsail lift drag and lift coefficient (high, ORC VPP 2026 table 5.2). first row is awa
 0.01379,,,,,,,,,
 0.00000,7.0000,9.0000,12.0000,28.0000,60.0000,90.0000,120.0000,150.0000,180.000
 0.03448,0.01724,0.01466,0.01466,0.02586,0.11302,0.38250,0.96888,1.31578,1.34483

@@ -1,4 +1,4 @@
-# jib lift drag and lift coefficient (high). first row is awa
+# jib lift drag and lift coefficient (high, ORC VPP 2026 table 5.5). first row is awa
 0.016,,,,,,,,,
 0.00000,7.0000,15.0000,20.0000,27.0000,50.0000,60.0000,100.0000,150.0000,180.0000
 0.003,0.05000,0.03200,0.03100,0.03700,0.25000,0.35000,0.73000,0.95000,0.90000

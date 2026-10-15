@@ -40,7 +40,7 @@ class Sail(object):
         area : float
             Sail area (m^2).
         vce : float
-            Vertical centre of effort above deck (m).
+            Vertical centre of effort above the base of I (m).
         up : bool, optional
             Whether this is an upwind sail. Default is True.
         data_source : str, optional
@@ -212,7 +212,9 @@ class Jib(Sail):
         LPG : float
             Luff perpendicular (m).
         HBI : float
-            Height of the jib tack above deck (m).
+            Height of the base of I (foretriangle base, roughly the deck at the
+            mast) above the waterline (m). All sail centres of effort are
+            measured from this datum, as in the ORC VPP.
         data_source : str, optional
             Coefficient data source. Default "orc".
         cl_data : dict, optional
@@ -230,7 +232,7 @@ class Jib(Sail):
         self.LPG = LPG
         self.HBI = HBI
         self.area = 0.5 * I * max(J, LPG)
-        self.vce = I / 3.0 + HBI
+        self.vce = I / 3.0  # above base of I
         super().__init__(self.name, self.type, self.area, self.vce,
                          data_source=data_source, cl_data=cl_data, cd_data=cd_data,
                          sail_type=sail_type)
@@ -246,15 +248,16 @@ class Jib(Sail):
             Reef factor for mainsail (unused for jib, present for interface
             compatibility).
         ftj : float
-            Furl factor for jib (0 to 1). 0 = fully unfurled.
+            Furl factor for jib (0 to 1). 1 = full jib, 0 = minimum jib.
         """
-        self.LPG_r = self.LPG*ftj
-        self.IG_r = self.IG*ftj
+        # the foot is reduced down to the minimum jib, a full-hoist jib with LPG = J
+        self.LPG_r = min(self.LPG, self.J) + max(self.LPG - self.J, 0.0) * ftj
+        self.IG_r = self.IG
         self.area = 0.5 * self.I * max(self.J, self.LPG_r)
 
 
 class Kite(Sail):
-    def __init__(self, name, area, vce, data_source="orc",
+    def __init__(self, name, area, vce, min_reef=0.85, data_source="orc",
                  cl_data=None, cd_data=None, sail_type=None):
         """
         Spinnaker or asymmetric downwind sail.
@@ -266,7 +269,12 @@ class Kite(Sail):
         area : float
             Sail area (m^2).
         vce : float
-            Vertical centre of effort above deck (m).
+            Vertical centre of effort above the base of I (m), 0.565 * ISP in
+            the ORC VPP.
+        min_reef : float, optional
+            Lowest reef factor when depowering under this sail (sail area
+            scales with reef^2, centre of effort with reef). ORC uses
+            0.85 * default spinnaker area / spinnaker area. Default 0.85.
         data_source : str, optional
             Coefficient data source. Default "orc".
         cl_data : dict, optional
@@ -280,7 +288,7 @@ class Kite(Sail):
         self.name = name
         self.type = "kite"
         self.area = area
-        self.min_area = self.area
+        self.min_reef = min_reef
         self.vce = vce
         super().__init__(self.name, self.type, self.area, self.vce, up=False,
                          data_source=data_source, cl_data=cl_data, cd_data=cd_data,

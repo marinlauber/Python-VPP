@@ -80,7 +80,7 @@ class AeroMod(object):
         for sail in self.sails:
             sail.measure(self.rfm, self.ftj)
             if sail.type == "main":
-                self.fractionality /= sail.P + sail.BAD
+                self.fractionality /= sail.P_r + sail.BAD
                 b1 = sail.P_r + sail.BAD
                 self.roach = sail.roach
                 tf = (0.16*(sail.CE-0.024)/sail.P+0.94)*sail.P+sail.BAD
@@ -89,10 +89,12 @@ class AeroMod(object):
                 b2 = sail.I*sail.IG_r/sail.IG
                 self.overlap = sail.LPG_r / sail.J
                 self.HBI = sail.HBI
+        # a reefed main can drop below the jib head, treat that as a masthead rig
+        self.fractionality = min(self.fractionality, 1.0)
         self.eff_span_corr = (
             1.1
             + 0.08 * (self.roach - 0.2)
-            + 0.5 * (0.68 + 0.31 * self.fractionality + 0.0075 * self.overlap - 1.1)
+            + 0.5 * (0.68 + 0.31 * self.fractionality + 0.075 * self.overlap - 1.1)
         )
         self.b = max(b1, b2)
         # assumes no mizain mast
@@ -118,10 +120,12 @@ class AeroMod(object):
         twa : float
             True wind angle (degrees).
         flat : float
-            Sail flattening factor (0.62 to 1.0). Reduces lift and drag.
+            Sail flattening factor (0.53 to 1.0). Reduces lift and drag.
         RED : float
-            Reef/reduction factor. Values > 1 apply jib furling (ftj = RED - 1),
-            values <= 1 apply mainsail reefing (rfm = RED).
+            Reef/reduction factor. Upwind, values > 1 reduce the jib foot
+            (ftj = RED - 1) and values <= 1 reef the mainsail (rfm = RED).
+            Downwind (kite), reef = min(RED, 1) scales the whole sail area by
+            reef^2 and the centre of effort by reef.
 
         Returns
         -------
@@ -132,10 +136,15 @@ class AeroMod(object):
         self.phi = max(0, phi)
         self.tws = tws
         self.twa = twa
-        # gradual flattening of the sails with tws increase, min is 0.62 from 17 knots
-        self.flat = flat #np.where(tws<2.5, 1, np.where(tws < 8.5, 0.81 + 0.19 * np.cos((tws - 2.5) / 6 * np.pi), 0.62))
-        self.ftj = max(RED-1., 0.)
-        self.rfm = min(RED, 1.)
+        self.flat = flat
+        if self.up:
+            self.ftj = max(RED-1., 0.)
+            self.rfm = min(RED, 1.)
+            self.reef = 1.0
+        else:
+            self.ftj = 1.0
+            self.rfm = 1.0
+            self.reef = min(RED, 1.)
 
         self._measure_sails()
         self._update_windTriangle()
@@ -162,21 +171,21 @@ class AeroMod(object):
         self.Fx = self.lift * np.sin(awa) - self.drag * np.cos(awa)
         self.Fy = self.lift * np.cos(awa) + self.drag * np.sin(awa)
 
-        # side-force is horizontal component of Fh
-        self.Fy *= np.cos(np.radians(self.phi))
-
-        # heeling moment
+        # heeling moment: heeling force (normal to the mast plane) times its height
         self.Mx = self.Fy * self._vce()
+
+        # side-force is horizontal component of the heeling force
+        self.Fy *= np.cos(np.radians(self.phi))
 
 
     def _get_Rw(self, awa):
-        Rw = 0.5 * self.rho * self.aws ** 2 * self._get_Aref(awa) * 0.816
-        return Rw * np.cos(awa / 180.0 * np.pi)
+        """Hull windage drag (N), along the apparent wind. awa in radians."""
+        return 0.5 * self.rho * self.aws ** 2 * self._get_Aref(awa) * 0.816
 
 
     def _get_Aref(self, awa):
-        # only hull part
-        d = 0.5 * (1 - np.cos(awa / 90.0 * np.pi))
+        # only hull part, blends from head-on (AWA 0) to side (AWA 90) area
+        d = 0.5 * (1 - np.cos(2.0 * awa))
         return self.fbav * ((1 - d) * self.boa + d * self.loa)
 
 
@@ -198,11 +207,13 @@ class AeroMod(object):
             self.cd += cd_i * sail.area * sail.bk
             kpp += cl_i ** 2 * sail.area * sail.bk * sail.kp
 
-        self.cl /= self.area
-        self.cd /= self.area
+        # coefficients are based on the full sail areas, reefing only scales self.area
+        a0 = sum(sail.area for sail in self.sails)
+        self.cl /= a0
+        self.cd /= a0
 
         # viscous quadratic parasitic drag and induced drag
-        devisor_1 = self.area * self.cl ** 2
+        devisor_1 = a0 * self.cl ** 2
         devisor_2 = np.pi * self._heff(self.awa) ** 2
         self.CE = (kpp / devisor_1 if devisor_1 else 0.0) + (self.area / devisor_2 if devisor_2 else 0.0)
 
@@ -211,7 +222,7 @@ class AeroMod(object):
         for sail in self.sails:
             if sail.type == "jib":
                 self.fcdj = (
-                    sail.bk * sail_cd[id(sail)] * sail.area / (self.cd * self.area)
+                    sail.bk * sail_cd[id(sail)] * sail.area / (self.cd * a0)
                 )
 
         # final lift and drag
@@ -235,28 +246,30 @@ class AeroMod(object):
         self.area = 0.0
         for sail in self.sails:
             self.area += sail.area
+        self.area *= self.reef ** 2
 
 
     def _vce(self):
         """
-        Vertical centre of effort, lift/drag weighted.
+        Height of the centre of effort above the waterline (ORC 2026, 5.4.2 and 5.5.2).
+
+        Sail centres of effort are lift/drag weighted, measured from the base
+        of I, lowered by the twist function with flat and scaled with reef
+        (kites), then raised by HBI.
         """
-        sum = 0.0
+        sum, cl, cd = 0.0, 0.0, 0.0
         for sail in self.sails:
-            cl2 = sail.cl(self.awa)**2
-            cd2 = sail.cd(self.awa)**2
-            sum += sail.area * sail.vce * sail.bk * np.sqrt(cl2+cd2)
-        self._area()
-        deltaCH = 0 if self.sails[1].up!=True else (1-self.ftj)*0.05*self.sails[1].IG
-        Zce = sum/(self.area*np.sqrt(self.cl**2+self.cd**2)) - deltaCH
-        return (Zce*(1-0.203*(1-self.flat)-0.451*(1-self.flat)*(1-self.fractionality)))
-
-
-    def phi_up(self):
-        """
-        heel angle correction for AWA and AWS (5.51), this is in Radians!
-        """
-        return 0.5 * (self.phi + 10 * (self.phi / 30.0) ** 2) / 180.0 * np.pi
+            cl_i, cd_i = sail.cl(self.awa), sail.cd(self.awa)
+            sum += sail.area * sail.vce * sail.bk * np.sqrt(cl_i**2 + cd_i**2)
+            cl += sail.area * sail.bk * cl_i
+            cd += sail.area * sail.bk * cd_i
+        Zce = sum / np.sqrt(cl**2 + cd**2)  # (5.39)
+        # twist function (5.40); the overlap term follows Figure 5.14, the
+        # printed equation drops its 1/3 and gives no lowering at 150% overlap
+        olap = 1.0 - np.clip((self.overlap - 0.9) / 0.6, 0.0, 1.0) / 3.0
+        twist = 1.0 - (0.5 * (1 - self.flat)
+                       + 0.902 * (1 - self.flat) * (1 - self.fractionality)) * olap
+        return self.HBI + Zce * twist * self.reef
 
 
     def _heff(self, awa):

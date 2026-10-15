@@ -25,6 +25,8 @@ logger = logging.getLogger(__name__)
 RESID_SCALE = np.array([1e3, 1e3, 1e4])
 # Tolerance on the scaled residuals for a point to count as an equilibrium
 RESID_TOL = 1e-4
+# Minimum flat (ORC 2026, 5.1.3)
+FLAT_MIN = 0.53
 
 
 def _equilibrium(x, aero, hydro, tws, twa):
@@ -35,12 +37,13 @@ def _equilibrium(x, aero, hydro, tws, twa):
     return np.array([Fxh - Fxa, Fyh - Fya, Mxh - Mxa]) / RESID_SCALE
 
 
-def _solve_point(aero, hydro, tws, twa, phi_max, guesses, fallbacks=()):
+def _solve_point(aero, hydro, tws, twa, phi_max, guesses, fallbacks=(), red_bounds=(0.5, 2.0)):
     """Find the fastest equilibrium at one (tws, twa) for the current sail set.
 
     Maximises boat speed over [vb, phi, leeway, flat, red] subject to force and
     moment equilibrium, with heel bounded by phi_max. Sails are flattened
-    (flat: 1.0 -> 0.62) and reefed (red: 2.0 -> 0.5) only as much as is fast.
+    (flat: 1.0 -> FLAT_MIN) and reefed (red within red_bounds) only as much
+    as is fast.
     Every guess is tried and the fastest converged solution is kept; the
     fallback guesses are only tried if none of them converge.
 
@@ -50,9 +53,12 @@ def _solve_point(aero, hydro, tws, twa, phi_max, guesses, fallbacks=()):
         [vb (m/s), phi, leeway, flat, red], or None if no equilibrium exists
         (e.g. a kite that cannot be carried at this heel limit).
     """
-    bounds = [(0.0, None), (0.0, phi_max), (-2.0, 6.0), (0.62, 1.0), (0.5, 2.0)]
+    bounds = [(0.0, None), (0.0, phi_max), (-2.0, 6.0), (FLAT_MIN, 1.0), red_bounds]
+    lo = np.array([b[0] for b in bounds], dtype=float)
+    hi = np.array([np.inf if b[1] is None else b[1] for b in bounds])
     best = None
     for k, x0 in enumerate([*guesses, *fallbacks]):
+        x0 = np.clip(x0, lo, hi)
         if k >= len(guesses) and best is not None:
             break
         sol = minimize(
@@ -83,8 +89,12 @@ def _solve_row(yacht, tws, twa_range, n, phi_max, lim_up, lim_dn):
     """
     aero = AeroMod(yacht)
     hydro = HydroMod(yacht)
-    aero.sails[1] = yacht.sails[n + 1]
-    aero.up = aero.sails[1].up
+    sail = yacht.sails[n + 1]
+    aero.sails[1] = sail
+    aero.up = sail.up
+    # upwind: RED 2 -> 1 reduces the jib, 1 -> 0.5 reefs the main;
+    # downwind: RED is the kite reef factor
+    red_bounds = (0.5, 2.0) if sail.up else (getattr(sail, "min_reef", 0.85), 1.0)
 
     row = np.zeros((len(twa_range), 5))
     prev = None
@@ -98,12 +108,12 @@ def _solve_row(yacht, tws, twa_range, n, phi_max, lim_up, lim_dn):
         guesses = [np.array([0.6 * tws, 10.0, 3.0, 1.0, 2.0])]
         if prev is not None:
             guesses.insert(0, prev)
-        fallbacks = [np.array([3.5, 20.0, 3.0, 1.0, 2.0])]
+        fallbacks = [np.array([3.5, 20.0, 3.0, 1.0, 2.0]), np.array([0.4 * tws, 5.0, 3.0, 1.0, 2.0])]
 
-        x = _solve_point(aero, hydro, tws, twa, phi_max, guesses, fallbacks)
+        x = _solve_point(aero, hydro, tws, twa, phi_max, guesses, fallbacks, red_bounds)
         if x is None:
             logger.debug("No equilibrium for %s at TWS %.1f TWA %.1f",
-                         yacht.sails[n + 1].name, tws / KNOTS_TO_MPS, twa)
+                         sail.name, tws / KNOTS_TO_MPS, twa)
             continue
         prev = x
         row[j] = x * np.array([1.0 / KNOTS_TO_MPS, 1, 1, 1, 1])
