@@ -5,6 +5,7 @@ import json
 
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib.lines import Line2D
 from scipy import interpolate
 from scipy.interpolate import RegularGridInterpolator
 
@@ -142,7 +143,8 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
     """
     # if we just want the velocity, we also output the gradient
     fig, ax = _polar(n)
-    for l, VPP in enumerate(VPP_list):
+    tws_handles = []
+    for VPP in VPP_list:
         wind = VPP.twa_range
         name = "" if len(VPP_list) == 1 else VPP.name
         for i in range(len(VPP.tws_range)):
@@ -154,16 +156,12 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
                     # to avoid discontinuities at sail crossover points.
                     pad = 2 if j == 0 else 0
                     idx = _get_cross(VPP.store[i, :, :, :], k, pad=pad)
-                    lab = "_nolegend_"
-                    if k == 0:
-                        lab = name + " " + f"{VPP.tws_range[i]/KNOTS_TO_MPS:.1f}"
                     ax[j].plot(
                         wind[idx[0] : idx[1]] / 180 * np.pi,
                         VPP.store[i, idx[0] : idx[1], k, j],
                         color=cols[k % 7],
                         lw=np.where(i < 7, 1.5, 2.5),
                         linestyle=stl[i % 7],
-                        label=lab,
                     )
             # add VMG points
             for pts in range(2):
@@ -176,12 +174,18 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
                     markersize=4,
                     mfc="None",
                 )
-        # TWS legend on every axis
-        for j in range(n):
-            ax[j].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+            # TWS legend entry in black, colours are reserved for sail sets
+            tws_handles.append(Line2D(
+                [0], [0], color="k", lw=np.where(i < 7, 1.5, 2.5), linestyle=stl[i % 7],
+                label=name + " " + f"{VPP.tws_range[i]/KNOTS_TO_MPS:.1f}",
+            ))
+
+    # TWS legend on every axis
+    for j in range(n):
+        ax[j].legend(handles=tws_handles, title=r"TWS (knots)", loc=1,
+                     bbox_to_anchor=(1.05, 1.05))
 
     # Sail colour legend along the bottom of the figure
-    from matplotlib.lines import Line2D
     VPP = VPP_list[-1]
     sail_handles = [
         Line2D([0], [0], color=cols[k % 7], lw=2, label=VPP.sail_name[k])
