@@ -257,7 +257,7 @@ class Jib(Sail):
 
 
 class Kite(Sail):
-    def __init__(self, name, area, vce, min_reef=0.85, data_source="orc",
+    def __init__(self, name, area, vce, min_reef=0.85, max_heel=21.5, data_source="orc",
                  cl_data=None, cd_data=None, sail_type=None):
         """
         Spinnaker or asymmetric downwind sail.
@@ -275,6 +275,11 @@ class Kite(Sail):
             Lowest reef factor when depowering under this sail (sail area
             scales with reef^2, centre of effort with reef). ORC uses
             0.85 * default spinnaker area / spinnaker area. Default 0.85.
+        max_heel : float, optional
+            Largest heel angle (deg) this sail can be carried at. ORC caps heel
+            under spinnaker at about 21.5 deg (since 2014) with a soft resistance
+            boundary; here it is a hard bound, still within the VPP phi_max.
+            Default 21.5.
         data_source : str, optional
             Coefficient data source. Default "orc".
         cl_data : dict, optional
@@ -289,6 +294,7 @@ class Kite(Sail):
         self.type = "kite"
         self.area = area
         self.min_reef = min_reef
+        self.max_heel = max_heel
         self.vce = vce
         super().__init__(self.name, self.type, self.area, self.vce, up=False,
                          data_source=data_source, cl_data=cl_data, cd_data=cd_data,

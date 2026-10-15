@@ -95,6 +95,8 @@ def _solve_row(yacht, tws, twa_range, n, phi_max, lim_up, lim_dn):
     # upwind: RED 2 -> 1 reduces the jib, 1 -> 0.5 reefs the main;
     # downwind: RED is the kite reef factor
     red_bounds = (0.5, 2.0) if sail.up else (getattr(sail, "min_reef", 0.85), 1.0)
+    # kites carry their own (lower) heel limit, ORC ~21.5 deg
+    phi_max = min(phi_max, getattr(sail, "max_heel", phi_max))
 
     row = np.zeros((len(twa_range), 5))
     prev = None

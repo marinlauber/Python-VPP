@@ -174,6 +174,21 @@ def test_stored_points_are_in_equilibrium():
             assert np.abs(r).max() < RESID_TOL, f"TWS {tws} TWA {twa}: {r}"
 
 
+def test_kite_heel_capped():
+    """Kites are held to their own heel limit (ORC ~21.5 deg), the jib to phi_max."""
+    yacht = return_YD41_particulars()
+    yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+                   Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
+                   Kite("A2", area=150.0, vce=9.55)]
+    assert yacht.sails[2].max_heel == 21.5
+    vpp = VPP(Yacht=yacht)
+    vpp.set_analysis(tws_range=np.array([16.0]), twa_range=np.array([60.0, 120.0]))
+    vpp.run()
+    assert vpp.store[0, 1, 1, 0] > 0
+    assert vpp.store[0, 1, 1, 1] <= 21.5 + 1e-6
+    assert vpp.store[0, 0, 0, 1] > 21.5  # J1 at 60 deg heels past the kite limit
+
+
 def test_infeasible_kite_left_unsolved():
     """A kite that cannot be held at the heel limit is stored as 0, not a fake point."""
     from src.UtilsMod import KNOTS_TO_MPS
