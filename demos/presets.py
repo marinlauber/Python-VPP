@@ -1,0 +1,48 @@
+"""Shared yacht preset configurations for the Streamlit UI."""
+
+PRESETS = {
+    "YD41": {
+        "yacht": {
+            "Name": "YD41",
+            "Lwl": 11.90,
+            "Vol": 6.05,
+            "Bwl": 3.18,
+            "Tc": 0.4,
+            "WSA": 28.20,
+            "Tmax": 2.30,
+            "Amax": 1.051,
+            "Mass": 6500,
+            "Ff": 1.5,
+            "Fa": 1.5,
+            "Boa": 4.2,
+            "Loa": 12.5,
+        },
+        "keel": {"Cu": 1.00, "Cl": 0.78, "Span": 1.90},
+        "rudder": {"Cu": 0.48, "Cl": 0.22, "Span": 1.15},
+        "main": {"Name": "MN1", "P": 16.60, "E": 5.60, "Roach": 0.1, "BAD": 1.0},
+        "jib": {"Name": "J1", "I": 16.20, "J": 5.10, "LPG": 5.40, "HBI": 1.8},
+        "kite": {"Name": "A2", "area": 150.0, "vce": 9.55},
+    },
+    "Daring (5.5m)": {
+        "yacht": {
+            "Name": "Daring",
+            "Lwl": 7.01,
+            "Vol": 1.95,
+            "Bwl": 1.70,
+            "Tc": 0.45,
+            "WSA": 11.5,
+            "Tmax": 1.35,
+            "Amax": 0.38,
+            "Mass": 2000,
+            "Ff": 0.75,
+            "Fa": 0.55,
+            "Boa": 1.98,
+            "Loa": 9.90,
+        },
+        "keel": {"type": "short", "Length": 1.2, "Depth": 0.90, "Tc_ratio": 0.15},
+        "rudder": {"Cu": 0.32, "Cl": 0.18, "Span": 0.75},
+        "main": {"Name": "MN1", "P": 10.80, "E": 3.30, "Roach": 0.1, "BAD": 0.80},
+        "jib": {"Name": "J1", "I": 8.50, "J": 2.70, "LPG": 2.70, "HBI": 0.50},
+        "kite": {"Name": "S1", "area": 50.0, "vce": 4.50},
+    },
+}
