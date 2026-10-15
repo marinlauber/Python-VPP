@@ -26,8 +26,8 @@ def test_single_sail_set(tmp_path):
     vpp.run()
     vpp.write("results")
 
-    polar_path = str(tmp_path / "test_polar.png")
-    sail_path = str(tmp_path / "test_sail.png")
+    polar_path = str(tmp_path / "test_polar.pdf")
+    sail_path = str(tmp_path / "test_sail.pdf")
     vpp.polar(3, True, fname=polar_path)
     vpp.SailChart(True, fname=sail_path)
     assert os.path.exists(polar_path), "Polar plot was not created"
@@ -49,7 +49,7 @@ def test_sail_chart_no_deprecation_warning(tmp_path):
         twa_range=np.linspace(30.0, 180.0, 16),
     )
     vpp.run(verbose=False)
-    fname = str(tmp_path / "test_sailchart.png")
+    fname = str(tmp_path / "test_sailchart.pdf")
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
         vpp.SailChart(save=True, fname=fname)

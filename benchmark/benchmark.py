@@ -165,7 +165,7 @@ def plot_polar(bm, calc, stats):
                 transform=ax.transAxes, fontsize=12)
 
             plt.tight_layout()
-            plt.savefig("Figure_%s_%02d.png" % (label, s), dpi=500)
+            plt.savefig("Figure_%s_%02d.pdf" % (label, s), dpi=500)
 
 def plot_stats(stats):
     print("Generating statistics plots...")
@@ -210,7 +210,7 @@ def plot_stats(stats):
         ax.legend(title=r"Stats",loc=1, bbox_to_anchor=(1.05, 1.05))
 
         plt.tight_layout()
-        plt.savefig("Figure_%s_stats.png" % (label), dpi=500)
+        plt.savefig("Figure_%s_stats.pdf" % (label), dpi=500)
 
 def benchmark(args):
     if args.purge:

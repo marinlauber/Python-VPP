@@ -287,8 +287,8 @@ class VPP(object):
     def write(self, fname):
         json_write(self.results(), fname)
 
-    def polar(self, n=1, save=False, fname="Polars.png"):
+    def polar(self, n=1, save=False, fname="Polars.pdf"):
         polar_plot([self], n, save, fname)
 
-    def SailChart(self, save=False, fname="SailChart.png"):
+    def SailChart(self, save=False, fname="SailChart.pdf"):
         sail_chart(self, save, fname)

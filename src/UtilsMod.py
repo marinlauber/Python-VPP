@@ -129,7 +129,7 @@ def _get_cross(dat, n, pad=2):
         return np.array([0, 0])
 
 
-def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
+def polar_plot(VPP_list, n, save, fname="Polars.pdf") -> None:
     """
     Generate a polar plot of the equilibrium variables.
 
@@ -198,12 +198,12 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
     plt.tight_layout()
     fig.subplots_adjust(bottom=0.12)
     if save:
-        plt.savefig(fname, dpi=96)
+        plt.savefig(fname)
     else:
         plt.show()
 
 
-def sail_chart(VPP, save, fname="SailChart.png"):
+def sail_chart(VPP, save, fname="SailChart.pdf"):
     sailset = _get_best_sails(VPP.store)
 
     twa = VPP.twa_range
@@ -240,7 +240,7 @@ def sail_chart(VPP, save, fname="SailChart.png"):
     ax[0].legend(h, VPP.sail_name, title=r"Sail Set", loc=1, bbox_to_anchor=(1.05, 0.7))
     plt.tight_layout()
     if save:
-        plt.savefig(fname, dpi=96)
+        plt.savefig(fname)
     else:
         plt.show()
 
@@ -281,11 +281,11 @@ class VPPResults(object):
             [self],
             n,
             save,
-            "Figure.png",
+            "Figure.pdf",
         )
 
     def SailChart(self, save=False):
         sail_chart(self, save)
 
     def polar_comp(self, other, n=1, save=False):
-        polar_plot([self, other], n, save, "VPP_comparison.png")
+        polar_plot([self, other], n, save, "VPP_comparison.pdf")
