@@ -203,7 +203,7 @@ def sail_chart(VPP, save, fname="SailChart.png"):
     sailset = _get_best_sails(VPP.store)
 
     twa = VPP.twa_range
-    tws = VPP.tws_range
+    tws = VPP.tws_range / KNOTS_TO_MPS  # stored in m/s, plotted in knots
     twas = np.hstack((twa[0] - (twa[1] - twa[0]), twa, twa[-1] + (twa[-1] - twa[-2])))
     twss = np.hstack((tws[0] - (tws[1] - tws[0]), tws, tws[-1] + (tws[-1] - tws[-2])))
     xnew = np.linspace(twas[0], twas[-1], 101)
