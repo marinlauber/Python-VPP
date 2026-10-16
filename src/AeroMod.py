@@ -15,19 +15,32 @@ import numpy as np
 from src.UtilsMod import build_interp_func
 
 
-@functools.lru_cache(maxsize=512)
-def wind_triangle(tws, twa, vb):
-    """Analytical wind triangle: TWS/TWA/VB → (AWA, AWS) in degrees.
+Z_REF = 10.0  # m, height the true wind speed is given at (ORC 7.1)
+Z_0 = 0.005  # m, roughness length of the log wind profile (ORC since 2022)
 
-    Uses the law of cosines on the velocity triangle formed by the true
-    wind, boat speed, and apparent wind vectors.
+
+def wind_gradient(z):
+    """Log-profile ratio of the true wind speed at height z to that at Z_REF (ORC 7.1)."""
+    return np.log(max(z, 10 * Z_0) / Z_0) / np.log(Z_REF / Z_0)
+
+
+@functools.lru_cache(maxsize=512)
+def wind_triangle(tws, twa, vb, phi=0.0, z=Z_REF):
+    """Heeled wind triangle: TWS/TWA/VB → (AWA, AWS) in degrees (ORC 7.2, 7.3).
+
+    The true wind is scaled to height z with the log wind profile, and its
+    component normal to the boat's track is projected onto the heeled mast
+    plane (times cos(phi)). With phi = 0 and z = Z_REF this is the plain
+    law-of-cosines velocity triangle.
     """
     twa_rad = np.radians(twa)
-    aws = np.sqrt(tws**2 + vb**2 + 2 * tws * vb * np.cos(twa_rad))
+    vt = tws * wind_gradient(z)
+    vy = vt * np.sin(twa_rad) * np.cos(np.radians(phi))
+    vx = vt * np.cos(twa_rad) + vb
+    aws = np.hypot(vx, vy)
     if aws < 1e-12:
         return twa, 0.0
-    cos_awa = np.clip((tws * np.cos(twa_rad) + vb) / aws, -1.0, 1.0)
-    awa = np.degrees(np.arccos(cos_awa))
+    awa = np.degrees(np.arctan2(vy, vx))
     return awa, aws
 
 
@@ -73,6 +86,8 @@ class AeroMod(object):
         self.boa = self.yacht.boa
         self.loa = self.yacht.loa
         self.fbav = 0.625 * self.yacht.ff + 0.375 * self.yacht.fa
+        # hull windage acts at about half the average freeboard
+        self.z_hull = 0.5 * self.fbav
 
 
     def _measure_sails(self):
@@ -97,6 +112,10 @@ class AeroMod(object):
             + 0.5 * (0.68 + 0.31 * self.fractionality + 0.075 * self.overlap - 1.1)
         )
         self.b = max(b1, b2)
+        # geometric centre of effort of the sail plan above the waterline,
+        # height of the apparent wind for the sail forces (ORC 7.1)
+        self.z_sails = self.HBI + sum(sail.area * sail.vce for sail in self.sails) / sum(
+            sail.area for sail in self.sails)
         # assumes no mizain mast
         self.heff_height_max_spi = max(tf+self.HBI, 0)
 
@@ -180,7 +199,7 @@ class AeroMod(object):
 
     def _get_Rw(self, awa):
         """Hull windage drag (N), along the apparent wind. awa in radians."""
-        return 0.5 * self.rho * self.aws ** 2 * self._get_Aref(awa) * 0.816
+        return 0.5 * self.rho * self.aws_hull ** 2 * self._get_Aref(awa) * 0.816
 
 
     def _get_Aref(self, awa):
@@ -234,9 +253,11 @@ class AeroMod(object):
 
     def _update_windTriangle(self):
         """
-        find AWS and AWA for a given TWS, TWA and VB
+        find AWS and AWA for a given TWS, TWA, VB and heel, at the sails' centre
+        of effort and (AWS only) at the hull windage height
         """
-        self.awa, self.aws = wind_triangle(self.tws, self.twa, self.vb)
+        self.awa, self.aws = wind_triangle(self.tws, self.twa, self.vb, self.phi, self.z_sails)
+        _, self.aws_hull = wind_triangle(self.tws, self.twa, self.vb, self.phi, self.z_hull)
 
 
     def _area(self):

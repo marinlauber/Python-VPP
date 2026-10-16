@@ -28,7 +28,7 @@ The VPP is run from the root of the repository with
 uv run python runVPP.py
 ```
 
-At each TWS/TWA the boat speed is maximised over boat speed, heel, leeway, sail flattening and reefing, subject to force and moment equilibrium (SLSQP). `VPP.set_analysis` takes an optional maximum heel angle (`phi_max`, default 35 degrees); the sails are only flattened (down to flat = 0.53) and reefed as much as is fastest within it, following the ORC VPP 2026 depowering scheme. Kites are further limited to their own `max_heel` (default 21.5 degrees, the ORC limit under spinnaker). Points where a sail set cannot be carried within its heel limit are left at 0 and not plotted. `VPP.run` accepts `method="sequential"` (default) or `"parallel"` (same results, spread over all CPU cores).
+At each TWS/TWA the boat speed is maximised over boat speed, heel, leeway, sail flattening and reefing, subject to force and moment equilibrium (SLSQP). `VPP.set_analysis` takes an optional maximum heel angle (`phi_max`, default 35 degrees); the sails are only flattened (down to flat = 0.53) and reefed as much as is fastest within it, following the ORC VPP 2026 depowering scheme. Kites are further limited to their own `max_heel` (default 21.5 degrees, the ORC limit under spinnaker). Points where a sail set cannot be carried within its heel limit are left at 0 and not plotted. The apparent wind follows the ORC heeled wind triangle: TWS is taken at 10 m and scaled to the sail plan's centre of effort with a log wind profile (z0 = 0.005 m), and its cross-track component is reduced by cos(heel). `VPP.run` accepts `method="sequential"` (default) or `"parallel"` (same results, spread over all CPU cores).
 
 To run the Streamlit demo locally:
 

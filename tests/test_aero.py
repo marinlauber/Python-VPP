@@ -122,3 +122,29 @@ class TestWindTriangle:
 
         source = inspect.getsource(wind_triangle)
         assert "fsolve" not in source
+
+
+class TestHeeledWindTriangle:
+    """ORC 7.1: heel and the log wind gradient in the wind triangle."""
+
+    def test_gradient_reference_height(self):
+        from src.AeroMod import Z_REF, wind_gradient
+
+        assert wind_gradient(Z_REF) == pytest.approx(1.0)
+        assert wind_gradient(5.0) < 1.0 < wind_gradient(20.0)
+        # ORC log profile, z0 = 0.005 m
+        assert wind_gradient(5.0) == pytest.approx(np.log(1000.0) / np.log(2000.0))
+
+    def test_heel_reduces_cross_wind(self):
+        from src.AeroMod import wind_triangle
+
+        awa0, aws0 = wind_triangle(10.0, 45.0, 3.0)
+        awa, aws = wind_triangle(10.0, 45.0, 3.0, 30.0)
+        vy = 10.0 * np.sin(np.radians(45.0)) * np.cos(np.radians(30.0))
+        vx = 10.0 * np.cos(np.radians(45.0)) + 3.0
+        assert aws == pytest.approx(np.hypot(vx, vy))
+        assert awa == pytest.approx(np.degrees(np.arctan2(vy, vx)))
+        assert awa < awa0 and aws < aws0
+        # dead downwind heel has no effect
+        heeled = wind_triangle(10.0, 180.0, 3.0, 20.0)
+        assert heeled == pytest.approx(wind_triangle(10.0, 180.0, 3.0))
