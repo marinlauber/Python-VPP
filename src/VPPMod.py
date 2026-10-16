@@ -32,7 +32,7 @@ FLAT_MIN = 0.53
 def _equilibrium(x, aero, hydro, tws, twa):
     """Scaled force/moment imbalance (Fx, Fy, Mx) at state x = [vb, phi, leeway, flat, red]."""
     vb, phi, leeway, flat, red = x
-    Fxh, Fyh, Mxh = hydro.update(vb, phi, leeway, twa)
+    Fxh, Fyh, Mxh = hydro.update(vb, phi, leeway, twa, tws)
     Fxa, Fya, Mxa = aero.update(vb, phi, tws, twa, flat, red)
     return np.array([Fxh - Fxa, Fyh - Fya, Mxh - Mxa]) / RESID_SCALE
 

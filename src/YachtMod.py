@@ -75,7 +75,7 @@ class Appendage(object):
 
 
 class Keel(Appendage):
-    def __init__(self, Cu=1, Cl=1, Span=0):
+    def __init__(self, Cu=1, Cl=1, Span=0, Tc_ratio=0.20):
         """
         Trapezoidal keel appendage.
 
@@ -90,8 +90,12 @@ class Keel(Appendage):
             Tip (lower) chord length (m). Default is 1.
         Span : float, optional
             Keel span (m). Default is 0.
+        Tc_ratio : float, optional
+            Thickness-to-chord ratio, sets the form factor (ORC caps it at
+            0.18). Default 0.20.
         """
         self.type = "keel"
+        self.tc_ratio = Tc_ratio
         self.cu = Cu
         self.cl = Cl
         self.span = Span
@@ -104,7 +108,7 @@ class Keel(Appendage):
 
 
 class Rudder(Appendage):
-    def __init__(self, Cu=1, Cl=1, Span=0):
+    def __init__(self, Cu=1, Cl=1, Span=0, Tc_ratio=0.10):
         """
         Trapezoidal rudder appendage.
 
@@ -116,8 +120,11 @@ class Rudder(Appendage):
             Tip (lower) chord length (m). Default is 1.
         Span : float, optional
             Rudder span (m). Default is 0.
+        Tc_ratio : float, optional
+            Thickness-to-chord ratio. Default 0.10.
         """
         self.type = "rudder"
+        self.tc_ratio = Tc_ratio
         self.cu = Cu
         self.cl = Cl
         self.span = Span
@@ -129,12 +136,13 @@ class Rudder(Appendage):
         super().__init__(self.type, self.chord, self.area, self.span, self.vol, self.ce)
 
     def _Ksff(self, phi):
-        # rudder influence gradually ramped up to twice its area
-        return np.where(phi <= 30, 1 + 0.5 * (1 - np.cos(phi / 30.0 * np.pi)), 2.0)
+        # rudder lift area ramps sinusoidally from 0 upright to twice its
+        # area at 30 deg of heel (ORC since 2018)
+        return np.where(phi <= 30, 1 - np.cos(phi / 30.0 * np.pi), 2.0)
 
 
 class Bulb(Appendage):
-    def __init__(self, Chord, area, vol, CG):
+    def __init__(self, Chord, area, vol, CG, Tc_ratio=0.25):
         """
         Keel bulb appendage.
 
@@ -151,14 +159,20 @@ class Bulb(Appendage):
             Displaced volume (m^3).
         CG : float
             Centre of gravity depth below waterline (m).
+        Tc_ratio : float, optional
+            Thickness-to-chord ratio (ORC caps it at 0.25). Default 0.25.
         """
         self.type = "bulb"
+        self.tc_ratio = Tc_ratio
         self.chord = Chord
         self.area = area
         self.ce = CG
         self.vol = vol
         self.cof = 1.50
         super().__init__(self.type, self.chord, self.area, 0.0, self.vol, self.ce)
+        # area is already the wetted area, and a bulb carries no side force
+        self.wsa = self.area
+        self.cla = 0.0
 
 
 class ShortKeel(Appendage):

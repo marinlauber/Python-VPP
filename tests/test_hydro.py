@@ -142,3 +142,44 @@ class TestWaveResistance:
         for L in [hydro.l, 1.0]:
             dcf = hydro._cf(L) - smooth._cf(L)
             assert abs(dcf - (105.0 * (150e-6 / L) ** (1.0 / 3.0) - 0.64) * 1e-3) < 1e-12
+
+
+class TestORCAppendages:
+    """ORC 2026 6.1.2 and 6.5: appendage friction, lift drag and induced drag."""
+
+    def test_rudder_lift_ramps_from_zero(self):
+        rudder = Rudder(Cu=0.48, Cl=0.22, Span=1.15)
+        assert rudder._Ksff(0.0) == 0.0
+        assert abs(rudder._Ksff(15.0) - 1.0) < 1e-12
+        assert rudder._Ksff(30.0) == 2.0
+        assert rudder._Ksff(40.0) == 2.0
+
+    def test_appendage_friction_line(self):
+        hydro = HydroMod(_make_yacht())
+        hydro.vb = 2e6 * hydro.nu  # Rn = 2e6 on a 1 m chord
+        assert 0.0030 < hydro._cf_app(1.0) < 0.0038
+
+    def test_lift_increases_appendage_drag_capped(self):
+        hydro = HydroMod(_make_yacht())
+        hydro.vb = 3.0
+        keel = hydro.yacht.appendages[0]
+        q_a = 0.5 * hydro.rho * hydro.vb ** 2 * keel.area
+        d0 = hydro._app_cd_area(keel, 0.0)
+        d_half = hydro._app_cd_area(keel, 0.5 * q_a)
+        assert abs(d_half - d0 - keel.wsa * (0.0016 * 0.5 + 0.0032 * 0.25)) < 1e-12
+        assert hydro._app_cd_area(keel, 2.0 * q_a) == d_half  # CL capped at 0.5
+
+    def test_induced_drag_heel_multiplier(self):
+        hydro = HydroMod(_make_yacht())
+        hydro.phi = 0.0
+        assert abs(hydro._di_factor(0.1) - 1.56) < 1e-12
+        assert hydro._di_factor(0.5) == 1.0  # off at large drive/side force ratios
+        hydro.phi = 20.0
+        assert hydro._di_factor(0.1) == 1.0
+
+    def test_span_multiplier(self):
+        hydro = HydroMod(_make_yacht())
+        hydro.update(3.0, 20.0, 3.0, twa=45.0)
+        assert hydro.span_mult == 1.0
+        hydro.update(3.0, 20.0, 3.0, twa=45.0, tws=20 * 0.5144)
+        assert 0.8 < hydro.span_mult < 1.0

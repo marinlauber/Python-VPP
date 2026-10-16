@@ -100,44 +100,89 @@ class HydroMod(object):
 
     def _get_Rv(self):
         """
-        Get viscous resistance at this froude number
+        Viscous resistance of the canoe body (ORC 6.1.1) and appendages (6.1.2).
+        Needs the appendage side forces, so _get_Ri() is called first.
         """
+        q = 0.5 * self.rho * self.vb ** 2
         # length correction and form factor of 1.05
-        Rv = 0.5 * self.rho * self.wsa * self.vb ** 2 * self._cf(0.85 * self.lsm) * 1.05
-        for appendages in self.yacht.appendages:
-            Rv += (
-                0.5
-                * self.rho
-                * appendages.wsa
-                * self.vb ** 2
-                * self._cf(appendages.chord)
-                * appendages.cof
-            )
+        Rv = q * self.wsa * self._cf(0.85 * self.lsm) * 1.05
+        for appendage, side_force in zip(self.yacht.appendages, self.Ksfj[1:]):
+            Rv += q * self._app_cd_area(appendage, side_force)
         return Rv
 
+    def _app_cd_area(self, app, side_force):
+        """
+        Viscous drag area (m^2) of an appendage, ORC 6.1.2: five spanwise strips
+        with their local Reynolds number, the ORC friction line (6.3) and form
+        factor (6.4, 6.6), plus the lift-dependent drag (6.7) with CL capped at 0.5.
+        """
+        root = getattr(app, "cu", app.chord)
+        tip = getattr(app, "cl", app.chord)
+        chords = root + (tip - root) * (np.arange(5) + 0.5) / 5
+        if app.type == "bulb":
+            tcr = min(app.tc_ratio, 0.25)
+            kf = -13.1753 * tcr ** 3 + 9.3842 * tcr ** 2 - 0.7581 * tcr + 0.1442
+        elif app.type == "short_keel":
+            kf = app.cof - 1  # own form factor for low aspect-ratio keels
+        else:
+            tcr = min(app.tc_ratio, 0.18)
+            kf = 1.75 * tcr + 30 * tcr ** 4
+        q = 0.5 * self.rho * self.vb ** 2
+        cl = min(abs(side_force) / (q * app.area), 0.5) if q > 0 and app.area > 0 else 0.0
+        dcd = 0.0016 * cl + 0.0032 * cl ** 2
+        return sum(app.wsa / 5 * (self._cf_app(c) * (1 + kf) + dcd) for c in chords)
+
     def _get_Ri(self):
-
-        # prevent from crashing
-        if self.vb == 0.0:
-            return 0.0
-
-        # reset each time
-        self.cla = self.yacht.cla
-        self.Teff = self.yacht.teff
-
+        """
+        Induced drag of the canoe body and appendages (ORC 6.5), each from its
+        share of the side force and its effective span. The appendage spans
+        are corrected for the keel root free surface and funsteady (6.5.1), and
+        the total by the heel multiplier of Figure 6.10.
+        """
+        cla = [self.yacht.cla]
+        teff = [self.yacht.teff]
         for appendage in self.yacht.appendages:
-            self.cla = np.hstack((self.cla, appendage.cla * appendage._Ksff(self.phi)))
-            self.Teff = np.hstack((self.Teff, appendage.teff))
+            cla.append(appendage.cla * appendage._Ksff(self.phi))
+            teff.append(appendage.teff * self.span_mult)
+        cla, teff = np.array(cla), np.array(teff)
 
-        self.Ksfj = (
-            0.5 * self.rho * self.vb ** 2 * self.cla * np.radians(self.leeway)
-        )
+        q = 0.5 * self.rho * self.vb ** 2
+        self.Ksfj = q * cla * np.radians(self.leeway)
         self.Ksf = np.sum(self.Ksfj)
+        if q == 0.0:
+            return 0.0
+        lifting = teff > 0
+        return np.sum(self.Ksfj[lifting] ** 2 / (q * np.pi * teff[lifting] ** 2))
 
-        # contribution of each
-        Ri = self.Ksfj ** 2 / (0.5 * self.rho * self.vb ** 2 * np.pi * self.Teff ** 2)
+    def _span_multiplier(self, tws):
+        """
+        Keel root free surface factor times funsteady on the appendage effective
+        span (ORC 6.5.1, 6.39-6.48), both 1 when no TWS is given. TWS enters the
+        empirical wave height and funsteady in knots; fact_Fn is taken as Fn.
+        """
+        if tws is None:
+            return 1.0
+        tws_kn = tws / 0.5144
+        hdyn = -0.087641 * self.lsm * self.fn * np.exp(-0.417 * self.lvr)
+        ew = tws_kn * (1 - 0.8375 * 1.174 ** (-0.00248 * tws_kn ** 3.5))
+        hw = 0.25 * tws_kn * np.sqrt(2 * ew / (self.rho * self.g))
+        beff = 0.0
+        # keel root at the canoe body draft, under a wave peak and trough
+        for dist in (self.tc + hdyn + 0.5 * hw, self.tc + hdyn - 0.5 * hw):
+            tratio = np.clip(2 * dist / (0.15 * self.lsm), 0.0, 0.5)
+            beff += 0.5 * (0.5 + 0.5 * np.sin(np.pi * tratio))
+        funsteady = max(0.9, 1 - ((tws_kn - 10) / (self.vol + 3)) ** 2 / 200)
+        return beff * funsteady
 
-        return sum(Ri)
+    def _di_factor(self, ratio):
+        """
+        Heel multiplier of the induced drag (ORC Figure 6.10, fitted as
+        1 + 0.56 (1 - phi/16)^2 below 16 deg), fully active upwind and faded
+        out as the drive to side force ratio goes from 0.2 to 0.4.
+        """
+        di = 1 + 0.56 * max(0.0, 1 - self.phi / 16.0) ** 2
+        w = 0.5 * (1 + np.cos(np.pi * np.clip((ratio - 0.2) / 0.2, 0.0, 1.0)))
+        return 1 + (di - 1) * w
 
     def _cf(self, L):
         """
@@ -150,6 +195,19 @@ class HydroMod(object):
             1e4, self.vb * L / self.nu
         )  # prevents dividing by zero, lowest for turbulence on plate
         cf = 0.066 * (np.log10(Re) - 2.03) ** (-2)
+        ks = self.yacht.roughness
+        if ks > 0:
+            cf += (105.0 * (ks / L) ** (1.0 / 3.0) - 0.64) * 1e-3
+        return cf
+
+    def _cf_app(self, L):
+        """
+        ORC appendage friction line (6.3, the quadratic term read as
+        0.0278513 log^2 Rn), with the optional roughness allowance.
+        """
+        lr = np.log10(max(1e5, self.vb * L / self.nu))
+        cf = (0.0000853 * lr ** 4 - 0.0025252 * lr ** 3 + 0.0278513 * lr ** 2
+              - 0.1363492 * lr + 0.2539752)
         ks = self.yacht.roughness
         if ks > 0:
             cf += (105.0 * (ks / L) ** (1.0 / 3.0) - 0.64) * 1e-3
@@ -204,7 +262,7 @@ class HydroMod(object):
 
         return max(0.0, Raw)
 
-    def update(self, vb, phi, leeway, twa=0.0):
+    def update(self, vb, phi, leeway, twa=0.0, tws=None):
         """
         Update hydrodynamic forces for current sailing state.
 
@@ -218,6 +276,9 @@ class HydroMod(object):
             Leeway angle (degrees).
         twa : float, optional
             True wind angle (degrees). Used for wave encounter angle.
+        tws : float, optional
+            True wind speed (m/s), for the free surface and funsteady
+            corrections of the appendage effective span. None skips them.
 
         Returns
         -------
@@ -232,9 +293,11 @@ class HydroMod(object):
         self.lsm, self.lvr, self.btr = self.yacht.measureLSM()
         self.fn = self.vb / (np.sqrt(self.g * self.lsm))
 
-        # resistance
-        self.Fx = self._get_Rr() + self._get_Rv() + self._get_Ri()
-        self.Fx += self._added_resistance_waves(twa)
+        # resistance, induced drag first as it sets the appendage lift
+        self.span_mult = self._span_multiplier(tws)
+        Ri = self._get_Ri()
+        self.Fx = self._get_Rr() + self._get_Rv() + self._added_resistance_waves(twa)
+        self.Fx += Ri * self._di_factor(self.Fx / max(self.Ksf, 1e-6))
 
         # keel side force, calculated when _get_Ri() is called
         self.Fy = self.Ksf * np.cos(self.phi / 180.0 * np.pi)
@@ -290,6 +353,8 @@ class HydroMod(object):
             self.phi = 0
             self.lsm, self.lvr, self.btr = self.yacht.measureLSM()
             self.fn = self.vb / (np.sqrt(self.g * self.lsm))
+            self.leeway, self.span_mult = 0.0, 1.0
+            self._get_Ri()  # zero side force, sets the appendage lift
             resR[i] = self._get_Rr()
             resV[i] = self._get_Rv()
         plt.plot(vb, resR, "-x", lw=1, label="Residuary Resistance")
