@@ -46,10 +46,12 @@ class Appendage(object):
         self.ce = ce
         self.vol = vol
         self.span = span
-        self.Ar = self.span / self.area
+        # geometric aspect ratio, doubled for the reflection in the hull
+        self.Ar = self.span**2 / self.area
+        self.Ae = 2.0 * self.Ar
 
-        #  lift-curve slope and coefficient of lift area
-        self.dclda = 2 * np.pi / (1.0 + 0.5 * self.Ar)
+        #  lift-curve slope (lifting line) and coefficient of lift area
+        self.dclda = 2 * np.pi * self.Ae / (self.Ae + 2.0)
         self.cla = self.dclda * self.area
         self.teff = 1.8 * self.span
         # no residuary resistance
@@ -206,8 +208,7 @@ class ShortKeel(Appendage):
         self.vol = Length * Depth * Length * Tc_ratio * 0.7
         super().__init__(self.type, self.chord, self.area, self.span, self.vol, self.ce)
         # Override Prandtl lift model with Jones low-AR formula
-        ar = self.Ar
-        self.dclda = np.pi * ar / 2.0
+        self.dclda = np.pi * self.Ae / 2.0
         self.cla = self.dclda * self.area
         self.teff = 1.5 * self.span
 

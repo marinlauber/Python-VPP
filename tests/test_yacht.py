@@ -47,13 +47,22 @@ def test_yacht_default_crew_weight():
     assert abs(yacht.cw - expected) < 0.1
 
 
+def test_appendage_aspect_ratio():
+    """Aspect ratio is span^2/area and the lift slope grows with it."""
+    keel = Keel(Cu=1.00, Cl=0.78, Span=1.90)
+    assert abs(keel.Ar - 1.90**2 / keel.area) < 1e-12
+    deep = Keel(Cu=0.50, Cl=0.39, Span=3.80)  # same area, twice the span
+    assert deep.dclda > keel.dclda
+    assert keel.dclda < 2 * np.pi
+
+
 # --- ShortKeel-specific unit tests ---
 
 def test_short_keel_jones_lift_formula():
-    """ShortKeel dclda should match Jones low-AR formula: pi*AR/2."""
+    """ShortKeel dclda should match Jones low-AR formula: pi*Ae/2, Ae = 2 span^2/area."""
     sk = ShortKeel(Length=1.2, Depth=0.90, Tc_ratio=0.15)
-    ar = sk.span / sk.area  # = 0.90 / (1.2 * 0.90)
-    expected = np.pi * ar / 2.0
+    ae = 2.0 * sk.span**2 / sk.area  # = 2 * 0.90 / 1.2, reflected in the hull
+    expected = np.pi * ae / 2.0
     assert abs(sk.dclda - expected) < 1e-10, f"dclda={sk.dclda}, expected={expected}"
 
 
