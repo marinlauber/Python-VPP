@@ -32,6 +32,7 @@ vpp = VPP(Yacht=yacht)
 vpp.set_analysis(tws_range=np.arange(4.0, 22.0, 2.0), twa_range=np.linspace(30.0, 180.0, 31))
 vpp.run()
 vpp.polar(n=3, save=True)  # Polars.pdf
+vpp.write_csv("polar.csv")  # best boat speed, TWA rows x TWS columns
 ```
 
 The righting arm curve is passed with `Yacht(..., GZ={"Heel": [...], "GZ": [...]})`. Without it, `righting_moment.json` is read from the working directory, falling back to the YD-41 curve shipped with the package. The ORC sail and resistance coefficients are part of the package.
@@ -69,7 +70,7 @@ uv sync --extra demo --extra api
 uv run streamlit run demos/Home.py
 ```
 
-The run writes the results to `results.json` and saves the polars (`Polars.pdf`) and the sail chart (`SailChart.pdf`) as PDF, so the curves stay sharp when zoomed. For the YD-41 the polars look like this (`Figure.png` is a PNG copy of `Polars.pdf` for this page)
+The run writes the results to `results.json`, the best boat speed to `polar.csv` (TWA rows, TWS columns, `;` separated, for routing software such as OpenCPN; `tws_range`/`twa_range` interpolate it onto another grid, e.g. the 5° / 2 kn steps OpenCPN expects) and saves the polars (`Polars.pdf`) and the sail chart (`SailChart.pdf`) as PDF, so the curves stay sharp when zoomed. For the YD-41 the polars look like this (`Figure.png` is a PNG copy of `Polars.pdf` for this page)
 
 <p align="center">
     <img src="Figure.png" alt="YD-41 VPP results" width="1024">

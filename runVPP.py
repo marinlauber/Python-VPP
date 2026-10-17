@@ -41,5 +41,9 @@ vpp.set_analysis(
 
 vpp.run()
 vpp.write("results")
+# polar csv for routing software, e.g. OpenCPN (5 deg TWA, 2 kn TWS steps)
+vpp.write_csv(
+    "polar.csv", tws_range=np.arange(4.0, 22.0, 2.0), twa_range=np.arange(30.0, 181.0, 5.0)
+)
 vpp.polar(3, True)
 vpp.SailChart(True)
