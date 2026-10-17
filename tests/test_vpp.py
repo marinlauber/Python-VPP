@@ -48,7 +48,7 @@ def test_sail_chart_no_deprecation_warning(tmp_path):
         tws_range=np.array([6.0, 10.0]),
         twa_range=np.linspace(30.0, 180.0, 16),
     )
-    vpp.run(verbose=False)
+    vpp.run()
     fname = str(tmp_path / "test_sailchart.pdf")
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)

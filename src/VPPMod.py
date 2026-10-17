@@ -1,12 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
-__author__ = "Marin Lauber"
-__copyright__ = "Copyright 2020, Marin Lauber"
-__license__ = "GPL"
-__version__ = "1.0.2"
-__email__ = "marinlauber@gmail.com"
-
 import logging
 from concurrent.futures import ProcessPoolExecutor
 
@@ -194,7 +188,7 @@ class VPP(object):
         # flag for later
         self.upToDate = True
 
-    def run(self, verbose=False, method="sequential", progress_callback=None):
+    def run(self, method="sequential", progress_callback=None):
         """
         Run the analysis for the given analysis range.
 
@@ -204,8 +198,6 @@ class VPP(object):
 
         Parameters
         ----------
-        verbose
-            A logical, if True, prints results of equilibrium at each TWA/TWS.
         method
             "sequential" (default) or "parallel" (multiprocessing across TWS and
             sail sets, identical results). "iterative" and "5dof" are accepted

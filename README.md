@@ -28,7 +28,7 @@ The VPP is run from the root of the repository with
 uv run python runVPP.py
 ```
 
-At each TWS/TWA the boat speed is maximised over boat speed, heel, leeway, sail flattening and reefing, subject to force and moment equilibrium (SLSQP). `VPP.set_analysis` takes an optional maximum heel angle (`phi_max`, default 35 degrees); the sails are only flattened (down to flat = 0.53) and reefed as much as is fastest within it, following the ORC VPP 2026 depowering scheme. Kites are further limited to their own `max_heel` (default 21.5 degrees, the ORC limit under spinnaker). Points where a sail set cannot be carried within its heel limit are left at 0 and not plotted. The apparent wind follows the ORC heeled wind triangle: TWS is taken at 10 m and scaled to the sail plan's centre of effort with a log wind profile (z0 = 0.005 m), and its cross-track component is reduced by cos(heel). Appendage drag follows the ORC strip friction, form factor and lift-dependent drag, and the induced drag the ORC rudder ramp (zero lift upright), heel multiplier and free-surface/funsteady span corrections. `VPP.run` accepts `method="sequential"` (default) or `"parallel"` (same results, spread over all CPU cores).
+At each TWS/TWA the boat speed is maximised over boat speed, heel, leeway, sail flattening and reefing, subject to force and moment equilibrium (SLSQP). `VPP.set_analysis` takes an optional maximum heel angle (`phi_max`, default 35 degrees); the sails are only flattened (down to flat = 0.53) and reefed as much as is fastest within it, following the ORC VPP 2026 depowering scheme. Kites are further limited to their own `max_heel` (default 21.5 degrees, the ORC limit under spinnaker). Points where a sail set cannot be carried within its heel limit are left at 0 and not plotted. The apparent wind follows the ORC heeled wind triangle: TWS is taken at 10 m and scaled to the sail plan's centre of effort with a log wind profile (z0 = 0.005 m), and its cross-track component is reduced by cos(heel). Appendage drag follows the ORC strip friction, form factor and lift-dependent drag, and the induced drag the ORC rudder ramp (zero lift upright), heel multiplier and free-surface/funsteady span corrections. Appendage lift uses the geometric aspect ratio span²/area, doubled for the reflection in the hull, in a lifting-line lift-curve slope (Jones slender-wing slope for short keels). `VPP.run` accepts `method="sequential"` (default) or `"parallel"` (same results, spread over all CPU cores).
 
 To run the Streamlit demo locally:
 
@@ -37,7 +37,7 @@ uv sync --extra demo --extra api
 uv run streamlit run demos/Home.py
 ```
 
-Once the code has run, it should generate the following figure (or a similar one)
+The run writes the results to `results.json` and saves the polars (`Polars.pdf`) and the sail chart (`SailChart.pdf`) as PDF, so the curves stay sharp when zoomed. For the YD-41 the polars look like this (`Figure.png` is a PNG copy of `Polars.pdf` for this page)
 
 <p align="center">
     <img src="Figure.png" alt="YD-41 VPP results" width="1024">
@@ -111,7 +111,7 @@ You can run tests with
 uv run pytest -vv
 ```
 
-You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script (`-g` plots the polars, `-s` saves the results).
+You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script (`-g` saves the polars as one `Figure_<label>_<TWS>.pdf` per wind speed plus a `Figure_<label>_stats.pdf` error summary, `-s` saves the results).
 
 ```bash
 uv run python benchmark/benchmark.py -g -s

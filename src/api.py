@@ -131,7 +131,7 @@ def makevppresults():
         return jsonify({"error": f"Invalid input: {e}"}), 400
 
     try:
-        vpp.run(verbose=True, method=method)
+        vpp.run(method=method)
     except Exception as e:
         logging.exception("VPP simulation failed")
         return jsonify({"error": f"Simulation failed: {e}"}), 500
