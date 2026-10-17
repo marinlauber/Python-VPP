@@ -1,7 +1,7 @@
 import numpy as np
 import pytest
-from src.YachtMod import Yacht, Keel, Rudder, ShortKeel
-from src.SailMod import Main, Jib
+from python_vpp.YachtMod import Yacht, Keel, Rudder, ShortKeel
+from python_vpp.SailMod import Main, Jib
 
 
 def _minimal_yacht(**overrides):

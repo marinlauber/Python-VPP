@@ -6,7 +6,7 @@ import functools
 import matplotlib.pyplot as plt
 import numpy as np
 
-from src.UtilsMod import build_interp_func
+from .UtilsMod import build_interp_func
 
 
 Z_REF = 10.0  # m, height the true wind speed is given at (ORC 7.1)

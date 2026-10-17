@@ -6,11 +6,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 from datetime import datetime
 
-sys.path.append(os.path.realpath("."))
-
-from src.YachtMod import Yacht, Keel, Rudder
-from src.SailMod import Main, Jib, Kite
-from src.VPPMod import VPP, KNOTS_TO_MPS
+from python_vpp.YachtMod import Yacht, Keel, Rudder
+from python_vpp.SailMod import Main, Jib, Kite
+from python_vpp.VPPMod import VPP, KNOTS_TO_MPS
 
 tws = np.array([3, 4, 5, 6, 7, 8, 10]) # TWS in m/s
 data_file = "dat/YD-41/YD41.dat"

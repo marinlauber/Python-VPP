@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+from pathlib import Path
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -10,6 +11,8 @@ from scipy import interpolate
 from scipy.interpolate import RegularGridInterpolator
 
 KNOTS_TO_MPS = 0.5144
+# model coefficient data shipped with the package
+DATA_DIR = Path(__file__).parent / "dat"
 stl = [
     (0, ()),
     (0, (1.1, 1.1)),
@@ -90,7 +93,7 @@ def build_interp_func(fname, i=1, kind="linear"):
     """
     build interpolation function and returns it in a list
     """
-    a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
+    a = np.genfromtxt(DATA_DIR / (fname + ".dat"), delimiter=",", skip_header=1)
     # Filter out NaN values for make_interp_spline compatibility
     mask = ~(np.isnan(a[0, :]) | np.isnan(a[i, :]))
     x = a[0, mask]

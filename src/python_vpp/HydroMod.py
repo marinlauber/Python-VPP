@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy.interpolate import RegularGridInterpolator
 
+from .UtilsMod import DATA_DIR
+
 
 class HydroMod(object):
     def __init__(self, Yacht, rho=1025.0, mu=0.00119, g=9.81):
@@ -61,7 +63,7 @@ class HydroMod(object):
         """
         Loads ORC resistance surfaces from file and build interpolation function
         """
-        surf = np.genfromtxt("dat/ORCi_Drag_Surfaces.csv", delimiter=",", skip_header=1)
+        surf = np.genfromtxt(DATA_DIR / "ORCi_Drag_Surfaces.csv", delimiter=",", skip_header=1)
         surf = surf.reshape((24, 43, 42))
         # x is Fn := [0.,0.7], y is btr := [2.5,9], z is lvr := [3,9]
         # we add zero Fn resistance (0.)

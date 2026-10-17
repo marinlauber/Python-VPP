@@ -1,7 +1,7 @@
 Welcome to Python-VPP's documentation!
 ======================================
 
-.. automodule:: src.VPPMod
+.. automodule:: python_vpp.VPPMod
     :members:
 
 .. toctree::

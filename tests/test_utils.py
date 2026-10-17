@@ -2,10 +2,10 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from src.SailMod import Jib, Kite, Main
-from src.UtilsMod import KNOTS_TO_MPS, _get_cross, csv_write
-from src.VPPMod import VPP
-from src.YachtMod import Keel, Rudder, Yacht
+from python_vpp.SailMod import Jib, Kite, Main
+from python_vpp.UtilsMod import KNOTS_TO_MPS, _get_cross, csv_write
+from python_vpp.VPPMod import VPP
+from python_vpp.YachtMod import Keel, Rudder, Yacht
 
 
 def return_YD41_particulars():
