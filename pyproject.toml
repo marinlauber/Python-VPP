@@ -1,12 +1,12 @@
 [project]
 name = "python-vpp"
-version = "0.0.2"
+version = "1.0.0"
 description = "OOP Velocity Prediction Program"
 readme = "README.md"
 license = "MIT"
 requires-python = ">=3.11"
 authors = [
-    { name = "Marin Lauber", email = "M.Lauber@soton.ac.uk" },
+    { name = "Marin Lauber", email = "marinlauber@gmail.com" },
     { name = "Otto Villani" },
     { name = "Thomas Dickson" },
 ]
@@ -19,7 +19,6 @@ dependencies = [
     "numpy>=2.0",
     "matplotlib>=3.8",
     "scipy>=1.12",
-    "tqdm>=4.66",
 ]
 
 [project.optional-dependencies]

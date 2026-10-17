@@ -5,7 +5,9 @@ import json
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.interpolate import Akima1DInterpolator,RectBivariateSpline
+from matplotlib.lines import Line2D
+from scipy import interpolate
+from scipy.interpolate import RegularGridInterpolator
 
 KNOTS_TO_MPS = 0.5144
 stl = [
@@ -39,11 +41,17 @@ def json_write(data, fname):
 
 def build_interp_func(fname, i=1, kind="linear"):
     """
-    build interpolatison function and returns it in a list
+    build interpolation function and returns it in a list
     """
     a = np.genfromtxt("dat/" + fname + ".dat", delimiter=",", skip_header=1)
-    # linear for now, this is not good, might need to polish data outside
-    return Akima1DInterpolator(a[0, :], a[i, :], extrapolate=True)
+    # Filter out NaN values for make_interp_spline compatibility
+    mask = ~(np.isnan(a[0, :]) | np.isnan(a[i, :]))
+    x = a[0, mask]
+    y = a[i, mask]
+    k = {"linear": 1, "quadratic": 2, "cubic": 3}.get(kind, 1)
+    spline = interpolate.make_interp_spline(x, y, k=k)
+    spline.extrapolate = True
+    return spline
 
 
 def _polar(n) -> plt.Figure:
@@ -94,18 +102,34 @@ def _get_vmg(dat, twa_range):
         return np.array([ix[sup], iy[sdn]], dtype=int), np.array([sup, sdn])
 
 
-def _get_cross(dat, n):
+def _get_cross(dat, n, pad=2):
+    """Return [start, end) TWA indices where sail *n* is fastest.
+
+    Parameters
+    ----------
+    dat : ndarray
+        Shape ``(ntwa, nsails, nvars)``.
+    n : int
+        Sail index.
+    pad : int
+        Number of extra TWA indices to include on each side for visual
+        overlap.  Use 0 for a tight (no-overlap) range.
+    """
     max_ = np.where(dat[:, n, 0] >= np.max(dat[:, :, 0], axis=1))[0]
     if len(max_) > 0:
-        idx = np.array(
-            [max(min(max_) - 2, 0), min(max(max_) + 2, len(dat[:, n, 0]))], dtype=int
-        )
-        return idx
+        lo, hi = min(max_), max(max_) + 1
+        # only pad over points that were solved for this sail (skipped ones are 0)
+        for _ in range(pad):
+            if lo > 0 and dat[lo - 1, n, 0] > 0:
+                lo -= 1
+            if hi < len(dat) and dat[hi, n, 0] > 0:
+                hi += 1
+        return np.array([lo, hi], dtype=int)
     else:
         return np.array([0, 0])
 
 
-def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
+def polar_plot(VPP_list, n, save, fname="Polars.pdf") -> None:
     """
     Generate a polar plot of the equilibrium variables.
 
@@ -119,24 +143,25 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
     """
     # if we just want the velocity, we also output the gradient
     fig, ax = _polar(n)
-    for l, VPP in enumerate(VPP_list):
+    tws_handles = []
+    for VPP in VPP_list:
         wind = VPP.twa_range
         name = "" if len(VPP_list) == 1 else VPP.name
         for i in range(len(VPP.tws_range)):
             vmg, ids = _get_vmg(VPP.store[i, :, :, :], VPP.twa_range)
             for k in range(VPP.Nsails):
-                idx = _get_cross(VPP.store[i, :, :, :], k)
                 for j in range(n):
-                    lab = "_nolegend_"
-                    if k == 0:
-                        lab = name + " " + f"{VPP.tws_range[i]/KNOTS_TO_MPS:.1f}"
+                    # Speed plot (j=0) uses overlap padding so sail curves
+                    # connect visually; heel/leeway (j>0) use tight range
+                    # to avoid discontinuities at sail crossover points.
+                    pad = 2 if j == 0 else 0
+                    idx = _get_cross(VPP.store[i, :, :, :], k, pad=pad)
                     ax[j].plot(
                         wind[idx[0] : idx[1]] / 180 * np.pi,
                         VPP.store[i, idx[0] : idx[1], k, j],
                         color=cols[k % 7],
                         lw=np.where(i < 7, 1.5, 2.5),
                         linestyle=stl[i % 7],
-                        label=lab,
                     )
             # add VMG points
             for pts in range(2):
@@ -149,51 +174,73 @@ def polar_plot(VPP_list, n, save, fname="Polars.png") -> None:
                     markersize=4,
                     mfc="None",
                 )
-            # add legend only on first axis
-            ax[0].legend(title=r"TWS (knots)", loc=1, bbox_to_anchor=(1.05, 1.05))
+            # TWS legend entry in black, colours are reserved for sail sets
+            tws_handles.append(Line2D(
+                [0], [0], color="k", lw=np.where(i < 7, 1.5, 2.5), linestyle=stl[i % 7],
+                label=name + " " + f"{VPP.tws_range[i]/KNOTS_TO_MPS:.1f}",
+            ))
+
+    # TWS legend on every axis
+    for j in range(n):
+        ax[j].legend(handles=tws_handles, title=r"TWS (knots)", loc=1,
+                     bbox_to_anchor=(1.05, 1.05))
+
+    # Sail colour legend along the bottom of the figure
+    VPP = VPP_list[-1]
+    sail_handles = [
+        Line2D([0], [0], color=cols[k % 7], lw=2, label=VPP.sail_name[k])
+        for k in range(VPP.Nsails)
+    ]
+    fig.legend(
+        handles=sail_handles, title="Sail set",
+        loc="lower center", ncol=VPP.Nsails, frameon=True,
+    )
     plt.tight_layout()
+    fig.subplots_adjust(bottom=0.12)
     if save:
-        plt.savefig(fname, dpi=96)
+        plt.savefig(fname)
     else:
         plt.show()
 
 
-def sail_chart(VPP, save, fname="SailChart.png"):
+def sail_chart(VPP, save, fname="SailChart.pdf"):
     sailset = _get_best_sails(VPP.store)
-    print(sailset)
+
     twa = VPP.twa_range
-    tws = VPP.tws_range
+    tws = VPP.tws_range / KNOTS_TO_MPS  # stored in m/s, plotted in knots
     twas = np.hstack((twa[0] - (twa[1] - twa[0]), twa, twa[-1] + (twa[-1] - twa[-2])))
     twss = np.hstack((tws[0] - (tws[1] - tws[0]), tws, tws[-1] + (tws[-1] - tws[-2])))
-    xnew = np.linspace(twss[0], twss[-1], 51)
-    ynew = np.linspace(twas[0], twas[-1], 51)
+    xnew = np.linspace(twas[0], twas[-1], 101)
+    ynew = np.linspace(twss[0], twss[-1], 51)
 
     fig, ax = _polar(1)
     ax[0].set_ylabel(r"TWS (Knots)", labelpad=-60)
     h = []
     ntws, ntwa, _, _ = VPP.store.shape
     for id in range(VPP.Nsails):
-        sail = np.zeros((ntws+2, ntwa+2))
+        sail = np.zeros((ntws + 2, ntwa + 2))
         for i in range(ntws):
             for j in range(ntwa):
                 if sailset[i, j] == id:
-                    sail[i+1, j+1] = 1.0
-        func = RectBivariateSpline(twss, twas, sail)
-        data = func(xnew, ynew)
-        data = np.where(data > 1.0, 1.0, data)
-        print(data)
+                    sail[i + 1, j + 1] = 1.0
+        func = RegularGridInterpolator(
+            (twss, twas), sail, method="cubic", bounds_error=False, fill_value=0.0
+        )
+        yy, xx = np.meshgrid(ynew, xnew, indexing="ij")
+        data = func((yy, xx))
+        data = np.clip(data, 0.0, 1.0)
         ax[0].contour(
-            np.radians(ynew), xnew, data, levels=[0.4], colors=cols[id], alpha=0.8
+            np.radians(xnew), ynew, data, levels=[0.4], colors=cols[id], alpha=0.8
         )
         c = ax[0].contourf(
-            np.radians(ynew), xnew, data, levels=[0.4, 1.0], colors=cols[id], alpha=0.5
+            np.radians(xnew), ynew, data, levels=[0.4, 1.0], colors=cols[id], alpha=0.5
         )
         h1, _ = c.legend_elements()
         h.append(h1[0])
     ax[0].legend(h, VPP.sail_name, title=r"Sail Set", loc=1, bbox_to_anchor=(1.05, 0.7))
     plt.tight_layout()
     if save:
-        plt.savefig(fname, dpi=96)
+        plt.savefig(fname)
     else:
         plt.show()
 
@@ -234,11 +281,11 @@ class VPPResults(object):
             [self],
             n,
             save,
-            "Figure.png",
+            "Figure.pdf",
         )
 
     def SailChart(self, save=False):
         sail_chart(self, save)
 
     def polar_comp(self, other, n=1, save=False):
-        polar_plot([self, other], n, save, "VPP_comparison.png")
+        polar_plot([self, other], n, save, "VPP_comparison.pdf")
