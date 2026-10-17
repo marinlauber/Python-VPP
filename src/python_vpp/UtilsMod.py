@@ -42,6 +42,53 @@ def json_write(data, fname):
         json.dump(data, json_file, ensure_ascii=False, indent=2, sort_keys=False)
 
 
+def csv_write(VPP, tws_range=None, twa_range=None, fname="polar.csv"):
+    """
+    Export the best boat speed (knots) to a polar csv file (TWA rows, TWS
+    columns, ";" separated), the format read by routing software such as OpenCPN.
+
+    Parameters
+    ----------
+    VPP
+        A VPP (after run) or VPPResults object.
+    tws_range
+        Optional TWS (knots) to write. Default: the TWS of the VPP analysis.
+    twa_range
+        Optional TWA (degrees) to write. Default: the TWA of the VPP analysis.
+    fname
+        Name of the csv file, default "polar.csv".
+
+    If tws_range or twa_range is given, the VPP results are linearly
+    interpolated onto it; points outside the analysed range, or where no sail
+    set can be carried, are written as 0.
+    """
+    if not hasattr(VPP, "store"):
+        raise ValueError("VPP object must have a 'store' attribute to export to csv.")
+    import csv
+
+    # best boat speed over the sail sets, the store already holds knots
+    vpp_tws = np.asarray(VPP.tws_range) / KNOTS_TO_MPS
+    vpp_twa = np.asarray(VPP.twa_range)
+    speed = np.max(np.asarray(VPP.store)[:, :, :, 0], axis=2)
+    tws = vpp_tws if tws_range is None else np.asarray(tws_range, dtype=float)
+    twa = vpp_twa if twa_range is None else np.asarray(twa_range, dtype=float)
+    if tws_range is not None or twa_range is not None:
+        func = RegularGridInterpolator(
+            (vpp_tws, vpp_twa), speed, bounds_error=False, fill_value=0.0
+        )
+        grid = np.stack(np.meshgrid(tws, twa, indexing="ij"), axis=-1)
+        speed = func(grid)
+
+    with open(fname, mode="w", newline="") as file:
+        writer = csv.writer(file, delimiter=";")
+        # header with TWS in knots
+        writer.writerow(["TWA\\TWS"] + [f"{round(ws, 2):g}" for ws in tws])
+        for j, angle in enumerate(twa):
+            writer.writerow(
+                [f"{round(angle, 2):g}"] + [f"{speed[i, j]:.2f}" for i in range(len(tws))]
+            )
+
+
 def build_interp_func(fname, i=1, kind="linear"):
     """
     build interpolation function and returns it in a list
