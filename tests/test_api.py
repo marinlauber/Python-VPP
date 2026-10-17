@@ -2,7 +2,7 @@ import json
 
 import numpy as np
 
-from src.api import app
+from python_vpp.api import app
 
 HEADERS = {"content-type": "application/json", "Accept-Charset": "UTF-8"}
 

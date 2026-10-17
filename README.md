@@ -4,6 +4,38 @@
 
 Please see the demo hosted at [https://yacht-vpp.streamlit.app/](https://yacht-vpp.streamlit.app/) and go for a test sail!
 
+## Installation
+
+Python-VPP is on PyPI and needs Python 3.11 or newer:
+
+```bash
+pip install python-vpp
+```
+
+Then build a yacht and run the VPP:
+
+```python
+import numpy as np
+from python_vpp import VPP, Yacht, Keel, Rudder, Main, Jib, Kite
+
+yacht = Yacht(
+    Name="YD41", Lwl=11.90, Vol=6.05, Bwl=3.18, Tc=0.4, WSA=28.20, Tmax=2.30,
+    Amax=1.051, Mass=6500, Ff=1.5, Fa=1.5, Boa=4.2, Loa=12.5,
+    App=[Keel(Cu=1.00, Cl=0.78, Span=1.90), Rudder(Cu=0.48, Cl=0.22, Span=1.15)],
+    Sails=[
+        Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
+        Jib("J1", I=16.20, J=5.10, LPG=5.40, HBI=1.8),
+        Kite("A2", area=150.0, vce=9.55),
+    ],
+)
+vpp = VPP(Yacht=yacht)
+vpp.set_analysis(tws_range=np.arange(4.0, 22.0, 2.0), twa_range=np.linspace(30.0, 180.0, 31))
+vpp.run()
+vpp.polar(n=3, save=True)  # Polars.pdf
+```
+
+The righting arm curve is passed with `Yacht(..., GZ={"Heel": [...], "GZ": [...]})`. Without it, `righting_moment.json` is read from the working directory, falling back to the YD-41 curve shipped with the package. The ORC sail and resistance coefficients are part of the package.
+
 ## Using the code
 
 The project is managed with [uv](https://docs.astral.sh/uv/). Install it once (see the [uv docs](https://docs.astral.sh/uv/getting-started/installation/) for other methods):
@@ -20,7 +52,7 @@ cd Python-VPP
 uv sync
 ```
 
-The main files that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design).
+From a clone of the repository, the main files that are used are `runVPP.py` and `righting_moment.json`. These have to be filled with the data of your boat. By default they are using the YD-41 (from Principle of Yacht Design). The code lives in `src/python_vpp/`, with the model coefficient data in `src/python_vpp/dat/`; `uv sync` installs it in editable mode.
 
 The VPP is run from the root of the repository with
 
@@ -110,6 +142,10 @@ You can run tests with
 ```bash
 uv run pytest -vv
 ```
+
+### Release
+
+Bump `version` in `pyproject.toml`, then create a GitHub release with a matching tag (e.g. `v1.0.0`). The `python-publish.yml` workflow builds the package with `uv build` and uploads it to PyPI through trusted publishing. Check the build locally first with `uv build`.
 
 You can run a benchmark against the YD-41 results from WinVPP by running the `benchmark.py` script (`-g` saves the polars as one `Figure_<label>_<TWS>.pdf` per wind speed plus a `Figure_<label>_stats.pdf` error summary, `-s` saves the results).
 

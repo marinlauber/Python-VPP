@@ -1,8 +1,8 @@
 import numpy as np
 
-from src.SailMod import Jib, Kite, Main
-from src.UtilsMod import _get_cross
-from src.YachtMod import Keel, Rudder, Yacht
+from python_vpp.SailMod import Jib, Kite, Main
+from python_vpp.UtilsMod import _get_cross
+from python_vpp.YachtMod import Keel, Rudder, Yacht
 
 
 def return_YD41_particulars():

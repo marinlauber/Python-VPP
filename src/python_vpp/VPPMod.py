@@ -7,10 +7,10 @@ from concurrent.futures import ProcessPoolExecutor
 import numpy as np
 from scipy.optimize import minimize
 
-from src.AeroMod import AeroMod
-from src.HydroMod import HydroMod
-from src.UtilsMod import KNOTS_TO_MPS, json_write, polar_plot, sail_chart
-from src.YachtMod import Yacht as YachtClass
+from .AeroMod import AeroMod
+from .HydroMod import HydroMod
+from .UtilsMod import KNOTS_TO_MPS, json_write, polar_plot, sail_chart
+from .YachtMod import Yacht as YachtClass
 
 logger = logging.getLogger(__name__)
 

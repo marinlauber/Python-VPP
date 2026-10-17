@@ -8,7 +8,7 @@ class TestWindTriangleCache:
     """Verify that wind_triangle uses lru_cache."""
 
     def test_wind_triangle_is_cached(self):
-        from src.AeroMod import wind_triangle
+        from python_vpp.AeroMod import wind_triangle
 
         # lru_cache-decorated functions have cache_info()
         assert hasattr(wind_triangle, "cache_info"), "wind_triangle should be lru_cache-decorated"
@@ -20,7 +20,7 @@ class TestWindTriangleCache:
         assert info.misses == 1
 
     def test_cache_returns_same_result(self):
-        from src.AeroMod import wind_triangle
+        from python_vpp.AeroMod import wind_triangle
 
         wind_triangle.cache_clear()
         r1 = wind_triangle(10.0, 45.0, 6.0)
@@ -34,7 +34,7 @@ class TestSailCoefficientCalls:
     def test_get_coeffs_calls_cl_once_per_sail(self):
         """Each sail's cl(awa) should be called at most once per _get_coeffs()."""
         from unittest.mock import MagicMock, patch
-        from src.AeroMod import AeroMod
+        from python_vpp.AeroMod import AeroMod
 
         # Create a mock yacht with minimal structure
         mock_sail = MagicMock()
@@ -109,7 +109,7 @@ class TestWindTriangle:
     )
     def test_wind_triangle_analytical(self, tws, twa, vb, expected_aws, expected_awa):
         """AWA and AWS must match law-of-cosines closed-form solution."""
-        from src.AeroMod import wind_triangle
+        from python_vpp.AeroMod import wind_triangle
 
         awa, aws = wind_triangle(tws, twa, vb)
         assert aws == pytest.approx(expected_aws, abs=1e-10)
@@ -117,7 +117,7 @@ class TestWindTriangle:
 
     def test_no_fsolve_import_used(self):
         """The analytical path must not import or call fsolve."""
-        from src.AeroMod import wind_triangle
+        from python_vpp.AeroMod import wind_triangle
         import inspect
 
         source = inspect.getsource(wind_triangle)
@@ -128,7 +128,7 @@ class TestHeeledWindTriangle:
     """ORC 7.1: heel and the log wind gradient in the wind triangle."""
 
     def test_gradient_reference_height(self):
-        from src.AeroMod import Z_REF, wind_gradient
+        from python_vpp.AeroMod import Z_REF, wind_gradient
 
         assert wind_gradient(Z_REF) == pytest.approx(1.0)
         assert wind_gradient(5.0) < 1.0 < wind_gradient(20.0)
@@ -136,7 +136,7 @@ class TestHeeledWindTriangle:
         assert wind_gradient(5.0) == pytest.approx(np.log(1000.0) / np.log(2000.0))
 
     def test_heel_reduces_cross_wind(self):
-        from src.AeroMod import wind_triangle
+        from python_vpp.AeroMod import wind_triangle
 
         awa0, aws0 = wind_triangle(10.0, 45.0, 3.0)
         awa, aws = wind_triangle(10.0, 45.0, 3.0, 30.0)

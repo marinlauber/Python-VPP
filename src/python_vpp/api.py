@@ -3,17 +3,14 @@ API for calling VPPMod
 
 """
 import logging
-import os
-import sys
 from typing import Any, Dict
 
 import numpy as np
 from flask import Flask, jsonify, request
 
-sys.path.append(os.path.realpath("."))
-from src.SailMod import Jib, Kite, Main
-from src.VPPMod import VPP
-from src.YachtMod import Keel, Rudder, ShortKeel, Yacht
+from .SailMod import Jib, Kite, Main
+from .VPPMod import VPP
+from .YachtMod import Keel, Rudder, ShortKeel, Yacht
 
 app = Flask(__name__)
 

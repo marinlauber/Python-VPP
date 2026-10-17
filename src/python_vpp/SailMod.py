@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 import numpy as np
 from scipy import interpolate
 
+from .UtilsMod import DATA_DIR
+
 
 SAIL_TYPES = {
     "main": "main",
@@ -68,12 +70,11 @@ class Sail(object):
         """Build cubic B-spline interpolation functions for CL and CD.
 
         Falls back to linear (k=1) if fewer than 4 data points are available.
-        Tries ``dat/{data_source}/{fname}.dat`` first, then ``dat/{fname}.dat``.
+        Tries ``DATA_DIR/{data_source}/{fname}.dat`` first, then ``DATA_DIR/{fname}.dat``.
         """
-        import os
-        path = os.path.join("dat", data_source, fname + ".dat")
-        if not os.path.exists(path):
-            path = os.path.join("dat", fname + ".dat")
+        path = DATA_DIR / data_source / (fname + ".dat")
+        if not path.exists():
+            path = DATA_DIR / (fname + ".dat")
         a = np.genfromtxt(path, delimiter=",", skip_header=1)
         self.kp = a[0, 0]
         # Filter NaN values (trailing commas in CSV create NaNs)

@@ -6,9 +6,9 @@ import logging
 
 logging.basicConfig(level=logging.INFO)
 
-from src.SailMod import Jib, Kite, Main
-from src.VPPMod import VPP
-from src.YachtMod import Keel, Rudder, Yacht
+from python_vpp.SailMod import Jib, Kite, Main
+from python_vpp.VPPMod import VPP
+from python_vpp.YachtMod import Keel, Rudder, Yacht
 
 YD41 = Yacht(
     Name="YD41",
