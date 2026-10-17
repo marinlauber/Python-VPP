@@ -9,7 +9,7 @@ from scipy.optimize import minimize
 
 from src.AeroMod import AeroMod
 from src.HydroMod import HydroMod
-from src.UtilsMod import KNOTS_TO_MPS, json_write, polar_plot, sail_chart
+from src.UtilsMod import KNOTS_TO_MPS, csv_write, json_write, polar_plot, sail_chart
 from src.YachtMod import Yacht as YachtClass
 
 logger = logging.getLogger(__name__)
@@ -280,6 +280,10 @@ class VPP(object):
 
     def write(self, fname):
         json_write(self.results(), fname)
+
+    def write_csv(self, fname="polar.csv", tws_range=None, twa_range=None):
+        """Write the best boat speed to a polar csv file, see UtilsMod.csv_write."""
+        csv_write(self, tws_range=tws_range, twa_range=twa_range, fname=fname)
 
     def polar(self, n=1, save=False, fname="Polars.pdf"):
         polar_plot([self], n, save, fname)

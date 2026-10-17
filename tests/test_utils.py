@@ -1,7 +1,10 @@
+from types import SimpleNamespace
+
 import numpy as np
 
 from src.SailMod import Jib, Kite, Main
-from src.UtilsMod import _get_cross
+from src.UtilsMod import KNOTS_TO_MPS, _get_cross, csv_write
+from src.VPPMod import VPP
 from src.YachtMod import Keel, Rudder, Yacht
 
 
@@ -53,3 +56,51 @@ def test_get_cross_pad_is_symmetric():
 
 def test_get_cross_no_pad():
     assert tuple(_get_cross(_cross_store(), 1, pad=0)) == (4, 8)
+
+
+def _fake_vpp():
+    """2 TWS x 3 TWA x 2 sails; the store holds boat speed in knots, TWS in m/s."""
+    store = np.zeros((2, 3, 2, 5))
+    store[:, :, 0, 0] = [[5.0, 6.0, 0.0], [7.0, 8.0, 0.0]]  # jib, not set downwind
+    store[:, :, 1, 0] = [[0.0, 5.5, 6.5], [0.0, 8.5, 9.5]]  # kite
+    return SimpleNamespace(
+        tws_range=np.array([6.0, 10.0]) * KNOTS_TO_MPS,
+        twa_range=np.array([40.0, 90.0, 150.0]),
+        store=store,
+    )
+
+
+def _read_csv(path):
+    rows = [line.split(";") for line in path.read_text().splitlines()]
+    return rows[0], {float(r[0]): [float(v) for v in r[1:]] for r in rows[1:]}
+
+
+def test_csv_write_default_grid(tmp_path):
+    fname = tmp_path / "polar.csv"
+    csv_write(_fake_vpp(), fname=fname)
+    header, rows = _read_csv(fname)
+    assert header == ["TWA\\TWS", "6", "10"]
+    # best sail at each point, in knots (no second unit conversion)
+    assert rows == {40.0: [5.0, 7.0], 90.0: [6.0, 8.5], 150.0: [6.5, 9.5]}
+
+
+def test_csv_write_interpolates_custom_grid(tmp_path):
+    fname = tmp_path / "polar.csv"
+    csv_write(_fake_vpp(), tws_range=[6.0, 8.0, 12.0], twa_range=[40.0, 65.0], fname=fname)
+    header, rows = _read_csv(fname)
+    assert header == ["TWA\\TWS", "6", "8", "12"]
+    assert rows[40.0] == [5.0, 6.0, 0.0]  # 12 kn is outside the analysis: 0
+    assert np.allclose(rows[65.0], [5.5, 6.625, 0.0], atol=0.006)  # halfway 40-90 deg
+
+
+def test_vpp_write_csv(tmp_path):
+    vpp = VPP(Yacht=return_YD41_particulars())
+    vpp.set_analysis(tws_range=np.array([8.0]), twa_range=np.array([45.0, 90.0]))
+    vpp.run()
+    fname = tmp_path / "polar.csv"
+    vpp.write_csv(fname)
+    header, rows = _read_csv(fname)
+    assert header == ["TWA\\TWS", "8"]
+    best = vpp.store[0, :, :, 0].max(axis=1)
+    assert np.allclose([rows[45.0][0], rows[90.0][0]], best, atol=0.006)
+    assert all(v > 0 for r in rows.values() for v in r)

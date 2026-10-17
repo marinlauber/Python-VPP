@@ -9,7 +9,6 @@ logging.basicConfig(level=logging.INFO)
 from src.SailMod import Jib, Kite, Main
 from src.VPPMod import VPP
 from src.YachtMod import Keel, Rudder, Yacht
-import src.UtilsMod as Utils
 
 YD41 = Yacht(
     Name="YD41",
@@ -42,6 +41,9 @@ vpp.set_analysis(
 
 vpp.run()
 vpp.write("results")
-Utils.csv_write(vpp.tws_range, vpp.twa_range, vpp.store, "results/Vm.csv")
+# polar csv for routing software, e.g. OpenCPN (5 deg TWA, 2 kn TWS steps)
+vpp.write_csv(
+    "polar.csv", tws_range=np.arange(4.0, 22.0, 2.0), twa_range=np.arange(30.0, 181.0, 5.0)
+)
 vpp.polar(3, True)
 vpp.SailChart(True)
