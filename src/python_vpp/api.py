@@ -52,6 +52,12 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
     wave_direction = data.get("wave_direction")
     if wave_direction is not None:
         wave_direction = float(wave_direction)
+    # optional righting arm curve {"Heel": [...], "GZ": [...]}
+    gz = data.get("GZ")
+    if gz is not None:
+        gz = {"Heel": [float(h) for h in gz["Heel"]], "GZ": [float(g) for g in gz["GZ"]]}
+        if len(gz["Heel"]) != len(gz["GZ"]) or len(gz["Heel"]) < 2:
+            raise ValueError("GZ needs matching 'Heel' and 'GZ' lists of at least 2 points.")
 
     yacht = Yacht(
         Name=data["yacht"]["Name"],
@@ -71,6 +77,7 @@ def data_to_vpp(data: Dict[str, Any]) -> VPP:
         Hs=Hs,
         Ts=Ts,
         wave_direction=wave_direction,
+        GZ=gz,
         App=[keel, rudder],
         Sails=[
             Main(

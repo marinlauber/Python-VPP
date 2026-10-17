@@ -31,7 +31,7 @@ Demo = "https://yacht-vpp.streamlit.app/"
 
 [project.optional-dependencies]
 api = ["flask", "gunicorn"]
-demo = ["streamlit>=1.37"]
+demo = ["streamlit>=1.37", "plotly>=5.20"]
 dev = [
     "pytest",
     "ruff",

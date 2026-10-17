@@ -202,3 +202,21 @@ def test_api_wave_direction():
     response = post_vpp(d)
     assert response.status_code == 200
 
+
+
+def test_api_custom_gz_curve():
+    from python_vpp.api import data_to_vpp
+
+    gz = {"Heel": [0.0, 10.0, 20.0, 30.0], "GZ": [0.0, 0.1, 0.2, 0.3]}
+    vpp, _ = data_to_vpp(make_yd41(GZ=gz))
+    default, _ = data_to_vpp(make_yd41())
+    assert abs(vpp.yacht._interp_rm(20.0) - 0.2) < 1e-12
+    assert vpp.yacht._interp_rm(20.0) < default.yacht._interp_rm(20.0)
+    assert post_vpp(make_yd41(GZ=gz)).status_code == 200
+
+
+def test_api_invalid_gz_returns_400():
+    gz = {"Heel": [0.0, 10.0, 20.0], "GZ": [0.0, 0.1]}
+    response = post_vpp(make_yd41(GZ=gz))
+    assert response.status_code == 400
+    assert "GZ" in response.get_json()["error"]
