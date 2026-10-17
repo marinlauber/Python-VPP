@@ -23,3 +23,6 @@ sphinx/_build/
 # Project
 ORC_VPP_2019.pdf
 dev.py
+
+# exported polars (root only, dat/ holds tracked csv data)
+/*.csv
