@@ -9,9 +9,10 @@ import numpy as np
 import streamlit as st
 from utils import footer, header
 
-sys.path.append(os.path.realpath("."))
-from src.api import app
-from src.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, stl
+# the demo may run without the package installed (e.g. Streamlit Cloud)
+sys.path.append(os.path.realpath("src"))
+from python_vpp.api import app
+from python_vpp.UtilsMod import KNOTS_TO_MPS, _get_cross, _get_vmg, _polar, cols, stl
 
 st.set_page_config(page_title="VPP", page_icon="⛵")
 

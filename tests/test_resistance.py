@@ -1,7 +1,7 @@
 import numpy.testing as np_testing
 
-from src.HydroMod import HydroMod
-from src.YachtMod import Keel, Rudder, Yacht
+from python_vpp.HydroMod import HydroMod
+from python_vpp.YachtMod import Keel, Rudder, Yacht
 
 
 def generate_YD41():
@@ -49,7 +49,7 @@ def test_build_interp_func_no_deprecation():
     """Verify build_interp_func doesn't use deprecated interp1d."""
     import warnings
 
-    from src.UtilsMod import build_interp_func
+    from python_vpp.UtilsMod import build_interp_func
     with warnings.catch_warnings():
         warnings.simplefilter("error", DeprecationWarning)
         func = build_interp_func("main", i=1)

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+import os
+
 import numpy as np
 from scipy import interpolate
 
-from src.UtilsMod import build_interp_func, json_read, json_write
+from .UtilsMod import DATA_DIR, build_interp_func, json_read, json_write
 
 
 def _zero_cr(fn):
@@ -248,8 +250,9 @@ class Yacht(object):
             Sail inventory. Default is [].
         GZ : dict, optional
             Righting arm curve as ``{"Heel": [...], "GZ": [...]}``.
-            Heel in degrees, GZ in metres. If *None*, loads from
-            ``righting_moment.json`` (backward compatible).
+            Heel in degrees, GZ in metres. If *None*, loads
+            ``righting_moment.json`` from the working directory, or the
+            packaged YD-41 curve if there is none.
         crew_weight : float, optional
             Total crew weight (kg). If *None*, uses empirical formula
             ``25.8 * Lwl ** 1.4262``.
@@ -316,7 +319,10 @@ class Yacht(object):
         if self._gz_data is not None:
             a = self._gz_data
         else:
-            a = json_read('righting_moment')
+            fname = 'righting_moment'
+            if not os.path.exists(fname + '.json'):
+                fname = str(DATA_DIR / fname)
+            a = json_read(fname)
         return interpolate.interp1d(np.array(a["Heel"]), np.array(a["GZ"]),
                                     kind="linear", fill_value="extrapolate")
 

@@ -1,1 +1,1 @@
-web: gunicorn src.api:app --log-file=-
+web: gunicorn --chdir src python_vpp.api:app --log-file=-

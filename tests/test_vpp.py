@@ -3,8 +3,8 @@ import os
 import numpy as np
 import pytest
 
-from src.SailMod import Jib, Kite, Main
-from src.VPPMod import VPP
+from python_vpp.SailMod import Jib, Kite, Main
+from python_vpp.VPPMod import VPP
 from tests.test_utils import return_YD41_particulars
 
 
@@ -162,8 +162,8 @@ def test_speed_increases_with_tws_when_depowered():
 
 def test_stored_points_are_in_equilibrium():
     """Every stored point satisfies force and moment equilibrium."""
-    from src.UtilsMod import KNOTS_TO_MPS
-    from src.VPPMod import RESID_TOL
+    from python_vpp.UtilsMod import KNOTS_TO_MPS
+    from python_vpp.VPPMod import RESID_TOL
 
     vpp = _upwind_vpp(np.array([6.0, 20.0]), np.linspace(30.0, 120.0, 4))
     vpp.aero.sails[1] = vpp.yacht.sails[1]
@@ -191,8 +191,8 @@ def test_kite_heel_capped():
 
 def test_infeasible_kite_left_unsolved():
     """A kite that cannot be held at the heel limit is stored as 0, not a fake point."""
-    from src.UtilsMod import KNOTS_TO_MPS
-    from src.VPPMod import RESID_TOL
+    from python_vpp.UtilsMod import KNOTS_TO_MPS
+    from python_vpp.VPPMod import RESID_TOL
 
     yacht = return_YD41_particulars()
     yacht.sails = [Main("MN1", P=16.60, E=5.60, Roach=0.1, BAD=1.0),
@@ -297,7 +297,7 @@ def test_parallel_method_accepted():
 
 def test_sym_kite_vpp_runs():
     """VPP runs with symmetric spinnaker coefficients."""
-    from src.YachtMod import Keel, Rudder, Yacht
+    from python_vpp.YachtMod import Keel, Rudder, Yacht
     yacht = Yacht(
         Name="YD41", Lwl=11.90, Vol=6.05, Bwl=3.18, Tc=0.4, WSA=28.20,
         Tmax=2.30, Amax=1.051, Mass=6500, Ff=1.5, Fa=1.5, Boa=4.2, Loa=12.5,

@@ -2,9 +2,9 @@
 
 import numpy as np
 
-from src.HydroMod import HydroMod
-from src.SailMod import Jib, Kite, Main
-from src.YachtMod import Keel, Rudder, Yacht
+from python_vpp.HydroMod import HydroMod
+from python_vpp.SailMod import Jib, Kite, Main
+from python_vpp.YachtMod import Keel, Rudder, Yacht
 
 
 def _make_yacht(**kwargs):
