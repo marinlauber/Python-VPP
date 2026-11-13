@@ -45,6 +45,23 @@ def test_Rr_interpolation():
     np_testing.assert_approx_equal(YD41._interp_Rr((0.700, 9.0, 9.0)), 42.2353, 4)
 
 
+def test_Rr_axes_lvr_btr():
+    """ORC table is RRmult(lvr_i, btr_j): rows are LVR [3, 9], columns BTR [2.5, 9] (issue #70)."""
+    YD41 = generate_YD41()
+    fn_grid, lvr_grid, btr_grid = YD41._interp_Rr.grid
+    np_testing.assert_approx_equal(lvr_grid[0], 3.0)
+    np_testing.assert_approx_equal(btr_grid[0], 2.5)
+    # residuary resistance drops strongly with slenderness (LVR) at high Fn
+    assert YD41._interp_Rr((0.5, 9.0, 4.0)) < 0.5 * YD41._interp_Rr((0.5, 4.0, 4.0))
+    # _get_Rr must evaluate the surface at (fn, lvr, btr)
+    YD41.fn, YD41.phi = 0.4, 0.0
+    YD41.yacht.appendages, appendages = [], YD41.yacht.appendages
+    expected = YD41._interp_Rr((0.4, YD41.lvr, YD41.btr)) * YD41.mass * YD41.g * 1e-3
+    YD41.yacht.appendages = appendages
+    Rr_app = sum(a._cr(0.4) * a.vol * YD41.rho * YD41.g * 1e-3 for a in appendages)
+    np_testing.assert_allclose(YD41._get_Rr(), expected + Rr_app)
+
+
 def test_build_interp_func_no_deprecation():
     """Verify build_interp_func doesn't use deprecated interp1d."""
     import warnings

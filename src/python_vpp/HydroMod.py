@@ -53,7 +53,7 @@ class HydroMod(object):
         if (self.btr < 3.0) or (self.btr > 8.5) or (self.lvr < 3.5) or (self.lvr > 8.5):
             warnings.warn(
                 "Yacht dimensions are close to boundaries of resistance surfaces, "
-                + "extrapolation will be used if values (fn, btr, lvr) are outside of "
+                + "extrapolation will be used if values (fn, lvr, btr) are outside of "
                 + "range, but resistance might be affected.",
                 UserWarning,
                 stacklevel=2,
@@ -65,18 +65,19 @@ class HydroMod(object):
         """
         surf = np.genfromtxt(DATA_DIR / "ORCi_Drag_Surfaces.csv", delimiter=",", skip_header=1)
         surf = surf.reshape((24, 43, 42))
-        # x is Fn := [0.,0.7], y is btr := [2.5,9], z is lvr := [3,9]
+        # table is RRmult(lvr_i, btr_j): rows are lvr := [3,9], columns are btr := [2.5,9]
+        # x is Fn := [0.,0.7], y is lvr := [3,9], z is btr := [2.5,9]
         # we add zero Fn resistance (0.)
         fn = np.hstack((0.0, np.linspace(0.125, 0.7, 24)))
-        btr = surf[0, 2:, 0]
-        lvr = surf[0, 1, 1:]
+        lvr = surf[0, 2:, 0]
+        btr = surf[0, 1, 1:]
         # build interpolation function for 3D data
         data = np.zeros(((25, 41, 41)))
         data[1:, :, :] = surf[:, 2:, 1:]
         # extrapolate if outside range
         # https://github.com/scipy/scipy/blob/v0.16.1/scipy/interpolate/interpolate.py#L1528
         self._interp_Rr = RegularGridInterpolator(
-            (fn, btr, lvr), data, method="linear", bounds_error=False, fill_value=None
+            (fn, lvr, btr), data, method="linear", bounds_error=False, fill_value=None
         )
 
     def _get_Rr(self):
@@ -85,7 +86,7 @@ class HydroMod(object):
         """
         fn = max(0.0, self.fn)
         # Note:  To convert to drag in Newtons multiply the values by displacement and 9.81/1000.
-        Rr = self._interp_Rr((fn, self.btr, self.lvr)) * self.mass * self.g * 1e-3
+        Rr = self._interp_Rr((fn, self.lvr, self.btr)) * self.mass * self.g * 1e-3
         for appendage in self.yacht.appendages:
             # for now appendages have no volume (no Rr_app)
             Rr += appendage._cr(fn) * appendage.vol * self.rho * self.g * 1e-3
